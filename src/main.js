@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GameMap, TILE_SIZE } from './core/mapManager.js';
+import { GameMap, TILE_SIZE } from './core/MapManager.js'; // Changed casing
 import resourceManager, { RESOURCE_TYPES } from './core/resourceManager.js';
+import ConstructionManager from './core/constructionManager.js';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js'; // For test buttons
 import '@material/web/iconbutton/icon-button.js';
@@ -71,9 +72,14 @@ scene.add(gameElementsGroup);
 const MAP_WIDTH = 30; // Example map size
 const MAP_HEIGHT = 30; // Example map size
 const gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
-gameMap.tileMeshes.position.y = 0; // Map tiles are at y=0 within this group
+gameMap.tileMeshes.position.y = 0; // Map tiles are at y=0 within this group. Ground plane is at -0.5.
 gameElementsGroup.add(gameMap.tileMeshes);
 console.log('GameMap created and added to scene.');
+
+// --- Construction Manager ---
+const constructionManager = new ConstructionManager(scene, gameMap); // Pass scene and map
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
 // Adjust camera to view the map
 camera.position.set(MAP_WIDTH * TILE_SIZE / 2, Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 0.75, MAP_HEIGHT * TILE_SIZE / 2 + 5);
@@ -114,25 +120,106 @@ if (uiOverlay) {
     updateResourceUI(resourceManager.getAllStockpiles()); // Initial display
 
     // Test buttons for resource manipulation
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.position = 'absolute';
-    buttonContainer.style.bottom = '10px';
-    buttonContainer.style.left = '10px';
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '8px';
+    const testButtonContainer = document.createElement('div');
+    testButtonContainer.style.position = 'absolute';
+    testButtonContainer.style.bottom = '70px'; // Move up to make space for build menu
+    testButtonContainer.style.left = '10px';
+    testButtonContainer.style.display = 'flex';
+    testButtonContainer.style.gap = '8px';
 
     const addWoodButton = document.createElement('md-filled-button');
     addWoodButton.textContent = '+10 Wood';
     addWoodButton.addEventListener('click', () => resourceManager.addResource(RESOURCE_TYPES.WOOD, 10));
-    buttonContainer.appendChild(addWoodButton);
+    testButtonContainer.appendChild(addWoodButton);
 
     const removeStoneButton = document.createElement('md-outlined-button');
     removeStoneButton.textContent = '-5 Stone';
     removeStoneButton.addEventListener('click', () => resourceManager.removeResource(RESOURCE_TYPES.STONE, 5));
-    buttonContainer.appendChild(removeStoneButton);
+    testButtonContainer.appendChild(removeStoneButton);
     
-    uiOverlay.appendChild(buttonContainer);
+    uiOverlay.appendChild(testButtonContainer);
+
+    // Construction Menu
+    const constructionPanel = document.createElement('div');
+    constructionPanel.id = 'construction-panel';
+    constructionPanel.style.position = 'absolute';
+    constructionPanel.style.bottom = '10px';
+    constructionPanel.style.right = '10px';
+    constructionPanel.style.padding = '10px';
+    constructionPanel.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    constructionPanel.style.borderRadius = '8px';
+    constructionPanel.style.display = 'flex';
+    constructionPanel.style.flexDirection = 'column';
+    constructionPanel.style.gap = '8px';
+    
+    const availableBuildings = constructionManager.getAvailableBuildings();
+    availableBuildings.forEach(building => {
+        const button = document.createElement('md-filled-button');
+        button.textContent = `Build ${building.name}`;
+        // Display cost (simplified)
+        let costString = '';
+        for(const res in building.cost) {
+            costString += `${building.cost[res]} ${res.replace('_',' ')} `;
+        }
+        if(costString) button.title = `Cost: ${costString.trim()}`;
+
+        button.addEventListener('click', () => {
+            constructionManager.startPlacement(building.key);
+        });
+        constructionPanel.appendChild(button);
+    });
+    uiOverlay.appendChild(constructionPanel);
 }
+
+// Mouse move for placement indicator
+function onMouseMove(event) {
+    if (!constructionManager.isPlacing) return;
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    // Intersect with the map tiles or a ground plane for placement
+    const intersects = raycaster.intersectObject(gameMap.tileMeshes, true); // Intersect with children of tileMeshes
+    // Fallback to a conceptual ground plane if no tiles hit (e.g., for edges)
+    const groundPlaneIntersectPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // y=0 plane
+    
+    if (intersects.length > 0) {
+        constructionManager.updatePlacementIndicator(intersects[0].point);
+    } else {
+        const intersectionPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(groundPlaneIntersectPlane, intersectionPoint);
+        if(intersectionPoint) {
+            constructionManager.updatePlacementIndicator(intersectionPoint);
+        }
+    }
+}
+window.addEventListener('mousemove', onMouseMove, false);
+
+// Mouse click for confirming placement
+function onMouseClick(event) {
+    if (event.target !== renderer.domElement) return; // Only react to clicks on canvas
+
+    if (constructionManager.isPlacing) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObject(gameMap.tileMeshes, true);
+        const groundPlaneIntersectPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        if (intersects.length > 0) {
+            constructionManager.confirmPlacement(intersects[0].point);
+        } else {
+            const intersectionPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(groundPlaneIntersectPlane, intersectionPoint);
+            if(intersectionPoint) {
+                 constructionManager.confirmPlacement(intersectionPoint);
+            }
+        }
+    }
+}
+renderer.domElement.addEventListener('click', onMouseClick, false);
 
 
 // Handle window resize
@@ -146,6 +233,7 @@ window.addEventListener('resize', () => {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    // constructionManager.updatePlacementIndicator(); // This is now driven by mouse move
     renderer.render(scene, camera);
 }
 
