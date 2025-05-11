@@ -1,6 +1,14 @@
 import * as THREE from 'three';
+THREE.ColorManagement.enabled = true; // Enable color management
+
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GameMap, TILE_SIZE } from './core/MapManager.js'; // Changed casing
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'; // May need for gamma correction
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'; // Anti-aliasing for composer
+
+import { GameMap, TILE_SIZE } from './core/MapManager.js'; 
 import resourceManager, { RESOURCE_TYPES } from './core/resourceManager.js';
 import ConstructionManager from './core/constructionManager.js';
 import SerfManager from './core/serfManager.js'; // Import SerfManager class
@@ -43,12 +51,41 @@ camera.position.set(0, 15, 15); // Default camera position for map view
 // Renderer
 const renderer = new THREE.WebGLRenderer({ canvas: gameCanvas || undefined, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio); 
+renderer.outputColorSpace = THREE.SRGBColorSpace; // Set output color space
+
 if (!gameCanvas && appContainer) {
     appContainer.appendChild(renderer.domElement);
 }
 
+// Post-processing Composer
+let composer;
+let outlinePass;
+let selectedObjects = [];
+
+composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+outlinePass.edgeStrength = 5;
+outlinePass.edgeGlow = 0.5;
+outlinePass.edgeThickness = 1;
+outlinePass.visibleEdgeColor.set('#ffffff');
+outlinePass.hiddenEdgeColor.set('#190a05'); // Optional: color for occluded parts
+composer.addPass(outlinePass);
+
+// FXAA pass for anti-aliasing if needed, especially with post-processing
+let fxaaPass = new ShaderPass(FXAAShader);
+const pixelRatio = renderer.getPixelRatio();
+// Temporarily remove FXAA pass to check its impact on color
+// fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+// fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+// composer.addPass(fxaaPass);
+
+
 // Controls
-const controls = new OrbitControls(camera, renderer.domElement); // Ensure controls use the correct element
+const controls = new OrbitControls(camera, renderer.domElement); 
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.minDistance = 5;
@@ -56,10 +93,10 @@ controls.maxDistance = 100;
 controls.target.set(0, 0, 0); // Look at origin initially
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Reverted intensity
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Reverted intensity
 directionalLight.position.set(20, 30, 15);
 // directionalLight.castShadow = true; // Enable shadows later - can be performance intensive
 scene.add(directionalLight);
@@ -73,7 +110,8 @@ scene.add(gameElementsGroup);
 const MAP_WIDTH = 30; // Example map size
 const MAP_HEIGHT = 30; // Example map size
 const gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
-gameMap.tileMeshes.position.y = 0; // Map tiles are at y=0 within this group. Ground plane is at -0.5.
+// Lower the map slightly so objects at y=0 sit on top of it
+gameMap.tileMeshes.position.y = -0.05; // Increased offset to prevent z-fighting and ensure objects are above
 gameElementsGroup.add(gameMap.tileMeshes);
 console.log('GameMap created and added to scene.');
 
@@ -243,30 +281,94 @@ function onMouseMove(event) {
 }
 window.addEventListener('mousemove', onMouseMove, false);
 
-// Mouse click for confirming placement
+// Mouse click for confirming placement or selecting objects
+let selectedBuildingInfoPanel = null; // To display info
+
 function onMouseClick(event) {
-    if (event.target !== renderer.domElement) return; // Only react to clicks on canvas
+    if (event.target !== renderer.domElement) return; 
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
 
     if (constructionManager.isPlacing) {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
-        const intersects = raycaster.intersectObject(gameMap.tileMeshes, true);
-        const groundPlaneIntersectPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectsPlacement = raycaster.intersectObject(gameMap.tileMeshes, true);
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let placementPoint = new THREE.Vector3();
 
-        if (intersects.length > 0) {
-            constructionManager.confirmPlacement(intersects[0].point);
+        if (intersectsPlacement.length > 0) {
+            placementPoint = intersectsPlacement[0].point;
         } else {
-            const intersectionPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(groundPlaneIntersectPlane, intersectionPoint);
-            if(intersectionPoint) {
-                 constructionManager.confirmPlacement(intersectionPoint);
+            raycaster.ray.intersectPlane(groundPlane, placementPoint);
+        }
+        if(placementPoint) constructionManager.confirmPlacement(placementPoint);
+
+    } else { // Not placing, try selecting
+        const buildingsGroup = scene.getObjectByName("GameBuildings");
+        if (buildingsGroup) {
+            const intersectsSelection = raycaster.intersectObjects(buildingsGroup.children, true);
+            if (intersectsSelection.length > 0) {
+                let topObject = intersectsSelection[0].object;
+                // Traverse up to find the main building group if clicked a sub-mesh
+                while (topObject.parent && topObject.parent !== buildingsGroup) {
+                    topObject = topObject.parent;
+                }
+                selectedObjects = [topObject];
+                outlinePass.selectedObjects = selectedObjects;
+                displaySelectedBuildingInfo(topObject);
+            } else {
+                selectedObjects = [];
+                outlinePass.selectedObjects = selectedObjects;
+                clearSelectedBuildingInfo();
             }
         }
     }
 }
 renderer.domElement.addEventListener('click', onMouseClick, false);
+
+function displaySelectedBuildingInfo(buildingModel) {
+    if (!uiOverlay) return;
+    clearSelectedBuildingInfo(); // Clear previous
+
+    selectedBuildingInfoPanel = document.createElement('div');
+    selectedBuildingInfoPanel.id = 'selected-info-panel';
+    selectedBuildingInfoPanel.style.position = 'absolute';
+    selectedBuildingInfoPanel.style.bottom = '10px';
+    selectedBuildingInfoPanel.style.left = '50%';
+    selectedBuildingInfoPanel.style.transform = 'translateX(-50%)';
+    selectedBuildingInfoPanel.style.padding = '10px';
+    selectedBuildingInfoPanel.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    selectedBuildingInfoPanel.style.borderRadius = '8px';
+    selectedBuildingInfoPanel.style.color = 'white';
+    selectedBuildingInfoPanel.style.textAlign = 'center';
+
+    // Find building data (this is a bit hacky, assumes model name or type is stored)
+    // This needs a better way to link model back to constructionManager data
+    let buildingName = buildingModel.name || "Unknown Building"; 
+    // A better way would be to find the building in constructionManager.placedBuildings
+    // based on the model's UUID or a custom property.
+    // For now, we'll just use the model's name if set during creation.
+    
+    // Example: find by matching position (not robust)
+    const placedBuildingData = constructionManager.placedBuildings.find(
+        b => b.model === buildingModel
+    );
+    if(placedBuildingData) buildingName = placedBuildingData.info.name;
+
+
+    selectedBuildingInfoPanel.innerHTML = `<h4>${buildingName}</h4><p>Position: (${buildingModel.position.x.toFixed(1)}, ${buildingModel.position.z.toFixed(1)})</p>`;
+    uiOverlay.appendChild(selectedBuildingInfoPanel);
+}
+
+function clearSelectedBuildingInfo() {
+    if (selectedBuildingInfoPanel && selectedBuildingInfoPanel.parentElement) {
+        selectedBuildingInfoPanel.parentElement.removeChild(selectedBuildingInfoPanel);
+    }
+    selectedBuildingInfoPanel = null;
+}
 
 
 // Handle window resize
@@ -274,18 +376,24 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight); // Update composer
+    
+    // If FXAAPass was used, its resolution uniform would also need update here
+    // const pixelRatio = renderer.getPixelRatio();
+    // fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+    // fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
 }, false);
 
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
-    // const deltaTime = clock.getDelta(); // Not strictly needed if managers use Date.now()
-
+    
     controls.update();
     constructionManager.update(); 
-    serfManager.update(clock.getDelta(), constructionManager.placedBuildings); // Pass placedBuildings
+    serfManager.update(clock.getDelta(), constructionManager.placedBuildings); 
     
-    renderer.render(scene, camera);
+    // renderer.render(scene, camera); // Use composer instead
+    composer.render();
 }
 
 // Ensure animation loop starts only if main container and renderer are set up
