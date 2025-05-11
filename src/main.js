@@ -111,7 +111,7 @@ const MAP_WIDTH = 30; // Example map size
 const MAP_HEIGHT = 30; // Example map size
 const gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
 // Lower the map slightly so objects at y=0 sit on top of it
-gameMap.tileMeshes.position.y = -0.05; // Increased offset to prevent z-fighting and ensure objects are above
+gameMap.tileMeshes.position.y = -0.25; // Further increased offset
 gameElementsGroup.add(gameMap.tileMeshes);
 console.log('GameMap created and added to scene.');
 
