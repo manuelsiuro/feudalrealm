@@ -115,19 +115,33 @@ class SerfManager {
 
     assignSerfToBuilding(serf, buildingData) {
         if (buildingData.jobSlotsAvailable > 0) {
-            serf.currentJob = buildingData; // Reference to the building object from constructionManager
-            serf.profession = buildingData.info.jobProfession; // Change serf's profession
-            // TODO: Update serf model if visual changes with profession
+            const jobInfo = buildingData.info;
+
+            // Check for required tool
+            if (jobInfo.requiredTool) {
+                if (resourceManager.getResourceCount(jobInfo.requiredTool) > 0) {
+                    resourceManager.removeResource(jobInfo.requiredTool, 1); // Consume one tool
+                    console.log(`Serf ID ${serf.id} consumed 1 ${jobInfo.requiredTool} for ${jobInfo.name}.`);
+                } else {
+                    console.warn(`Serf ID ${serf.id} cannot take job at ${jobInfo.name}. Missing tool: ${jobInfo.requiredTool}`);
+                    // alert(`Cannot assign serf: Missing ${jobInfo.requiredTool}`); // UI feedback
+                    return false; // Cannot assign job, missing tool
+                }
+            }
+
+            serf.currentJob = buildingData; 
+            serf.profession = jobInfo.jobProfession; 
+            // TODO: Update serf model if visual changes with profession. 
+            // This would involve removing old model, creating new one with SERF_MODEL_CREATORS[newProfession]
+            // and adding it back to serfVisualsGroup. For now, model remains Transporter.
             
             buildingData.workers.push(serf.id);
             buildingData.jobSlotsAvailable--;
             
-            serf.task = 'working'; // Or 'moving_to_work'
-            // serf.target = new THREE.Vector3(buildingData.x, 0, buildingData.z); // Pathfind to building
-            console.log(`Serf ID ${serf.id} assigned to ${buildingData.info.name} as a ${serf.profession}. Slots left: ${buildingData.jobSlotsAvailable}`);
+            serf.task = 'working'; 
+            console.log(`Serf ID ${serf.id} (now ${serf.profession}) assigned to ${jobInfo.name}. Slots left: ${buildingData.jobSlotsAvailable}`);
             
-            // For now, teleport serf to building for simplicity
-            serf.model.position.set(buildingData.x, 0, buildingData.z + 1); // Place near building
+            serf.model.position.set(buildingData.x, 0, buildingData.z + 1); 
             return true;
         }
         return false;

@@ -146,6 +146,14 @@ if (uiOverlay) {
     removeStoneButton.textContent = '-5 Stone';
     removeStoneButton.addEventListener('click', () => resourceManager.removeResource(RESOURCE_TYPES.STONE, 5));
     testButtonContainer.appendChild(removeStoneButton);
+
+    const addAxeButton = document.createElement('md-filled-button');
+    addAxeButton.textContent = '+1 Axe';
+    addAxeButton.addEventListener('click', () => {
+        console.log('UI: "+1 Axe" button clicked.');
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
+    });
+    testButtonContainer.appendChild(addAxeButton);
     
     uiOverlay.appendChild(testButtonContainer);
 

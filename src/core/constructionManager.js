@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import resourceManager, { RESOURCE_TYPES } from './resourceManager.js';
 import * as Buildings from '../entities/buildings.js'; // To get building creation functions
 import { TILE_SIZE } from './MapManager.js'; // Changed casing: Import TILE_SIZE
+import { SERF_PROFESSIONS } from './serfManager.js'; // Ensure this import is present
 
 // Define building costs and metadata
 // This would ideally come from a more structured game data system later
@@ -18,7 +19,8 @@ export const BUILDING_DATA = {
         productionRate: 5, // Units per minute (e.g., 5 wood per 60 seconds)
         productionIntervalMs: (60 / 5) * 1000, // Interval in ms for 1 unit
         jobSlots: 1, // Number of serfs this building can employ
-        jobProfession: RESOURCE_TYPES.WOODCUTTER, // Profession type for the job
+        jobProfession: SERF_PROFESSIONS.WOODCUTTER, // Use SERF_PROFESSIONS
+        requiredTool: RESOURCE_TYPES.TOOLS_AXE,
     },
     FORESTERS_HUT: { 
         name: "Forester's Hut", 
@@ -26,7 +28,7 @@ export const BUILDING_DATA = {
         creator: Buildings.createForestersHut, 
         tier: 1,
         jobSlots: 1,
-        jobProfession: RESOURCE_TYPES.FORESTER,
+        jobProfession: SERF_PROFESSIONS.FORESTER, // No tool specified for Forester in game.md
     },
     QUARRY: { 
         name: 'Quarry', 
@@ -34,7 +36,8 @@ export const BUILDING_DATA = {
         creator: Buildings.createQuarry, 
         tier: 1,
         jobSlots: 1, // Example
-        jobProfession: RESOURCE_TYPES.STONEMASON,
+        jobProfession: SERF_PROFESSIONS.STONEMASON,
+        requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
     },
     FISHERMANS_HUT: { 
         name: "Fisherman's Hut", 
@@ -42,7 +45,8 @@ export const BUILDING_DATA = {
         creator: Buildings.createFishermansHut, 
         tier: 1,
         jobSlots: 1,
-        jobProfession: RESOURCE_TYPES.FISHERMAN,
+        jobProfession: SERF_PROFESSIONS.FISHERMAN,
+        requiredTool: RESOURCE_TYPES.TOOLS_FISHING_ROD,
     },
     // Add more buildings as they are implemented for construction
     // Example:
