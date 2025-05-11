@@ -141,6 +141,11 @@ class SerfManager {
             serf.task = 'working'; 
             console.log(`Serf ID ${serf.id} (now ${serf.profession}) assigned to ${jobInfo.name}. Slots left: ${buildingData.jobSlotsAvailable}`);
             
+            // Initialize food check timer if job consumes food
+            if (jobInfo.consumesFood && jobInfo.foodCheckIntervalMs) {
+                serf.lastFoodCheckTime = Date.now();
+            }
+
             serf.model.position.set(buildingData.x, 0, buildingData.z + 1); 
             return true;
         }
@@ -167,8 +172,37 @@ class SerfManager {
             
             // Basic placeholder movement or task update
             if (serf.model && serf.task === 'working' && serf.currentJob) {
-                // Serf is at work, maybe a subtle animation or just stay put
-                // serf.model.rotation.y += 0.01; 
+                // Food consumption logic for working serfs
+                const jobInfo = serf.currentJob.info;
+                // Make food consumption generic for any profession that defines it
+                if (jobInfo.consumesFood && jobInfo.foodConsumptionRate && jobInfo.foodCheckIntervalMs) {
+                    const now = Date.now();
+                    if (now >= (serf.lastFoodCheckTime || 0) + jobInfo.foodCheckIntervalMs) {
+                        let foodConsumed = false;
+                        for (const foodType of jobInfo.consumesFood) {
+                            if (resourceManager.getResourceCount(foodType) >= jobInfo.foodConsumptionRate) {
+                                resourceManager.removeResource(foodType, jobInfo.foodConsumptionRate);
+                                console.log(`Serf ID ${serf.id} (Miner) consumed ${jobInfo.foodConsumptionRate} ${foodType}.`);
+                                serf.lastFoodCheckTime = now;
+                                foodConsumed = true;
+                                break; 
+                            }
+                        }
+                        if (!foodConsumed) {
+                            console.warn(`Serf ID ${serf.id} (${serf.profession}) at ${jobInfo.name} has no food! Stopping work.`);
+                            serf.task = 'idle'; // Becomes idle, stops working
+                            // Remove serf from building's worker list
+                            const building = serf.currentJob;
+                            const workerIndex = building.workers.indexOf(serf.id);
+                            if (workerIndex > -1) {
+                                building.workers.splice(workerIndex, 1);
+                            }
+                            building.jobSlotsAvailable++;
+                            serf.currentJob = null; 
+                            // TODO: Serf should ideally move away or show a status
+                        }
+                    }
+                }
             }
         });
     }

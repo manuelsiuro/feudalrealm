@@ -154,6 +154,22 @@ if (uiOverlay) {
         resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
     });
     testButtonContainer.appendChild(addAxeButton);
+
+    const addBreadButton = document.createElement('md-filled-button');
+    addBreadButton.textContent = '+1 Bread';
+    addBreadButton.addEventListener('click', () => {
+        console.log('UI: "+1 Bread" button clicked.');
+        resourceManager.addResource(RESOURCE_TYPES.BREAD, 1);
+    });
+    testButtonContainer.appendChild(addBreadButton);
+
+    const addPickaxeButton = document.createElement('md-filled-button');
+    addPickaxeButton.textContent = '+1 Pickaxe';
+    addPickaxeButton.addEventListener('click', () => {
+        console.log('UI: "+1 Pickaxe" button clicked.');
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
+    });
+    testButtonContainer.appendChild(addPickaxeButton);
     
     uiOverlay.appendChild(testButtonContainer);
 

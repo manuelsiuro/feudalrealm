@@ -19,8 +19,11 @@ export const BUILDING_DATA = {
         productionRate: 5, // Units per minute (e.g., 5 wood per 60 seconds)
         productionIntervalMs: (60 / 5) * 1000, // Interval in ms for 1 unit
         jobSlots: 1, // Number of serfs this building can employ
-        jobProfession: SERF_PROFESSIONS.WOODCUTTER, // Use SERF_PROFESSIONS
+        jobProfession: SERF_PROFESSIONS.WOODCUTTER, 
         requiredTool: RESOURCE_TYPES.TOOLS_AXE,
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], // Added for testing
+        foodConsumptionRate: 1, // 1 unit per interval
+        foodCheckIntervalMs: 15000, // Check/consume food every 15 seconds (example)
     },
     FORESTERS_HUT: { 
         name: "Forester's Hut", 
@@ -36,8 +39,12 @@ export const BUILDING_DATA = {
         creator: Buildings.createQuarry, 
         tier: 1,
         jobSlots: 1, // Example
-        jobProfession: SERF_PROFESSIONS.STONEMASON,
+        jobProfession: SERF_PROFESSIONS.STONEMASON, // Let's change this to MINER for testing food
+        // jobProfession: SERF_PROFESSIONS.MINER, 
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], // Types of food
+        foodConsumptionRate: 0.1, // e.g., 0.1 units per some interval while working
+        foodCheckIntervalMs: 10000, // Check/consume food every 10 seconds
     },
     FISHERMANS_HUT: { 
         name: "Fisherman's Hut", 
