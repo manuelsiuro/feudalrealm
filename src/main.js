@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GameMap, TILE_SIZE } from './core/MapManager.js'; // Changed casing
 import resourceManager, { RESOURCE_TYPES } from './core/resourceManager.js';
 import ConstructionManager from './core/constructionManager.js';
+import SerfManager from './core/serfManager.js'; // Import SerfManager class
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js'; // For test buttons
 import '@material/web/iconbutton/icon-button.js';
@@ -78,6 +79,10 @@ console.log('GameMap created and added to scene.');
 
 // --- Construction Manager ---
 const constructionManager = new ConstructionManager(scene, gameMap); // Pass scene and map
+
+// --- Serf Manager ---
+const serfManager = new SerfManager(scene, gameMap); // Instantiate with scene and gameMap
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const clock = new THREE.Clock(); // Clock for deltaTime
@@ -250,10 +255,11 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
-    // const deltaTime = clock.getDelta(); // Not strictly needed if constructionManager uses Date.now()
+    // const deltaTime = clock.getDelta(); // Not strictly needed if managers use Date.now()
 
     controls.update();
-    constructionManager.update(); // Update construction manager
+    constructionManager.update(); 
+    serfManager.update(); // Update serf manager
     
     renderer.render(scene, camera);
 }
