@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GameMap, TILE_SIZE } from './core/mapManager.js'; 
+import { GameMap, TILE_SIZE } from './core/mapManager.js';
+import resourceManager, { RESOURCE_TYPES } from './core/resourceManager.js';
 import '@material/web/button/filled-button.js';
+import '@material/web/button/outlined-button.js'; // For test buttons
 import '@material/web/iconbutton/icon-button.js';
 // Note: Material Design base styles/theming would typically be set up more globally.
 
@@ -78,17 +80,58 @@ camera.position.set(MAP_WIDTH * TILE_SIZE / 2, Math.max(MAP_WIDTH, MAP_HEIGHT) *
 controls.target.set(0, 0, 0); // Target center of map
 controls.maxDistance = Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 2;
 
-// Add an example Material button to the UI
+// --- UI Setup for Resources ---
 if (uiOverlay) {
-    const testButton = document.createElement('md-filled-button');
-    testButton.innerHTML = 'Test Button <span class="material-icons">touch_app</span>';
-    testButton.addEventListener('click', () => {
-        console.log('Material Button Clicked!');
-        alert('Material Button Works!');
-    });
-    // Clear placeholder and add button
-    uiOverlay.innerHTML = ''; 
-    uiOverlay.appendChild(testButton);
+    uiOverlay.innerHTML = ''; // Clear placeholder
+
+    // Resource Display Panel
+    const resourcePanel = document.createElement('div');
+    resourcePanel.id = 'resource-panel';
+    resourcePanel.style.position = 'absolute';
+    resourcePanel.style.top = '10px';
+    resourcePanel.style.left = '10px';
+    resourcePanel.style.padding = '10px';
+    resourcePanel.style.backgroundColor = 'rgba(0,0,0,0.6)';
+    resourcePanel.style.borderRadius = '8px';
+    resourcePanel.style.color = 'white';
+    resourcePanel.style.minWidth = '150px';
+    uiOverlay.appendChild(resourcePanel);
+
+    function updateResourceUI(stockpiles) {
+        resourcePanel.innerHTML = '<h3>Resources</h3>';
+        const ul = document.createElement('ul');
+        ul.style.listStyle = 'none';
+        ul.style.padding = '0';
+        for (const type in stockpiles) {
+            const li = document.createElement('li');
+            li.textContent = `${type.replace('_', ' ').toUpperCase()}: ${stockpiles[type]}`;
+            ul.appendChild(li);
+        }
+        resourcePanel.appendChild(ul);
+    }
+    
+    resourceManager.onChange(updateResourceUI);
+    updateResourceUI(resourceManager.getAllStockpiles()); // Initial display
+
+    // Test buttons for resource manipulation
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.position = 'absolute';
+    buttonContainer.style.bottom = '10px';
+    buttonContainer.style.left = '10px';
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '8px';
+
+    const addWoodButton = document.createElement('md-filled-button');
+    addWoodButton.textContent = '+10 Wood';
+    addWoodButton.addEventListener('click', () => resourceManager.addResource(RESOURCE_TYPES.WOOD, 10));
+    buttonContainer.appendChild(addWoodButton);
+
+    const removeStoneButton = document.createElement('md-outlined-button');
+    removeStoneButton.textContent = '-5 Stone';
+    removeStoneButton.addEventListener('click', () => resourceManager.removeResource(RESOURCE_TYPES.STONE, 5));
+    buttonContainer.appendChild(removeStoneButton);
+    
+    uiOverlay.appendChild(buttonContainer);
 }
 
 
