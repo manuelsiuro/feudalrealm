@@ -80,6 +80,7 @@ console.log('GameMap created and added to scene.');
 const constructionManager = new ConstructionManager(scene, gameMap); // Pass scene and map
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+const clock = new THREE.Clock(); // Clock for deltaTime
 
 // Adjust camera to view the map
 camera.position.set(MAP_WIDTH * TILE_SIZE / 2, Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 0.75, MAP_HEIGHT * TILE_SIZE / 2 + 5);
@@ -129,7 +130,11 @@ if (uiOverlay) {
 
     const addWoodButton = document.createElement('md-filled-button');
     addWoodButton.textContent = '+10 Wood';
-    addWoodButton.addEventListener('click', () => resourceManager.addResource(RESOURCE_TYPES.WOOD, 10));
+    addWoodButton.addEventListener('click', () => {
+        console.log('UI: "+10 Wood" button clicked. Calling addResource.');
+        const result = resourceManager.addResource(RESOURCE_TYPES.WOOD, 10);
+        console.log('UI: addResource call result:', result);
+    });
     testButtonContainer.appendChild(addWoodButton);
 
     const removeStoneButton = document.createElement('md-outlined-button');
@@ -155,13 +160,26 @@ if (uiOverlay) {
     const availableBuildings = constructionManager.getAvailableBuildings();
     availableBuildings.forEach(building => {
         const button = document.createElement('md-filled-button');
-        button.textContent = `Build ${building.name}`;
-        // Display cost (simplified)
-        let costString = '';
-        for(const res in building.cost) {
-            costString += `${building.cost[res]} ${res.replace('_',' ')} `;
+        
+        let costString = 'Cost: ';
+        if (Object.keys(building.cost).length > 0) {
+            costString += Object.entries(building.cost)
+                .map(([res, amount]) => `${amount} ${res.replace('_',' ').toUpperCase()}`)
+                .join(', ');
+        } else {
+            costString += 'Free';
         }
-        if(costString) button.title = `Cost: ${costString.trim()}`;
+
+        button.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                <div>${building.name}</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">${costString}</div>
+            </div>
+        `;
+        button.style.setProperty('--md-filled-button-label-text-font-size', '0.9em'); // Adjust if needed
+        button.style.setProperty('--md-filled-button-container-height', 'auto'); // Allow button to grow
+        button.style.padding = '8px 12px';
+
 
         button.addEventListener('click', () => {
             constructionManager.startPlacement(building.key);
@@ -232,8 +250,11 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+    // const deltaTime = clock.getDelta(); // Not strictly needed if constructionManager uses Date.now()
+
     controls.update();
-    // constructionManager.updatePlacementIndicator(); // This is now driven by mouse move
+    constructionManager.update(); // Update construction manager
+    
     renderer.render(scene, camera);
 }
 

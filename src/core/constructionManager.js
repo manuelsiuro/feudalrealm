@@ -9,7 +9,15 @@ import { TILE_SIZE } from './MapManager.js'; // Changed casing: Import TILE_SIZE
 // This would ideally come from a more structured game data system later
 export const BUILDING_DATA = {
     CASTLE: { name: 'Castle', cost: {}, creator: Buildings.createCastle, tier: 0 }, // No cost to place initially
-    WOODCUTTERS_HUT: { name: "Woodcutter's Hut", cost: { [RESOURCE_TYPES.WOOD]: 20 }, creator: Buildings.createWoodcuttersHut, tier: 1 },
+    WOODCUTTERS_HUT: { 
+        name: "Woodcutter's Hut", 
+        cost: { [RESOURCE_TYPES.WOOD]: 20 }, 
+        creator: Buildings.createWoodcuttersHut, 
+        tier: 1,
+        producesResource: RESOURCE_TYPES.WOOD,
+        productionRate: 5, // Units per minute (e.g., 5 wood per 60 seconds)
+        productionIntervalMs: (60 / 5) * 1000, // Interval in ms for 1 unit
+    },
     FORESTERS_HUT: { name: "Forester's Hut", cost: { [RESOURCE_TYPES.WOOD]: 15 }, creator: Buildings.createForestersHut, tier: 1 },
     QUARRY: { name: 'Quarry', cost: { [RESOURCE_TYPES.WOOD]: 25 }, creator: Buildings.createQuarry, tier: 1 },
     FISHERMANS_HUT: { name: "Fisherman's Hut", cost: { [RESOURCE_TYPES.WOOD]: 15 }, creator: Buildings.createFishermansHut, tier: 1 },
@@ -25,6 +33,8 @@ class ConstructionManager {
         this.selectedBuildingType = null;
         this.placementIndicator = null; // Ghost mesh for placement
         this.isPlacing = false;
+        this.buildingsUnderConstruction = []; // To track buildings being built
+        this.placedBuildings = []; // To track completed game objects
 
         this._setupPlacementIndicator();
     }
@@ -109,6 +119,24 @@ class ConstructionManager {
         console.log(`${buildingInfo.name} placed at (${snappedX}, ${snappedZ})`);
         
         // TODO: Initiate construction process (Builder serf, timer, etc.)
+        // For now, simulate a simple timer
+        const constructionTime = 5000; // 5 seconds (example)
+        const newBuildingData = {
+            model: buildingModel,
+            type: this.selectedBuildingType,
+            info: buildingInfo,
+            constructionEndTime: Date.now() + constructionTime,
+            isConstructed: false,
+            x: snappedX,
+            z: snappedZ,
+        };
+        this.buildingsUnderConstruction.push(newBuildingData);
+        
+        console.log(`${buildingInfo.name} construction started. Will finish in ${constructionTime / 1000}s.`);
+
+        // Make the building semi-transparent during construction
+        this._setBuildingOpacity(buildingModel, 0.5);
+
 
         this.cancelPlacement();
         return true;
@@ -128,6 +156,50 @@ class ConstructionManager {
         return Object.keys(BUILDING_DATA)
             .map(key => ({ key, ...BUILDING_DATA[key] }))
             .filter(b => b.tier > 0); // Exclude Castle from build menu for now
+    }
+
+    _setBuildingOpacity(buildingModel, opacity) {
+        buildingModel.traverse((child) => {
+            if (child.isMesh) {
+                child.material.transparent = opacity < 1;
+                child.material.opacity = opacity;
+                child.material.needsUpdate = true;
+            }
+        });
+    }
+
+    update() { 
+        const now = Date.now();
+        // console.log(`ConstructionManager update tick: ${now}`); // Can be too verbose
+
+        for (let i = this.buildingsUnderConstruction.length - 1; i >= 0; i--) {
+            const building = this.buildingsUnderConstruction[i];
+            if (now >= building.constructionEndTime) {
+                building.isConstructed = true;
+                this._setBuildingOpacity(building.model, 1.0); // Make fully opaque
+                this.placedBuildings.push(building); // Move to completed list
+                this.buildingsUnderConstruction.splice(i, 1); // Remove from under construction
+                console.log(`${building.info.name} at (${building.x}, ${building.z}) construction complete!`);
+                
+                // Initialize for production if applicable
+                if (building.info.producesResource) {
+                    building.lastProductionTime = now;
+                }
+            }
+        }
+
+        // Handle production for completed buildings
+        for (const building of this.placedBuildings) {
+            if (building.isConstructed && building.info.producesResource && building.info.productionIntervalMs && building.lastProductionTime) {
+                // console.log(`Checking production for ${building.info.name}: now=${now}, lastProd=${building.lastProductionTime}, interval=${building.info.productionIntervalMs}`);
+                if (now >= building.lastProductionTime + building.info.productionIntervalMs) {
+                    console.log(`Production condition met for ${building.info.name}. Now: ${now}, LastProd+Interval: ${building.lastProductionTime + building.info.productionIntervalMs}`);
+                    resourceManager.addResource(building.info.producesResource, 1); // Produce 1 unit
+                    building.lastProductionTime = now; // Reset timer
+                    console.log(`${building.info.name} at (${building.x}, ${building.z}) produced 1 ${building.info.producesResource}.`);
+                }
+            }
+        }
     }
 }
 

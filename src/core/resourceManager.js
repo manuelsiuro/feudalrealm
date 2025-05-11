@@ -48,8 +48,9 @@ class ResourceManager {
     addResource(type, amount) {
         if (amount <= 0) return false;
         if (this.stockpiles.hasOwnProperty(type)) {
+            console.log(`ResourceManager: Attempting to add ${amount} of ${type}. Current: ${this.stockpiles[type]}`);
             this.stockpiles[type] += amount;
-            console.log(`Added ${amount} of ${type}. Total: ${this.stockpiles[type]}`);
+            console.log(`ResourceManager: Added ${amount} of ${type}. New Total: ${this.stockpiles[type]}`);
             this._emitChange();
             return true;
         }
