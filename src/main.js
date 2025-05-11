@@ -1,258 +1,112 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import * as Buildings from './entities/buildings.js';
-import * as Resources from './entities/resources.js';
-import * as Units from './entities/units.js';
+import { GameMap, TILE_SIZE } from './core/mapManager.js'; 
+import '@material/web/button/filled-button.js';
+import '@material/web/iconbutton/icon-button.js';
+// Note: Material Design base styles/theming would typically be set up more globally.
+
+console.log('Feudal Realm Manager - Game Main Initialized');
 
 // Get the container element
-const container = document.getElementById('app');
+const appContainer = document.getElementById('app');
+if (!appContainer) {
+    console.error('Error: Root container #app not found in HTML.');
+}
+
+const gameCanvas = document.getElementById('game-canvas');
+if (!gameCanvas && appContainer) { 
+    console.warn('Warning: #game-canvas not found. Renderer will be appended to #app.');
+}
+
+const uiOverlay = document.getElementById('ui-overlay');
+if (!uiOverlay) {
+    console.error('Error: #ui-overlay not found. UI will not be rendered.');
+}
 
 // Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+scene.background = new THREE.Color(0x607D8B); // A neutral bluish-grey
 
 // Camera
 const camera = new THREE.PerspectiveCamera(
-    75,
+    60, // Slightly less FOV than preview
     window.innerWidth / window.innerHeight,
     0.1,
-    1000
+    2000 // Increased far plane for larger map
 );
-camera.position.z = 5;
+camera.position.set(0, 15, 15); // Default camera position for map view
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas: gameCanvas || undefined, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-container.appendChild(renderer.domElement);
+if (!gameCanvas && appContainer) {
+    appContainer.appendChild(renderer.domElement);
+}
 
 // Controls
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+const controls = new OrbitControls(camera, renderer.domElement); // Ensure controls use the correct element
+controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.screenSpacePanning = false;
-controls.minDistance = 2;
-controls.maxDistance = 20;
-// controls.maxPolarAngle = Math.PI / 2; // Prevent camera from going below the ground
+controls.minDistance = 5;
+controls.maxDistance = 100;
+controls.target.set(0, 0, 0); // Look at origin initially
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // soft white light
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 10, 7.5);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(20, 30, 15);
+// directionalLight.castShadow = true; // Enable shadows later - can be performance intensive
 scene.add(directionalLight);
 
-// --- Test Scene for All Buildings ---
-const allBuildingCreators = {
-    Castle: Buildings.createCastle,
-    WoodcuttersHut: Buildings.createWoodcuttersHut,
-    ForestersHut: Buildings.createForestersHut,
-    Quarry: Buildings.createQuarry,
-    FishermansHut: Buildings.createFishermansHut,
-    Farm: Buildings.createFarm,
-    GeologistsHut: Buildings.createGeologistsHut,
-    IronMine: () => Buildings.createMine('iron'),
-    CoalMine: () => Buildings.createMine('coal'),
-    GoldMine: () => Buildings.createMine('gold'),
-    StoneMine: () => Buildings.createMine('stone'),
-    Sawmill: Buildings.createSawmill,
-    Windmill: Buildings.createWindmill,
-    Bakery: Buildings.createBakery,
-    PigFarm: Buildings.createPigFarm,
-    Slaughterhouse: Buildings.createSlaughterhouse,
-    IronSmelter: Buildings.createIronSmelter,
-    ToolmakersWorkshop: Buildings.createToolmakersWorkshop,
-    GoldsmithsMint: Buildings.createGoldsmithsMint,
-    BlacksmithArmory: Buildings.createBlacksmithArmory,
-    GuardHut: Buildings.createGuardHut,
-    Watchtower: Buildings.createWatchtower,
-    BarracksFortress: Buildings.createBarracksFortress,
-    WarehouseStorehouse: Buildings.createWarehouseStorehouse,
-    BuildersHut: Buildings.createBuildersHut,
-    Harbor: Buildings.createHarbor,
-};
+// Placeholder for game elements (map, units, etc.)
+const gameElementsGroup = new THREE.Group();
+gameElementsGroup.name = "GameElements";
+scene.add(gameElementsGroup);
 
-const buildingSpacing = 5;
-const buildingsPerRow = 5;
-let buildingCount = 0;
+// --- Create Game Map ---
+const MAP_WIDTH = 30; // Example map size
+const MAP_HEIGHT = 30; // Example map size
+const gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
+gameMap.tileMeshes.position.y = 0; // Map tiles are at y=0 within this group
+gameElementsGroup.add(gameMap.tileMeshes);
+console.log('GameMap created and added to scene.');
 
-for (const name in allBuildingCreators) {
-    if (Object.hasOwnProperty.call(allBuildingCreators, name)) {
-        const createFunction = allBuildingCreators[name];
-        const building = createFunction();
-        
-        const row = Math.floor(buildingCount / buildingsPerRow);
-        const col = buildingCount % buildingsPerRow;
+// Adjust camera to view the map
+camera.position.set(MAP_WIDTH * TILE_SIZE / 2, Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 0.75, MAP_HEIGHT * TILE_SIZE / 2 + 5);
+controls.target.set(0, 0, 0); // Target center of map
+controls.maxDistance = Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 2;
 
-        building.position.set(
-            col * buildingSpacing - (buildingsPerRow -1) * buildingSpacing / 2,
-            0, // y position will be set by the building's internal logic
-            row * buildingSpacing - (Object.keys(allBuildingCreators).length / buildingsPerRow -1) * buildingSpacing / 2
-        );
-        scene.add(building);
-        console.log(`Added ${name} to scene at x:${building.position.x}, z:${building.position.z}`);
-        buildingCount++;
-    }
+// Add an example Material button to the UI
+if (uiOverlay) {
+    const testButton = document.createElement('md-filled-button');
+    testButton.innerHTML = 'Test Button <span class="material-icons">touch_app</span>';
+    testButton.addEventListener('click', () => {
+        console.log('Material Button Clicked!');
+        alert('Material Button Works!');
+    });
+    // Clear placeholder and add button
+    uiOverlay.innerHTML = ''; 
+    uiOverlay.appendChild(testButton);
 }
-
-// Adjust camera to view the grid of buildings
-const totalRowsBuildings = Math.ceil(Object.keys(allBuildingCreators).length / buildingsPerRow);
-// camera.position.set(0, totalRowsBuildings * buildingSpacing * 0.6 , totalRowsBuildings * buildingSpacing * 0.8);
-// controls.target.set(0, 0, 0);
-
-
-// --- Test Scene for All Resources ---
-const allResourceCreators = {
-    WoodLog: Resources.createWoodLog,
-    StoneBlock: Resources.createStoneBlock,
-    GrainSack: Resources.createGrainSack,
-    Fish: Resources.createFish,
-    IronOreLump: Resources.createIronOreLump,
-    CoalOreLump: Resources.createCoalOreLump,
-    GoldOreLump: Resources.createGoldOreLump,
-    Plank: Resources.createPlank,
-    FlourSack: Resources.createFlourSack,
-    BreadLoaf: Resources.createBreadLoaf,
-    MeatPiece: Resources.createMeatPiece,
-    IronBar: Resources.createIronBar,
-    GoldBar: Resources.createGoldBar,
-    Axe: Resources.createAxe,
-    Pickaxe: Resources.createPickaxe,
-    Scythe: Resources.createScythe,
-    Hammer: Resources.createHammer,
-    FishingRod: Resources.createFishingRod,
-    Sword: Resources.createSword,
-    Shield: Resources.createShield,
-    Pig: Resources.createPig,
-};
-
-const resourceSpacing = 2;
-const resourcesPerRow = 6;
-let resourceCount = 0;
-const resourceGridOffsetY = - (totalRowsBuildings * buildingSpacing / 2) - 5; // Place resources below buildings
-
-for (const name in allResourceCreators) {
-    if (Object.hasOwnProperty.call(allResourceCreators, name)) {
-        const createFunction = allResourceCreators[name];
-        const resource = createFunction();
-        
-        const row = Math.floor(resourceCount / resourcesPerRow);
-        const col = resourceCount % resourcesPerRow;
-
-        resource.position.set(
-            col * resourceSpacing - (resourcesPerRow -1) * resourceSpacing / 2,
-            0, // Place directly on the new ground plane y-level
-            row * resourceSpacing + resourceGridOffsetY
-        );
-        scene.add(resource);
-        console.log(`Added ${name} to scene at x:${resource.position.x}, z:${resource.position.z}`);
-        resourceCount++;
-    }
-}
-
-// Adjust camera to view both grids (approximate)
-const totalRowsResources = Math.ceil(Object.keys(allResourceCreators).length / resourcesPerRow);
-// const totalContentHeight = (totalRowsBuildings * buildingSpacing) + (totalRowsResources * resourceSpacing) + 5;
-// camera.position.set(0, totalContentHeight * 0.4, totalContentHeight * 0.5);
-// controls.target.set(0, -totalContentHeight * 0.2, 0); // Target a point between the two grids
-
-
-// --- Test Scene for All Units ---
-const allUnitCreators = {
-    Transporter: Units.createTransporter,
-    Builder: Units.createBuilder,
-    Woodcutter: Units.createWoodcutter,
-    Forester: Units.createForester,
-    Stonemason: Units.createStonemason,
-    Miner: Units.createMiner,
-    Farmer: Units.createFarmer,
-    Fisherman: Units.createFisherman,
-    Miller: Units.createMiller,
-    Baker: Units.createBaker,
-    PigFarmer: Units.createPigFarmer,
-    Butcher: Units.createButcher,
-    SawmillWorker: Units.createSawmillWorker,
-    SmelterWorker: Units.createSmelterWorker,
-    Goldsmith: Units.createGoldsmith,
-    Toolmaker: Units.createToolmaker,
-    Blacksmith: Units.createBlacksmith,
-    Geologist: Units.createGeologist,
-    KnightBlue: () => Units.createKnight(0x0000FF), // Example player color
-    KnightRed: () => Units.createKnight(0xFF0000),   // Example player color
-};
-
-const unitSpacing = 1.5;
-const unitsPerRow = 7;
-let unitCount = 0;
-const unitGridOffsetY = resourceGridOffsetY - (totalRowsResources * resourceSpacing) - 5; // Place units below resources
-
-for (const name in allUnitCreators) {
-    if (Object.hasOwnProperty.call(allUnitCreators, name)) {
-        const createFunction = allUnitCreators[name];
-        const unit = createFunction();
-        
-        const row = Math.floor(unitCount / unitsPerRow);
-        const col = unitCount % unitsPerRow;
-
-        unit.position.set(
-            col * unitSpacing - (unitsPerRow -1) * unitSpacing / 2,
-            0, // y position will be set by the unit's internal logic (base at y=0)
-            row * unitSpacing + unitGridOffsetY
-        );
-        scene.add(unit);
-        console.log(`Added ${name} to scene at x:${unit.position.x}, z:${unit.position.z}`);
-        unitCount++;
-    }
-}
-
-// Adjust camera to view all grids
-const totalRowsUnits = Math.ceil(Object.keys(allUnitCreators).length / unitsPerRow);
-const totalContentDepth = (totalRowsBuildings * buildingSpacing) + 
-                           (totalRowsResources * resourceSpacing) + 
-                           (totalRowsUnits * unitSpacing) + 15; // Extra spacing
-
-camera.position.set(0, totalContentDepth * 0.3, totalContentDepth * 0.35);
-controls.target.set(0, -totalContentDepth * 0.25, 0); // Adjust target to be lower
-controls.maxDistance = Math.max(50, totalContentDepth); // Ensure camera can zoom out enough
-
-
-// Simple ground plane for context
-const groundSize = Math.max(buildingsPerRow * buildingSpacing, resourcesPerRow * resourceSpacing, unitsPerRow * unitSpacing, totalContentDepth) * 1.2;
-const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
-const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, side: THREE.DoubleSide }); // ForestGreen
-const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
-groundPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-groundPlane.position.y = -0.5; // Lower the ground plane significantly
-scene.add(groundPlane);
 
 
 // Handle window resize
-window.addEventListener(
-    'resize',
-    () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    },
-    false
-);
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}, false);
 
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
-
-    controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
-
-    // No individual rotation for now, focus on viewing all
-    // scene.traverse(child => {
-    //     if (child.isGroup && child.name !== '') { // Rotate top-level building groups
-    //         // child.rotation.y += 0.001;
-    //     }
-    // });
-
+    controls.update();
     renderer.render(scene, camera);
 }
 
-animate();
-
-console.log('Three.js scene initialized with OrbitControls.');
+// Ensure animation loop starts only if main container and renderer are set up
+if (appContainer && (gameCanvas || appContainer.contains(renderer.domElement))) {
+    animate();
+}

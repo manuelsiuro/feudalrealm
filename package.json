@@ -23,6 +23,7 @@
         "vite": "^6.3.5"
     },
     "dependencies": {
+        "@material/web": "^2.3.0",
         "accepts": "^2.0.0",
         "body-parser": "^2.2.0",
         "bytes": "^3.1.2",
