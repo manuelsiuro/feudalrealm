@@ -56,7 +56,10 @@ class SerfManager {
         this.serfIdCounter = 0;
         this.serfVisualsGroup = new THREE.Group();
         this.serfVisualsGroup.name = "SerfVisuals";
-        this.scene.add(this.serfVisualsGroup);
+        // this.scene.add(this.serfVisualsGroup); // Will be added via gameElementsGroup in main.js
+        // The SerfManager needs a way to return this group to main.js
+        // Or main.js needs to retrieve it. For now, let's assume main.js will handle adding it.
+        // This change means main.js needs to be updated to add serfManager.serfVisualsGroup to gameElementsGroup.
 
         // For now, spawn a few initial serfs (e.g., Transporters)
         this.spawnInitialSerfs(5);
@@ -84,6 +87,7 @@ class SerfManager {
 
         const serfModel = modelCreator();
         serfModel.position.set(position.x, 0, position.z); // Serf models have origin at their base
+        // serfModel.scale.set(1.5, 1.5, 1.5); // Removed, relying on base geometry size now
 
         const serfData = {
             id: this.serfIdCounter++,
@@ -123,7 +127,8 @@ class SerfManager {
                     resourceManager.removeResource(jobInfo.requiredTool, 1); // Consume one tool
                     console.log(`Serf ID ${serf.id} consumed 1 ${jobInfo.requiredTool} for ${jobInfo.name}.`);
                 } else {
-                    console.warn(`Serf ID ${serf.id} cannot take job at ${jobInfo.name}. Missing tool: ${jobInfo.requiredTool}`);
+                    // hide this log to help browser reading logs
+                    //console.warn(`Serf ID ${serf.id} cannot take job at ${jobInfo.name}. Missing tool: ${jobInfo.requiredTool}`);
                     // alert(`Cannot assign serf: Missing ${jobInfo.requiredTool}`); // UI feedback
                     return false; // Cannot assign job, missing tool
                 }

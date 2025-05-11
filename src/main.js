@@ -13,8 +13,10 @@ import resourceManager, { RESOURCE_TYPES } from './core/resourceManager.js';
 import ConstructionManager from './core/constructionManager.js';
 import SerfManager from './core/serfManager.js'; // Import SerfManager class
 import '@material/web/button/filled-button.js';
-import '@material/web/button/outlined-button.js'; // For test buttons
+import '@material/web/button/outlined-button.js'; 
 import '@material/web/iconbutton/icon-button.js';
+// import '@material/web/card/elevated-card.js'; // Removed due to install issues
+
 // Note: Material Design base styles/theming would typically be set up more globally.
 
 console.log('Feudal Realm Manager - Game Main Initialized');
@@ -120,6 +122,7 @@ const constructionManager = new ConstructionManager(scene, gameMap); // Pass sce
 
 // --- Serf Manager ---
 const serfManager = new SerfManager(scene, gameMap); // Instantiate with scene and gameMap
+gameElementsGroup.add(serfManager.serfVisualsGroup); // Add serf visuals to the main game elements group
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -146,6 +149,28 @@ if (uiOverlay) {
     resourcePanel.style.color = 'white';
     resourcePanel.style.minWidth = '150px';
     uiOverlay.appendChild(resourcePanel);
+
+    // Mini-map Placeholder
+    const miniMapPanel = document.createElement('div');
+    miniMapPanel.id = 'mini-map-panel';
+    miniMapPanel.style.position = 'absolute';
+    miniMapPanel.style.top = '10px';    // Changed from bottom
+    miniMapPanel.style.right = '10px';   // Changed from left
+    // Clear previous positioning if they were set
+    miniMapPanel.style.bottom = ''; 
+    miniMapPanel.style.left = '';
+    miniMapPanel.style.width = '150px';
+    miniMapPanel.style.height = '150px';
+    miniMapPanel.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    miniMapPanel.style.border = '1px solid #fff';
+    miniMapPanel.style.borderRadius = '4px';
+    miniMapPanel.style.color = 'white';
+    miniMapPanel.style.display = 'flex';
+    miniMapPanel.style.alignItems = 'center';
+    miniMapPanel.style.justifyContent = 'center';
+    miniMapPanel.textContent = 'Mini-map';
+    uiOverlay.appendChild(miniMapPanel);
+
 
     function updateResourceUI(stockpiles) {
         resourcePanel.innerHTML = '<h3>Resources</h3>';
@@ -323,43 +348,113 @@ function onMouseClick(event) {
                 selectedObjects = [];
                 outlinePass.selectedObjects = selectedObjects;
                 clearSelectedBuildingInfo();
+                clearSelectedUnitInfo(); // Also clear unit info
+            }
+        } else { // No building selected, try selecting a unit
+            const serfsGroup = serfManager.serfVisualsGroup; 
+            if (serfsGroup && serfsGroup.children.length > 0) {
+                const intersectsSerfs = raycaster.intersectObjects([serfsGroup], true); 
+                if (intersectsSerfs.length > 0) {
+                    let topSerfModel = intersectsSerfs[0].object;
+                    // Traverse up to find the main serf model group (the direct child of serfsGroup)
+                    while (topSerfModel.parent && topSerfModel.parent !== serfsGroup) {
+                        topSerfModel = topSerfModel.parent;
+                    }
+                    selectedObjects = [topSerfModel];
+                    outlinePass.selectedObjects = selectedObjects;
+                    displaySelectedUnitInfo(topSerfModel);
+                    clearSelectedBuildingInfo(); // Deselect building if unit is selected
+                } else {
+                    // If nothing is clicked, clear all selections
+                    selectedObjects = [];
+                    outlinePass.selectedObjects = selectedObjects;
+                    clearSelectedBuildingInfo();
+                    clearSelectedUnitInfo();
+                }
             }
         }
     }
 }
 renderer.domElement.addEventListener('click', onMouseClick, false);
 
+let selectedUnitInfoPanel = null;
+
 function displaySelectedBuildingInfo(buildingModel) {
     if (!uiOverlay) return;
-    clearSelectedBuildingInfo(); // Clear previous
+    clearSelectedBuildingInfo();
+    clearSelectedUnitInfo(); // Ensure only one info panel is visible
 
-    selectedBuildingInfoPanel = document.createElement('div');
+    const placedBuildingData = constructionManager.placedBuildings.find(
+        b => b.model === buildingModel
+    );
+
+    if (!placedBuildingData) {
+        console.warn("Could not find data for selected building model:", buildingModel);
+        return;
+    }
+
+    const buildingInfo = placedBuildingData.info;
+    const buildingName = buildingInfo.name || "Unknown Building";
+    const workers = placedBuildingData.workers ? placedBuildingData.workers.length : 0;
+    const maxWorkers = buildingInfo.jobSlots || 0;
+
+    selectedBuildingInfoPanel = document.createElement('div'); // Reverted to div
     selectedBuildingInfoPanel.id = 'selected-info-panel';
     selectedBuildingInfoPanel.style.position = 'absolute';
     selectedBuildingInfoPanel.style.bottom = '10px';
     selectedBuildingInfoPanel.style.left = '50%';
     selectedBuildingInfoPanel.style.transform = 'translateX(-50%)';
     selectedBuildingInfoPanel.style.padding = '10px';
-    selectedBuildingInfoPanel.style.backgroundColor = 'rgba(0,0,0,0.7)';
-    selectedBuildingInfoPanel.style.borderRadius = '8px';
-    selectedBuildingInfoPanel.style.color = 'white';
-    selectedBuildingInfoPanel.style.textAlign = 'center';
+    selectedBuildingInfoPanel.style.minWidth = '200px'; // Adjusted minWidth
+    selectedBuildingInfoPanel.style.maxWidth = '300px'; // Adjusted maxWidth
+    selectedBuildingInfoPanel.style.backgroundColor = 'rgba(0,0,0,0.7)'; // Reverted style
+    selectedBuildingInfoPanel.style.borderRadius = '8px'; // Reverted style
+    selectedBuildingInfoPanel.style.color = 'white'; // Reverted style
+    selectedBuildingInfoPanel.style.textAlign = 'center'; // Reverted style
 
-    // Find building data (this is a bit hacky, assumes model name or type is stored)
-    // This needs a better way to link model back to constructionManager data
-    let buildingName = buildingModel.name || "Unknown Building"; 
-    // A better way would be to find the building in constructionManager.placedBuildings
-    // based on the model's UUID or a custom property.
-    // For now, we'll just use the model's name if set during creation.
+
+    let contentHTML = `
+        <h4 style="margin-top: 0; margin-bottom: 8px;">${buildingName}</h4>
+        <p style="margin: 4px 0;">Position: (${buildingModel.position.x.toFixed(1)}, ${buildingModel.position.z.toFixed(1)})</p>
+        <p style="margin: 4px 0;">Workers: ${workers} / ${maxWorkers}</p>
+    `;
+
+    if (buildingInfo.produces) {
+        contentHTML += `<p style="margin: 4px 0;">Produces: ${buildingInfo.produces.map(p => p.resource.replace('_', ' ')).join(', ')}</p>`;
+    }
+    if (placedBuildingData.isProducing && placedBuildingData.currentProduction) {
+         contentHTML += `<p style="margin: 4px 0;">Current Task: Producing ${placedBuildingData.currentProduction.resource.replace('_', ' ')}</p>`;
+    }
+
+
+    // Placeholder for action buttons
+    // Placeholder for action buttons
+    contentHTML += `<div id="building-actions" style="margin-top: 16px; border-top: 1px solid #ccc; padding-top: 8px; display: flex; flex-direction: column; gap: 8px;">`; // Added flex for button layout
+    contentHTML += `<h4 style="margin-top:0; margin-bottom: 8px;">Actions:</h4>`;
     
-    // Example: find by matching position (not robust)
-    const placedBuildingData = constructionManager.placedBuildings.find(
-        b => b.model === buildingModel
-    );
-    if(placedBuildingData) buildingName = placedBuildingData.info.name;
+    selectedBuildingInfoPanel.innerHTML = contentHTML;
+    const actionsDiv = selectedBuildingInfoPanel.querySelector('#building-actions');
+
+    if (actionsDiv) {
+        // Example: Add a specific action button for Woodcutter's Hut
+        if (buildingInfo.key === 'WOODCUTTERS_HUT') {
+            const upgradeButton = document.createElement('md-filled-button');
+            upgradeButton.textContent = 'Upgrade (NI)';
+            upgradeButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent click from bubbling to map/deselect
+                console.log(`Action: Upgrade clicked for ${buildingName}`);
+                // Future: Implement upgrade logic
+            });
+            actionsDiv.appendChild(upgradeButton);
+        } else {
+            const placeholderButton = document.createElement('md-outlined-button');
+            placeholderButton.textContent = 'No specific actions';
+            placeholderButton.disabled = true;
+            actionsDiv.appendChild(placeholderButton);
+        }
+    }
 
 
-    selectedBuildingInfoPanel.innerHTML = `<h4>${buildingName}</h4><p>Position: (${buildingModel.position.x.toFixed(1)}, ${buildingModel.position.z.toFixed(1)})</p>`;
     uiOverlay.appendChild(selectedBuildingInfoPanel);
 }
 
@@ -368,6 +463,59 @@ function clearSelectedBuildingInfo() {
         selectedBuildingInfoPanel.parentElement.removeChild(selectedBuildingInfoPanel);
     }
     selectedBuildingInfoPanel = null;
+}
+
+function displaySelectedUnitInfo(serfModel) {
+    if (!uiOverlay) return;
+    clearSelectedUnitInfo();
+    clearSelectedBuildingInfo(); // Ensure only one info panel is visible
+
+    // Find serf data - serfModel itself should have its ID or link back to SerfManager data
+    const serfData = serfManager.serfs.find(s => s.model === serfModel);
+
+    if (!serfData) {
+        console.warn("Could not find data for selected serf model:", serfModel);
+        selectedObjects = []; // Deselect if no data
+        outlinePass.selectedObjects = selectedObjects;
+        return;
+    }
+
+    selectedUnitInfoPanel = document.createElement('div');
+    selectedUnitInfoPanel.id = 'selected-unit-info-panel';
+    // Basic styling, similar to building panel for now
+    selectedUnitInfoPanel.style.position = 'absolute';
+    selectedUnitInfoPanel.style.bottom = '10px';
+    selectedUnitInfoPanel.style.left = '50%';
+    selectedUnitInfoPanel.style.transform = 'translateX(-50%)';
+    selectedUnitInfoPanel.style.padding = '10px';
+    selectedUnitInfoPanel.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    selectedUnitInfoPanel.style.borderRadius = '8px';
+    selectedUnitInfoPanel.style.color = 'white';
+    selectedUnitInfoPanel.style.textAlign = 'center';
+    selectedUnitInfoPanel.style.minWidth = '200px';
+    selectedUnitInfoPanel.style.maxWidth = '300px';
+
+    let contentHTML = `
+        <h4 style="margin-top: 0; margin-bottom: 8px;">Serf ID: ${serfData.id}</h4>
+        <p style="margin: 4px 0;">Status: ${serfData.state}</p>
+    `;
+    if (serfData.job) {
+        contentHTML += `<p style="margin: 4px 0;">Job: ${serfData.job.profession} at ${serfData.job.building.info.name}</p>`;
+    }
+     if (serfData.targetResource) {
+        contentHTML += `<p style="margin: 4px 0;">Target: ${serfData.targetResource.type}</p>`;
+    }
+
+
+    selectedUnitInfoPanel.innerHTML = contentHTML;
+    uiOverlay.appendChild(selectedUnitInfoPanel);
+}
+
+function clearSelectedUnitInfo() {
+    if (selectedUnitInfoPanel && selectedUnitInfoPanel.parentElement) {
+        selectedUnitInfoPanel.parentElement.removeChild(selectedUnitInfoPanel);
+    }
+    selectedUnitInfoPanel = null;
 }
 
 

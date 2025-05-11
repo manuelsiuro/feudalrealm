@@ -41,9 +41,9 @@ const BASE_SERF_HEAD_COLOR = COLORS.PEACH;
 // --- Base Serf Model ---
 function createBaseSerf(bodyColor = BASE_SERF_BODY_COLOR, headColor = BASE_SERF_HEAD_COLOR) {
     const serfGroup = new THREE.Group();
-    const bodyHeight = 0.5;
-    const bodyRadius = 0.15;
-    const headRadius = 0.1;
+    const bodyHeight = 0.75; // Increased for better raycasting
+    const bodyRadius = 0.2;  // Increased for better raycasting
+    const headRadius = 0.12; // Slightly increase head too
 
     // Body (upright, medium-height, slightly rounded cuboid or simple cylinder)
     const bodyGeom = new THREE.CylinderGeometry(bodyRadius, bodyRadius * 0.9, bodyHeight, 8);
@@ -53,21 +53,19 @@ function createBaseSerf(bodyColor = BASE_SERF_BODY_COLOR, headColor = BASE_SERF_
     // Head (sphere or slightly rounded cube)
     const headGeom = new THREE.SphereGeometry(headRadius, 8, 6);
     const headMesh = createMesh(headGeom, headColor, 'SerfHead');
-    headMesh.position.y = bodyHeight / 2 + headRadius * 0.8; // Position on top of body
+    headMesh.position.y = bodyHeight / 2 + headRadius * 0.8; 
     serfGroup.add(headMesh);
     
-    serfGroup.position.y = bodyHeight / 2; // Set origin to base of feet
+    serfGroup.position.y = bodyHeight / 2; 
     return serfGroup;
 }
 
 // --- Serf Profession Creation Functions ---
 // These will call createBaseSerf and add distinguishing features.
-// For now, just creating the base serf and the Knight. Specific professions will be detailed later.
 
 export function createTransporter() {
     const serf = createBaseSerf();
     serf.name = 'Transporter';
-    // Often seen carrying a generic resource - will be handled by game logic, not part of base model here.
     return serf;
 }
 
