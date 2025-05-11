@@ -259,7 +259,7 @@ function animate() {
 
     controls.update();
     constructionManager.update(); 
-    serfManager.update(); // Update serf manager
+    serfManager.update(clock.getDelta(), constructionManager.placedBuildings); // Pass placedBuildings
     
     renderer.render(scene, camera);
 }

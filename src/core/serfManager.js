@@ -103,14 +103,57 @@ class SerfManager {
     }
 
     // TODO: Job assignment logic
-    // TODO: Serf update logic (movement, task execution)
-    // TODO: Tool and food consumption logic
+    findAvailableJob(serf) {
+        // This needs access to constructionManager.placedBuildings
+        // For now, this will be called from main.js where both managers are available
+        // This function will be more complex, considering serf profession, proximity, etc.
+        // Simplified: find any building with an available job slot that matches serf's base profession (or if serf is Transporter, can take any)
+        
+        // This method should ideally be part of a higher-level game manager or passed placedBuildings
+        return null; 
+    }
 
-    update(deltaTime) {
+    assignSerfToBuilding(serf, buildingData) {
+        if (buildingData.jobSlotsAvailable > 0) {
+            serf.currentJob = buildingData; // Reference to the building object from constructionManager
+            serf.profession = buildingData.info.jobProfession; // Change serf's profession
+            // TODO: Update serf model if visual changes with profession
+            
+            buildingData.workers.push(serf.id);
+            buildingData.jobSlotsAvailable--;
+            
+            serf.task = 'working'; // Or 'moving_to_work'
+            // serf.target = new THREE.Vector3(buildingData.x, 0, buildingData.z); // Pathfind to building
+            console.log(`Serf ID ${serf.id} assigned to ${buildingData.info.name} as a ${serf.profession}. Slots left: ${buildingData.jobSlotsAvailable}`);
+            
+            // For now, teleport serf to building for simplicity
+            serf.model.position.set(buildingData.x, 0, buildingData.z + 1); // Place near building
+            return true;
+        }
+        return false;
+    }
+
+
+    update(deltaTime, placedBuildings) { // Pass placedBuildings from constructionManager
         this.serfs.forEach(serf => {
+            if (serf.task === null || serf.task === 'idle') {
+                // Try to find a job if idle (and currently a Transporter, or logic to switch professions)
+                if (serf.profession === SERF_PROFESSIONS.TRANSPORTER) { // Basic: only transporters look for jobs for now
+                    for (const building of placedBuildings) {
+                        if (building.isConstructed && building.info.jobSlots && building.jobSlotsAvailable > 0) {
+                            // Check if serf can do this job (e.g. based on current profession or if it's a general labor job)
+                            // For now, any transporter can become the required profession
+                            if (this.assignSerfToBuilding(serf, building)) {
+                                break; // Serf found a job
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Basic placeholder movement or task update
-            if (serf.model) {
-                // Example: idle animation or simple movement
+            if (serf.model && serf.task === 'working' && serf.currentJob) {
+                // Serf is at work, maybe a subtle animation or just stay put
                 // serf.model.rotation.y += 0.01; 
             }
         });

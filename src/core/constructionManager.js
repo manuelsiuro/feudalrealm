@@ -17,10 +17,33 @@ export const BUILDING_DATA = {
         producesResource: RESOURCE_TYPES.WOOD,
         productionRate: 5, // Units per minute (e.g., 5 wood per 60 seconds)
         productionIntervalMs: (60 / 5) * 1000, // Interval in ms for 1 unit
+        jobSlots: 1, // Number of serfs this building can employ
+        jobProfession: RESOURCE_TYPES.WOODCUTTER, // Profession type for the job
     },
-    FORESTERS_HUT: { name: "Forester's Hut", cost: { [RESOURCE_TYPES.WOOD]: 15 }, creator: Buildings.createForestersHut, tier: 1 },
-    QUARRY: { name: 'Quarry', cost: { [RESOURCE_TYPES.WOOD]: 25 }, creator: Buildings.createQuarry, tier: 1 },
-    FISHERMANS_HUT: { name: "Fisherman's Hut", cost: { [RESOURCE_TYPES.WOOD]: 15 }, creator: Buildings.createFishermansHut, tier: 1 },
+    FORESTERS_HUT: { 
+        name: "Forester's Hut", 
+        cost: { [RESOURCE_TYPES.WOOD]: 15 }, 
+        creator: Buildings.createForestersHut, 
+        tier: 1,
+        jobSlots: 1,
+        jobProfession: RESOURCE_TYPES.FORESTER,
+    },
+    QUARRY: { 
+        name: 'Quarry', 
+        cost: { [RESOURCE_TYPES.WOOD]: 25 }, 
+        creator: Buildings.createQuarry, 
+        tier: 1,
+        jobSlots: 1, // Example
+        jobProfession: RESOURCE_TYPES.STONEMASON,
+    },
+    FISHERMANS_HUT: { 
+        name: "Fisherman's Hut", 
+        cost: { [RESOURCE_TYPES.WOOD]: 15 }, 
+        creator: Buildings.createFishermansHut, 
+        tier: 1,
+        jobSlots: 1,
+        jobProfession: RESOURCE_TYPES.FISHERMAN,
+    },
     // Add more buildings as they are implemented for construction
     // Example:
     // SAWMILL: { name: 'Sawmill', cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 }, creator: Buildings.createSawmill, tier: 2 },
@@ -177,26 +200,36 @@ class ConstructionManager {
             if (now >= building.constructionEndTime) {
                 building.isConstructed = true;
                 this._setBuildingOpacity(building.model, 1.0); // Make fully opaque
-                this.placedBuildings.push(building); // Move to completed list
-                this.buildingsUnderConstruction.splice(i, 1); // Remove from under construction
-                console.log(`${building.info.name} at (${building.x}, ${building.z}) construction complete!`);
                 
-                // Initialize for production if applicable
+                // Initialize for production and jobs
                 if (building.info.producesResource) {
                     building.lastProductionTime = now;
                 }
+                if (building.info.jobSlots) {
+                    building.workers = []; // Array to store IDs of serfs working here
+                    building.jobSlotsAvailable = building.info.jobSlots;
+                }
+
+                this.placedBuildings.push(building); // Move to completed list
+                this.buildingsUnderConstruction.splice(i, 1); // Remove from under construction
+                console.log(`${building.info.name} at (${building.x}, ${building.z}) construction complete!`);
             }
         }
 
         // Handle production for completed buildings
         for (const building of this.placedBuildings) {
-            if (building.isConstructed && building.info.producesResource && building.info.productionIntervalMs && building.lastProductionTime) {
+            if (building.isConstructed && 
+                building.info.producesResource && 
+                building.info.productionIntervalMs && 
+                building.lastProductionTime &&
+                building.workers && building.workers.length > 0) { // Production only if workers are present
+                
                 // console.log(`Checking production for ${building.info.name}: now=${now}, lastProd=${building.lastProductionTime}, interval=${building.info.productionIntervalMs}`);
                 if (now >= building.lastProductionTime + building.info.productionIntervalMs) {
                     console.log(`Production condition met for ${building.info.name}. Now: ${now}, LastProd+Interval: ${building.lastProductionTime + building.info.productionIntervalMs}`);
                     resourceManager.addResource(building.info.producesResource, 1); // Produce 1 unit
                     building.lastProductionTime = now; // Reset timer
-                    console.log(`${building.info.name} at (${building.x}, ${building.z}) produced 1 ${building.info.producesResource}.`);
+                    console.log(`${building.info.name} at (${building.x}, ${building.z}) produced 1 ${building.info.producesResource} (Workers: ${building.workers.length}).`);
                 }
             }
         }
