@@ -1,6 +1,7 @@
 // src/core/serfManager.js
 import * as THREE from 'three';
 import * as Units from '../entities/units.js'; // For creating serf 3D models
+import * as ResourceModels from '../entities/resources.js'; // Import all resource model creators
 import resourceManager, { RESOURCE_TYPES } from './resourceManager.js'; // For tool/food checks
 import { TERRAIN_TYPES, TILE_SIZE } from './MapManager.js'; // Corrected casing and imported TILE_SIZE
 
@@ -248,11 +249,28 @@ class SerfManager {
                         if (serf.gatheringTimer >= serf.gatheringDuration) {
                             console.log(`Serf ID ${serf.id} (Woodcutter) finished gathering at tree.`);
                             serf.hasResource = true; 
+                            
+                            // Create and attach log model
+                            if (!serf.carriedItemMesh) {
+                                const logMesh = ResourceModels.createWoodLog();
+                                logMesh.scale.set(0.5, 0.5, 0.5); // Make it smaller to fit serf
+                                // Position on serf's back (approximate)
+                                // The log model from resources.js is oriented along its local Y axis.
+                                // To lay it flat on back, rotate its local X by 90 deg.
+                                // Then adjust Y (up/down on serf) and Z (forward/backward on serf).
+                                logMesh.rotation.x = Math.PI / 2; 
+                                logMesh.position.set(0, 0.25, -0.15); // x=0 (centered), y=up a bit, z=slightly behind
+                                serf.model.add(logMesh);
+                                serf.carriedItemMesh = logMesh;
+                                console.log(`Serf ID ${serf.id} picked up a log.`);
+                            }
+
                             serf.targetResourceNode = null; 
                             serf.gatheringTimer = 0;
                             serf.state = 'returning_resource';
                             serf.target = serf.currentJob.model.position.clone(); 
                             console.log(`Serf ID ${serf.id} (Woodcutter) returning to ${serf.currentJob.info.name} with resource. State: ${serf.state}.`);
+                            
                             // Placeholder: Teleport back to hut
                             serf.model.position.set(serf.target.x, 0, serf.target.z + 1); // Position near hut
                             serf.state = 'depositing_resource'; 
@@ -262,6 +280,35 @@ class SerfManager {
                 } else if (serf.state === 'depositing_resource') {
                     console.log(`Serf ID ${serf.id} (Woodcutter) deposited resource at ${serf.currentJob.info.name}.`);
                     serf.hasResource = false;
+                    
+                    // Remove and dispose of carried log model
+                    if (serf.carriedItemMesh) {
+                        serf.model.remove(serf.carriedItemMesh);
+                        if (serf.carriedItemMesh.geometry) serf.carriedItemMesh.geometry.dispose();
+                        if (serf.carriedItemMesh.material) { // Material might be an array
+                            if (Array.isArray(serf.carriedItemMesh.material)) {
+                                serf.carriedItemMesh.material.forEach(m => m.dispose());
+                            } else {
+                                serf.carriedItemMesh.material.dispose();
+                            }
+                        }
+                        // If the log itself is a group with multiple meshes, iterate and dispose
+                        serf.carriedItemMesh.traverse((object) => {
+                            if (object.isMesh) {
+                                if (object.geometry) object.geometry.dispose();
+                                if (object.material) {
+                                     if (Array.isArray(object.material)) {
+                                        object.material.forEach(m => m.dispose());
+                                    } else {
+                                        object.material.dispose();
+                                    }
+                                }
+                            }
+                        });
+                        serf.carriedItemMesh = null;
+                        console.log(`Serf ID ${serf.id} dropped off the log.`);
+                    }
+
                     // The building's updateProduction will handle adding the resource.
                     serf.state = 'working'; // Go back to 'working' state to seek new tree or idle if none
                 }
