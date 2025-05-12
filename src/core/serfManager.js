@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import * as Units from '../entities/units.js'; // For creating serf 3D models
 import resourceManager, { RESOURCE_TYPES } from './resourceManager.js'; // For tool/food checks
+import { TERRAIN_TYPES, TILE_SIZE } from './MapManager.js'; // Corrected casing and imported TILE_SIZE
 
 export const SERF_PROFESSIONS = {
     TRANSPORTER: 'Transporter',
@@ -93,10 +94,14 @@ class SerfManager {
             id: this.serfIdCounter++,
             model: serfModel,
             profession: profession,
-            task: null, // e.g., 'moving', 'working', 'idle'
-            target: null, // Target Vector3 or building object
-            path: [], // Array of Vector3 for pathfinding
-            currentJob: null, // Reference to job object or building
+            state: 'idle', // Changed from 'task'. States: 'idle', 'moving_to_job', 'working', 'seeking_resource_node', 'moving_to_resource_node', 'gathering_resource', 'returning_resource'
+            target: null, // Target Vector3, building object, or resource node object
+            path: [], 
+            currentJob: null, 
+            targetResourceNode: null, // e.g., {x, z, type: 'tree'}
+            gatheringTimer: 0,
+            gatheringDuration: 5, // seconds to gather resource
+            hasResource: false, // Tracks if serf is carrying a resource
             // TODO: Add tool requirements, food needs, etc.
         };
 
@@ -143,41 +148,131 @@ class SerfManager {
             buildingData.workers.push(serf.id);
             buildingData.jobSlotsAvailable--;
             
-            serf.task = 'working'; 
-            console.log(`Serf ID ${serf.id} (now ${serf.profession}) assigned to ${jobInfo.name}. Slots left: ${buildingData.jobSlotsAvailable}`);
+            console.log(`ASSIGN LOG: Serf ID ${serf.id} (Prof: ${serf.profession}) BEFORE state change. Current state: ${serf.state}`);
+            serf.state = 'working'; 
+            console.log(`ASSIGN LOG: Serf ID ${serf.id} (Prof: ${serf.profession}) AFTER state change. New state: ${serf.state}`);
             
-            // Initialize food check timer if job consumes food
-            if (jobInfo.consumesFood && jobInfo.foodCheckIntervalMs) {
-                serf.lastFoodCheckTime = Date.now();
-            }
-
-            serf.model.position.set(buildingData.x, 0, buildingData.z + 1); 
+            // Temporarily remove food check and model positioning to simplify
+            // if (jobInfo.consumesFood && jobInfo.foodCheckIntervalMs) {
+            //     serf.lastFoodCheckTime = Date.now();
+            // }
+            // serf.model.position.set(buildingData.x, 0, buildingData.z + 1); 
             return true;
         }
+        // console.log(`--- assignSerfToBuilding returning false for Serf ID ${serf.id}, building ${buildingData.info.name} ---`); // Keep this commented for now
         return false;
     }
 
 
-    update(deltaTime, placedBuildings) { // Pass placedBuildings from constructionManager
+    update(deltaTime, placedBuildings) { 
         this.serfs.forEach(serf => {
-            if (serf.task === null || serf.task === 'idle') {
-                // Try to find a job if idle (and currently a Transporter, or logic to switch professions)
-                if (serf.profession === SERF_PROFESSIONS.TRANSPORTER) { // Basic: only transporters look for jobs for now
+            // Job seeking logic (simplified)
+            if (serf.state === 'idle') {
+                if (serf.profession === SERF_PROFESSIONS.TRANSPORTER) { 
                     for (const building of placedBuildings) {
                         if (building.isConstructed && building.info.jobSlots && building.jobSlotsAvailable > 0) {
-                            // Check if serf can do this job (e.g. based on current profession or if it's a general labor job)
-                            // For now, any transporter can become the required profession
                             if (this.assignSerfToBuilding(serf, building)) {
-                                break; // Serf found a job
+                                console.log(`Serf ID ${serf.id} just got assigned to ${building.info.name}. Profession: ${serf.profession}, State: ${serf.state}`);
+                                break; 
                             }
                         }
                     }
                 }
             }
+
+            // Woodcutter specific logic for finding, gathering, and returning resources
+            if (serf.profession === SERF_PROFESSIONS.WOODCUTTER && serf.currentJob) {
+                console.log(`DEBUG: Serf ID ${serf.id} is a Woodcutter with a job. Current state: ${serf.state}`); 
+                if (serf.state === 'working' || serf.state === 'idle') { // If idle but has Woodcutter job, start seeking
+                    serf.state = 'seeking_resource_node';
+                    console.log(`Serf ID ${serf.id} (Woodcutter at ${serf.currentJob.info.name}) is now seeking a tree. Old state: ${serf.state === 'working' ? 'working' : 'idle'}`);
+                }
+
+                if (serf.state === 'seeking_resource_node') {
+                    if (!serf.targetResourceNode) {
+                        const searchRadius = 10; 
+                        const buildingPos = serf.currentJob.model.position;
+                        const buildingWorldX = buildingPos.x;
+                        const buildingWorldZ = buildingPos.z;
+                        
+                        // Convert building's world coordinates to grid coordinates
+                        const buildingGridX = Math.round(buildingWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2); // Used imported TILE_SIZE
+                        const buildingGridZ = Math.round(buildingWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2); // Used imported TILE_SIZE
+                        console.log(`Serf ID ${serf.id} searching for tree. Hut at world (${buildingWorldX.toFixed(1)}, ${buildingWorldZ.toFixed(1)}), grid (${buildingGridX}, ${buildingGridZ}). Radius: ${searchRadius}`);
+                        
+                        let foundTree = false;
+                        for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                            for (let dz = -searchRadius; dz <= searchRadius; dz++) {
+                                const targetGridX = buildingGridX + dx;
+                                const targetGridZ = buildingGridZ + dz;
+                                // console.log(`Checking grid (${targetGridX}, ${targetGridZ})`); // Optional: very verbose
+                                const tile = this.gameMap.getTile(targetGridX, targetGridZ); 
+                                
+                                if (tile && tile.terrainType === TERRAIN_TYPES.FOREST) {
+                                    // Convert target grid coordinates back to world coordinates for the serf's target
+                                    const treeWorldX = (targetGridX - (this.gameMap.width - 1) / 2) * TILE_SIZE; // Used imported TILE_SIZE
+                                    const treeWorldZ = (targetGridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE; // Used imported TILE_SIZE
+                                    
+                                    serf.targetResourceNode = { 
+                                        gridX: targetGridX, // Store grid coords for reference
+                                        gridZ: targetGridZ,
+                                        worldX: treeWorldX, 
+                                        worldZ: treeWorldZ,
+                                        type: 'tree' 
+                                    };
+                                    serf.state = 'moving_to_resource_node';
+                                    console.log(`Serf ID ${serf.id} (Woodcutter) found tree at grid (${targetGridX}, ${targetGridZ}). World target: (${treeWorldX.toFixed(1)}, ${treeWorldZ.toFixed(1)}). State: ${serf.state}.`);
+                                    
+                                    // Placeholder: Teleport to tree's world position
+                                    serf.model.position.set(treeWorldX, 0, treeWorldZ);
+                                    serf.state = 'gathering_resource'; // Immediately start gathering after teleport
+                                    serf.gatheringTimer = 0;
+                                    console.log(`Serf ID ${serf.id} (Woodcutter) arrived at tree. State: ${serf.state}.`);
+                                    foundTree = true;
+                                    break;
+                                }
+                            }
+                            if (foundTree) break;
+                        }
+                        if (!foundTree) {
+                            console.log(`Serf ID ${serf.id} (Woodcutter) found no trees nearby. Idling at ${serf.currentJob.info.name}.`);
+                            serf.state = 'idle'; // No trees, go idle at the building.
+                        }
+                    }
+                } else if (serf.state === 'gathering_resource') {
+                    if (!serf.targetResourceNode) { // Should have a target node if gathering
+                        console.warn(`Serf ID ${serf.id} in gathering_resource state without targetResourceNode. Resetting to seeking.`);
+                        serf.state = 'seeking_resource_node';
+                    } else {
+                        serf.gatheringTimer += deltaTime;
+                        if (serf.gatheringTimer >= serf.gatheringDuration) {
+                            console.log(`Serf ID ${serf.id} (Woodcutter) finished gathering at tree.`);
+                            serf.hasResource = true; 
+                            serf.targetResourceNode = null; 
+                            serf.gatheringTimer = 0;
+                            serf.state = 'returning_resource';
+                            serf.target = serf.currentJob.model.position.clone(); 
+                            console.log(`Serf ID ${serf.id} (Woodcutter) returning to ${serf.currentJob.info.name} with resource. State: ${serf.state}.`);
+                            // Placeholder: Teleport back to hut
+                            serf.model.position.set(serf.target.x, 0, serf.target.z + 1); // Position near hut
+                            serf.state = 'depositing_resource'; 
+                            console.log(`Serf ID ${serf.id} (Woodcutter) arrived at ${serf.currentJob.info.name} to deposit. State: ${serf.state}.`);
+                        }
+                    }
+                } else if (serf.state === 'depositing_resource') {
+                    console.log(`Serf ID ${serf.id} (Woodcutter) deposited resource at ${serf.currentJob.info.name}.`);
+                    serf.hasResource = false;
+                    // The building's updateProduction will handle adding the resource.
+                    serf.state = 'working'; // Go back to 'working' state to seek new tree or idle if none
+                }
+            }
             
-            // Basic placeholder movement or task update
-            if (serf.model && serf.task === 'working' && serf.currentJob) {
-                // Food consumption logic for working serfs
+            // Generic 'working' state logic (like food consumption for non-resource gathering jobs)
+            // This is for serfs whose job is AT the building (e.g., Miller, Baker)
+            // Woodcutters are handled above and their 'working' state is a transition to 'seeking_resource_node'.
+            // This needs to be distinct from the woodcutter's 'working' state which is a precursor to seeking.
+            // Let's assume 'working' for other jobs means they are at the building and consuming food.
+            if (serf.model && serf.state === 'working' && serf.currentJob && serf.profession !== SERF_PROFESSIONS.WOODCUTTER) {
                 const jobInfo = serf.currentJob.info;
                 // Make food consumption generic for any profession that defines it
                 if (jobInfo.consumesFood && jobInfo.foodConsumptionRate && jobInfo.foodCheckIntervalMs) {
@@ -187,7 +282,7 @@ class SerfManager {
                         for (const foodType of jobInfo.consumesFood) {
                             if (resourceManager.getResourceCount(foodType) >= jobInfo.foodConsumptionRate) {
                                 resourceManager.removeResource(foodType, jobInfo.foodConsumptionRate);
-                                console.log(`Serf ID ${serf.id} (Miner) consumed ${jobInfo.foodConsumptionRate} ${foodType}.`);
+                                console.log(`Serf ID ${serf.id} (${serf.profession}) consumed ${jobInfo.foodConsumptionRate} ${foodType}.`);
                                 serf.lastFoodCheckTime = now;
                                 foodConsumed = true;
                                 break; 
@@ -195,8 +290,7 @@ class SerfManager {
                         }
                         if (!foodConsumed) {
                             console.warn(`Serf ID ${serf.id} (${serf.profession}) at ${jobInfo.name} has no food! Stopping work.`);
-                            serf.task = 'idle'; // Becomes idle, stops working
-                            // Remove serf from building's worker list
+                            serf.state = 'idle'; // Changed from 'task'
                             const building = serf.currentJob;
                             const workerIndex = building.workers.indexOf(serf.id);
                             if (workerIndex > -1) {

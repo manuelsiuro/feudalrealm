@@ -210,13 +210,20 @@ if (uiOverlay) {
     removeStoneButton.addEventListener('click', () => resourceManager.removeResource(RESOURCE_TYPES.STONE, 5));
     testButtonContainer.appendChild(removeStoneButton);
 
+    // --- +1 Axe Button Wrapper ---
+    const addAxeButtonWrapper = document.createElement('div'); // Wrapper div
     const addAxeButton = document.createElement('md-filled-button');
     addAxeButton.textContent = '+1 Axe';
-    addAxeButton.addEventListener('click', () => {
-        console.log('UI: "+1 Axe" button clicked.');
+    // Note: Event listener is now on the wrapper
+    addAxeButtonWrapper.appendChild(addAxeButton); 
+    
+    addAxeButtonWrapper.addEventListener('click', () => {
+        console.log('UI: Wrapper for "+1 Axe" button clicked. Attempting to add 1 TOOLS_AXE.');
         resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
+        console.log(`UI: TOOLS_AXE count after addResource: ${resourceManager.getResourceCount(RESOURCE_TYPES.TOOLS_AXE)}`);
+        // The onChange callback in resourceManager should trigger updateResourceUI
     });
-    testButtonContainer.appendChild(addAxeButton);
+    testButtonContainer.appendChild(addAxeButtonWrapper); // Add wrapper to container
 
     const addBreadButton = document.createElement('md-filled-button');
     addBreadButton.textContent = '+1 Bread';
@@ -548,3 +555,13 @@ function animate() {
 if (appContainer && (gameCanvas || appContainer.contains(renderer.domElement))) {
     animate();
 }
+
+// TEMPORARY: Keyboard shortcut to add an axe for testing
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'a' || event.key === 'A') {
+        console.log("DEBUG: 'A' key pressed. Adding 1 TOOLS_AXE.");
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
+        console.log(`DEBUG: TOOLS_AXE count after key press: ${resourceManager.getResourceCount(RESOURCE_TYPES.TOOLS_AXE)}`);
+        // UI should update via resourceManager.onChange callback
+    }
+});
