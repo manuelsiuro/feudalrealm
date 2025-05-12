@@ -33,7 +33,7 @@ const SERF_MODEL_CREATORS = {
     [SERF_PROFESSIONS.TRANSPORTER]: Units.createTransporter,
     [SERF_PROFESSIONS.BUILDER]: Units.createBuilder,
     [SERF_PROFESSIONS.WOODCUTTER]: Units.createWoodcutter,
-    [SERF_PROFESSIONS.FORESTER]: Units.createForester,
+    [SERF_PROFESSIONS.FORESTER]: Units.createForester, // Ensure this exists in units.js
     [SERF_PROFESSIONS.STONEMASON]: Units.createStonemason,
     [SERF_PROFESSIONS.MINER]: Units.createMiner,
     [SERF_PROFESSIONS.FARMER]: Units.createFarmer,
@@ -96,14 +96,14 @@ class SerfManager {
             id: this.serfIdCounter++,
             model: serfModel,
             profession: profession,
-            state: 'idle', // Changed from 'task'. States: 'idle', 'moving_to_job', 'working', 'seeking_resource_node', 'moving_to_resource_node', 'gathering_resource', 'returning_resource'
+            state: 'idle', // States: 'idle', 'moving_to_job', 'working', 'seeking_resource_node', 'seeking_planting_spot', 'following_path', 'gathering_resource', 'planting_tree', 'returning_resource', 'depositing_resource'
             target: null, // Target Vector3, building object, or resource node object
-            path: [], 
+            path: [],
             currentJob: null, 
             targetResourceNode: null, // e.g., {x, z, type: 'tree'}
             gatheringTimer: 0,
-            gatheringDuration: 5, // seconds to gather resource
-            hasResource: false, // Tracks if serf is carrying a resource
+            gatheringDuration: 5, // seconds to gather resource or plant tree
+            hasResource: false, // Tracks if serf is carrying a resource (not applicable for Forester planting)
             serfSpeed: 1.0, // World units per second
             // TODO: Add tool requirements, food needs, etc.
         };
@@ -546,16 +546,121 @@ class SerfManager {
                     }
                     serf.state = 'working'; 
                 }
+            } else if (serf.profession === SERF_PROFESSIONS.FORESTER && serf.currentJob) {
+                console.log(`DEBUG: Serf ID ${serf.id} is a Forester. Current state: ${serf.state}`);
+                if (serf.state === 'working' || serf.state === 'idle') {
+                    serf.state = 'seeking_planting_spot';
+                    console.log(`Serf ID ${serf.id} (Forester at ${serf.currentJob.info.name}) is now seeking a planting spot.`);
+                }
+
+                if (serf.state === 'seeking_planting_spot') {
+                    if (!serf.targetPlantingSpot) { // Renamed from targetResourceNode for clarity
+                        const searchRadius = 8; // Can be adjusted
+                        const buildingPos = serf.currentJob.model.position;
+                        const buildingGridX = Math.round(buildingPos.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const buildingGridZ = Math.round(buildingPos.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        console.log(`Serf ID ${serf.id} (Forester) searching for GRASSLAND. Hut at grid (${buildingGridX}, ${buildingGridZ}). Radius: ${searchRadius}`);
+                        
+                        let foundSpot = false;
+                        for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                            for (let dz = -searchRadius; dz <= searchRadius; dz++) {
+                                if (dx === 0 && dz === 0) continue; // Don't plant on hut's tile
+                                const targetGridX = buildingGridX + dx;
+                                const targetGridZ = buildingGridZ + dz;
+                                const tile = this.gameMap.getTile(targetGridX, targetGridZ);
+                                
+                                if (tile && tile.terrainType === TERRAIN_TYPES.GRASSLAND) {
+                                    const spotWorldX = (targetGridX - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                                    const spotWorldZ = (targetGridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                                    
+                                    serf.targetPlantingSpot = { gridX: targetGridX, gridZ: targetGridZ, worldX: spotWorldX, worldZ: spotWorldZ };
+                                    
+                                    const startGridX = Math.round(serf.model.position.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                                    const startGridZ = Math.round(serf.model.position.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                                    console.log(`Serf ID ${serf.id} (Forester) found GRASSLAND at grid (${targetGridX}, ${targetGridZ}). Attempting path from (${startGridX},${startGridZ}).`);
+                                    const path = findPathAStar({x: startGridX, y: startGridZ}, {x: targetGridX, y: targetGridZ}, this.gameMap, TERRAIN_TYPES);
+
+                                    if (path && path.length > 0) {
+                                        serf.path = path;
+                                        serf.state = 'following_path'; 
+                                        console.log(`Serf ID ${serf.id} (Forester) path to planting spot found. Length: ${serf.path.length}. State: ${serf.state}.`);
+                                        foundSpot = true;
+                                        break; 
+                                    } else {
+                                        serf.targetPlantingSpot = null; 
+                                    }
+                                }
+                            }
+                            if (foundSpot) break;
+                        }
+                        if (!foundSpot) {
+                            console.log(`Serf ID ${serf.id} (Forester) found no pathable GRASSLAND nearby. Idling.`);
+                            serf.state = 'idle'; 
+                        }
+                    }
+                } else if (serf.state === 'following_path') { // Forester also uses this
+                    if (!serf.path || serf.path.length === 0) {
+                        if (serf.targetPlantingSpot) { // Arrived at planting spot
+                            console.log(`Serf ID ${serf.id} (Forester) arrived at planting spot. State: planting_tree.`);
+                            serf.state = 'planting_tree';
+                            serf.gatheringTimer = 0; // Reuse gatheringTimer for planting
+                        } else if (serf.targetResourceNode && !serf.hasResource) { // Woodcutter/Stonemason arriving at resource
+                             console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at resource node. State: gathering_resource.`);
+                             serf.state = 'gathering_resource'; serf.gatheringTimer = 0;
+                        } else if (serf.currentJob && serf.hasResource) { // Woodcutter/Stonemason returning with resource
+                             console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at ${serf.currentJob.info.name} to deposit. State: depositing_resource.`);
+                             serf.state = 'depositing_resource';
+                        } else {
+                            console.warn(`Serf ID ${serf.id} (${serf.profession}) finished path but unclear next state. Idling.`);
+                            serf.state = 'idle';
+                        }
+                        serf.target = null; 
+                        return; 
+                    }
+                    // ... (path following movement logic remains the same)
+                    const nextWaypointGrid = serf.path[0];
+                    const nextWaypointWorldX = (nextWaypointGrid.x - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                    const nextWaypointWorldZ = (nextWaypointGrid.y - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                    const targetPosition = new THREE.Vector3(nextWaypointWorldX, 0, nextWaypointWorldZ);
+                    const direction = targetPosition.clone().sub(serf.model.position).normalize();
+                    const distanceToWaypoint = serf.model.position.distanceTo(targetPosition);
+                    const moveDistance = serf.serfSpeed * deltaTime;
+                    if (distanceToWaypoint <= moveDistance || distanceToWaypoint < 0.05) {
+                        serf.model.position.copy(targetPosition); serf.path.shift();
+                    } else {
+                        serf.model.position.add(direction.multiplyScalar(moveDistance));
+                    }
+
+                } else if (serf.state === 'planting_tree') {
+                    if (!serf.targetPlantingSpot) {
+                        console.warn(`Serf ID ${serf.id} (Forester) in planting_tree without target. Resetting.`);
+                        serf.state = 'seeking_planting_spot';
+                    } else {
+                        serf.gatheringTimer += deltaTime; // Reuse for planting time
+                        if (serf.gatheringTimer >= serf.gatheringDuration) { // Use same duration as gathering for now
+                            console.log(`Serf ID ${serf.id} (Forester) finished planting at grid(${serf.targetPlantingSpot.gridX}, ${serf.targetPlantingSpot.gridZ}).`);
+                            if (this.gameMap && typeof this.gameMap.changeTileType === 'function') {
+                                this.gameMap.changeTileType(serf.targetPlantingSpot.gridX, serf.targetPlantingSpot.gridZ, TERRAIN_TYPES.FOREST);
+                            } else {
+                                console.warn("SerfManager: gameMap.changeTileType method not found. Planting on map skipped.");
+                            }
+                            serf.targetPlantingSpot = null;
+                            serf.gatheringTimer = 0;
+                            serf.state = 'working'; // Go back to working (which will lead to seeking new spot or idling)
+                            // Forester doesn't need to "return" a resource.
+                        }
+                    }
+                }
             }
             
             // Generic 'working' state logic (like food consumption for non-resource gathering jobs)
             // This is for serfs whose job is AT the building (e.g., Miller, Baker)
-            // Woodcutters are handled above and their 'working' state is a transition to 'seeking_resource_node'.
-            // This needs to be distinct from the woodcutter's 'working' state which is a precursor to seeking.
-            // Let's assume 'working' for other jobs means they are at the building and consuming food.
-            if (serf.model && serf.state === 'working' && serf.currentJob && serf.profession !== SERF_PROFESSIONS.WOODCUTTER) {
+            // Woodcutters/Stonemasons/Foresters are handled above and their 'working' state is a transition to seeking.
+            if (serf.model && serf.state === 'working' && serf.currentJob && 
+                serf.profession !== SERF_PROFESSIONS.WOODCUTTER &&
+                serf.profession !== SERF_PROFESSIONS.STONEMASON &&
+                serf.profession !== SERF_PROFESSIONS.FORESTER) {
                 const jobInfo = serf.currentJob.info;
-                // Make food consumption generic for any profession that defines it
                 if (jobInfo.consumesFood && jobInfo.foodConsumptionRate && jobInfo.foodCheckIntervalMs) {
                     const now = Date.now();
                     if (now >= (serf.lastFoodCheckTime || 0) + jobInfo.foodCheckIntervalMs) {
