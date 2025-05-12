@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import * as Units from '../entities/units.js'; // For creating serf 3D models
 import * as ResourceModels from '../entities/resources.js'; // Import all resource model creators
 import resourceManager, { RESOURCE_TYPES } from './resourceManager.js'; // For tool/food checks
-import { TERRAIN_TYPES, TILE_SIZE } from './MapManager.js'; // Corrected casing and imported TILE_SIZE
+import { TERRAIN_TYPES, TILE_SIZE } from './MapManager.js'; 
+import { findPathAStar } from '../utils/pathfinding.js'; // Import A*
 
 export const SERF_PROFESSIONS = {
     TRANSPORTER: 'Transporter',
@@ -103,6 +104,7 @@ class SerfManager {
             gatheringTimer: 0,
             gatheringDuration: 5, // seconds to gather resource
             hasResource: false, // Tracks if serf is carrying a resource
+            serfSpeed: 1.0, // World units per second
             // TODO: Add tool requirements, food needs, etc.
         };
 
@@ -228,27 +230,85 @@ class SerfManager {
                                         worldZ: treeWorldZ,
                                         type: 'tree' 
                                     };
-                                    serf.state = 'moving_to_resource_node';
+                                    serf.state = 'moving_to_resource_node'; // This state will now initiate pathfinding
                                     console.log(`Serf ID ${serf.id} (Woodcutter) found tree at grid (${targetGridX}, ${targetGridZ}). World target: (${treeWorldX.toFixed(1)}, ${treeWorldZ.toFixed(1)}). State: ${serf.state}.`);
                                     
-                                    // Placeholder: Teleport to tree's world position
-                                    serf.model.position.set(treeWorldX, 0, treeWorldZ);
-                                    serf.state = 'gathering_resource'; // Immediately start gathering after teleport
-                                    serf.gatheringTimer = 0;
-                                    console.log(`Serf ID ${serf.id} (Woodcutter) arrived at tree. State: ${serf.state}.`);
+                                    // Pathfinding will be initiated in the 'moving_to_resource_node' state logic block
                                     foundTree = true;
-                                    break;
+                                    break; 
                                 }
                             }
                             if (foundTree) break;
                         }
                         if (!foundTree) {
                             console.log(`Serf ID ${serf.id} (Woodcutter) found no trees nearby. Idling at ${serf.currentJob.info.name}.`);
-                            serf.state = 'idle'; // No trees, go idle at the building.
+                            serf.state = 'idle'; 
                         }
                     }
+                } else if (serf.state === 'moving_to_resource_node') {
+                    if (!serf.path || serf.path.length === 0) { // Calculate path if not already doing so
+                        const startGridX = Math.round(serf.model.position.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const startGridZ = Math.round(serf.model.position.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        
+                        if (serf.targetResourceNode) {
+                            const endGridX = serf.targetResourceNode.gridX;
+                            const endGridZ = serf.targetResourceNode.gridZ;
+                            
+                            console.log(`Serf ID ${serf.id} calculating path from (${startGridX},${startGridZ}) to resource at (${endGridX},${endGridZ})`);
+                            serf.path = findPathAStar({x: startGridX, y: startGridZ}, {x: endGridX, y: endGridZ}, this.gameMap, TERRAIN_TYPES);
+
+                            if (serf.path && serf.path.length > 0) {
+                                console.log(`Serf ID ${serf.id} path found. Length: ${serf.path.length}. First step: (${serf.path[0].x}, ${serf.path[0].y})`);
+                                serf.state = 'following_path'; // New state
+                                // The actual target for movement will be serf.targetResourceNode.worldX/Z
+                            } else {
+                                console.warn(`Serf ID ${serf.id} could not find path to resource. Returning to idle.`);
+                                serf.state = 'idle';
+                                serf.targetResourceNode = null; // Clear target
+                            }
+                        } else {
+                             console.warn(`Serf ID ${serf.id} in moving_to_resource_node without target. Resetting.`);
+                             serf.state = 'seeking_resource_node';
+                        }
+                    }
+                    // Movement logic will be in 'following_path' state
+                } else if (serf.state === 'following_path') {
+                    if (!serf.path || serf.path.length === 0) {
+                        // Arrived at destination (or path was invalid)
+                        if (serf.targetResourceNode && !serf.hasResource) { // Moving towards resource
+                            console.log(`Serf ID ${serf.id} (Woodcutter) arrived at tree. State: gathering_resource.`);
+                            serf.state = 'gathering_resource';
+                            serf.gatheringTimer = 0;
+                        } else if (serf.currentJob && serf.hasResource) { // Moving towards hut
+                             console.log(`Serf ID ${serf.id} (Woodcutter) arrived at ${serf.currentJob.info.name} to deposit. State: depositing_resource.`);
+                             serf.state = 'depositing_resource';
+                        } else {
+                            console.warn(`Serf ID ${serf.id} finished path but unclear next state. Idling.`);
+                            serf.state = 'idle';
+                        }
+                        serf.target = null; // Clear movement target
+                        return; // End update for this serf this tick
+                    }
+
+                    const nextWaypointGrid = serf.path[0];
+                    const nextWaypointWorldX = (nextWaypointGrid.x - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                    const nextWaypointWorldZ = (nextWaypointGrid.y - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                    
+                    const targetPosition = new THREE.Vector3(nextWaypointWorldX, 0, nextWaypointWorldZ);
+                    const direction = targetPosition.clone().sub(serf.model.position).normalize();
+                    const distanceToWaypoint = serf.model.position.distanceTo(targetPosition);
+                    const moveDistance = serf.serfSpeed * deltaTime;
+
+                    if (distanceToWaypoint <= moveDistance || distanceToWaypoint < 0.05) { // Reached waypoint (or very close)
+                        serf.model.position.copy(targetPosition);
+                        serf.path.shift(); // Remove waypoint from path
+                        // console.log(`Serf ID ${serf.id} reached waypoint. Path remaining: ${serf.path.length}`);
+                    } else {
+                        serf.model.position.add(direction.multiplyScalar(moveDistance));
+                        // Optional: serf.model.lookAt(targetPosition); // Make serf face direction of movement
+                    }
                 } else if (serf.state === 'gathering_resource') {
-                    if (!serf.targetResourceNode) { // Should have a target node if gathering
+                    if (!serf.targetResourceNode) { 
                         console.warn(`Serf ID ${serf.id} in gathering_resource state without targetResourceNode. Resetting to seeking.`);
                         serf.state = 'seeking_resource_node';
                     } else {
@@ -283,16 +343,36 @@ class SerfManager {
                                 console.log(`Serf ID ${serf.id} picked up a log.`);
                             }
 
-                            serf.targetResourceNode = null; 
+                            serf.targetResourceNode = null; // Clear target resource, will find new one or path back
                             serf.gatheringTimer = 0;
-                            serf.state = 'returning_resource';
-                            serf.target = serf.currentJob.model.position.clone(); 
-                            console.log(`Serf ID ${serf.id} (Woodcutter) returning to ${serf.currentJob.info.name} with resource. State: ${serf.state}.`);
-                            
-                            // Placeholder: Teleport back to hut
-                            serf.model.position.set(serf.target.x, 0, serf.target.z + 1); // Position near hut
-                            serf.state = 'depositing_resource'; 
-                            console.log(`Serf ID ${serf.id} (Woodcutter) arrived at ${serf.currentJob.info.name} to deposit. State: ${serf.state}.`);
+                            serf.state = 'returning_resource'; // This state will now initiate pathfinding
+                            // Target for returning is the hut itself
+                            serf.target = serf.currentJob.model.position.clone(); // World coordinates of the hut
+                            console.log(`Serf ID ${serf.id} (Woodcutter) needs to return to ${serf.currentJob.info.name} with resource. State: ${serf.state}.`);
+                        }
+                    }
+                } else if (serf.state === 'returning_resource') { // New state logic for pathfinding back
+                     if (!serf.path || serf.path.length === 0) { // Calculate path if not already doing so
+                        const startGridX = Math.round(serf.model.position.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const startGridZ = Math.round(serf.model.position.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        
+                        const hutWorldPos = serf.currentJob.model.position;
+                        const endGridX = Math.round(hutWorldPos.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const endGridZ = Math.round(hutWorldPos.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        // Target one step before hut to avoid standing on it. e.g. hutGridZ +1 if space
+                        // For simplicity, target hut's grid cell for now.
+                        
+                        console.log(`Serf ID ${serf.id} calculating path from (${startGridX},${startGridZ}) to hut at (${endGridX},${endGridZ})`);
+                        serf.path = findPathAStar({x: startGridX, y: startGridZ}, {x: endGridX, y: endGridZ}, this.gameMap, TERRAIN_TYPES);
+
+                        if (serf.path && serf.path.length > 0) {
+                            console.log(`Serf ID ${serf.id} path to hut found. Length: ${serf.path.length}.`);
+                            serf.state = 'following_path'; 
+                        } else {
+                            console.warn(`Serf ID ${serf.id} could not find path to hut. Stuck? Teleporting for now.`);
+                            // Fallback to teleport if no path (should be rare with open maps)
+                            serf.model.position.set(hutWorldPos.x, 0, hutWorldPos.z + 1); // Near hut
+                            serf.state = 'depositing_resource';
                         }
                     }
                 } else if (serf.state === 'depositing_resource') {
