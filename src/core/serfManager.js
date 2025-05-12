@@ -107,11 +107,13 @@ class SerfManager {
             targetResourceNode: null, // For Woodcutter/Stonemason
             targetPlantingSpot: null, // For Forester
             targetScanSpot: null, // For Geologist {gridX, gridZ, worldX, worldZ}
-            gatheringTimer: 0, // Reused for planting, scanning
-            gatheringDuration: 5, // seconds to gather resource, plant tree, or scan
+            targetDepositNode: null, // For Miner {gridX, gridZ, worldX, worldZ, type, richness}
+            gatheringTimer: 0, // Reused for planting, scanning, mining
+            gatheringDuration: 5, // seconds to gather resource, plant tree
+            scanDuration: 8, // seconds for geologist to scan a tile
+            miningDuration: 10, // seconds for miner to mine a deposit
             hasResource: false, // Tracks if serf is carrying a resource
             serfSpeed: 1.0, // World units per second
-            scanDuration: 8, // seconds for geologist to scan a tile
             // TODO: Add tool requirements, food needs, etc.
         };
 
@@ -839,16 +841,198 @@ class SerfManager {
                         }
                     }
                 }
+            } else if (serf.profession === SERF_PROFESSIONS.MINER && serf.currentJob) {
+                console.log(`DEBUG: Serf ID ${serf.id} is a Miner. Current state: ${serf.state}`);
+                const mineType = serf.currentJob.info.mineType; // 'iron', 'coal', or 'gold'
+
+                if (serf.state === 'working' || serf.state === 'idle') {
+                    serf.state = 'seeking_deposit_node';
+                    console.log(`Serf ID ${serf.id} (Miner at ${serf.currentJob.info.name}) is now seeking a ${mineType} deposit.`);
+                }
+
+                if (serf.state === 'seeking_deposit_node') {
+                    if (!serf.targetDepositNode) {
+                        const searchRadius = 10; // Search radius around the mine
+                        const buildingPos = serf.currentJob.model.position;
+                        const buildingGridX = Math.round(buildingPos.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const buildingGridZ = Math.round(buildingPos.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        console.log(`Serf ID ${serf.id} (Miner) searching for ${mineType} deposit. Mine at grid (${buildingGridX}, ${buildingGridZ}). Radius: ${searchRadius}`);
+                        
+                        let bestSpot = null;
+                        let bestRichnessValue = 0; // higher is better
+
+                        for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                            for (let dz = -searchRadius; dz <= searchRadius; dz++) {
+                                const targetGridX = buildingGridX + dx;
+                                const targetGridZ = buildingGridZ + dz;
+                                const tile = this.gameMap.getTile(targetGridX, targetGridZ);
+                                
+                                if (tile && tile.scannedByGeologist && tile.potentialDeposits && tile.potentialDeposits[mineType]) {
+                                    const richness = tile.potentialDeposits[mineType]; // 'low', 'medium', 'high'
+                                    let richnessValue = 0;
+                                    if (richness === 'low') richnessValue = 1;
+                                    else if (richness === 'medium') richnessValue = 2;
+                                    else if (richness === 'high') richnessValue = 3;
+
+                                    if (richnessValue > bestRichnessValue) {
+                                        // Check if pathable before committing
+                                        const startGridX = Math.round(serf.model.position.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                                        const startGridZ = Math.round(serf.model.position.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                                        const path = findPathAStar({x: startGridX, y: startGridZ}, {x: targetGridX, y: targetGridZ}, this.gameMap, TERRAIN_TYPES);
+                                        
+                                        if (path && path.length > 0) {
+                                            bestRichnessValue = richnessValue;
+                                            const spotWorldX = (targetGridX - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                                            const spotWorldZ = (targetGridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                                            bestSpot = { 
+                                                gridX: targetGridX, gridZ: targetGridZ, 
+                                                worldX: spotWorldX, worldZ: spotWorldZ, 
+                                                type: mineType, richness: richness, path: path
+                                            };
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (bestSpot) {
+                            serf.targetDepositNode = { 
+                                gridX: bestSpot.gridX, gridZ: bestSpot.gridZ,
+                                worldX: bestSpot.worldX, worldZ: bestSpot.worldZ,
+                                type: bestSpot.type, richness: bestSpot.richness
+                            };
+                            serf.path = bestSpot.path;
+                            serf.state = 'following_path';
+                            console.log(`Serf ID ${serf.id} (Miner) found ${bestSpot.richness} ${mineType} deposit at grid (${bestSpot.gridX}, ${bestSpot.gridZ}). Path length: ${serf.path.length}.`);
+                        } else {
+                            console.log(`Serf ID ${serf.id} (Miner) found no suitable ${mineType} deposits nearby. Idling at ${serf.currentJob.info.name}.`);
+                            serf.state = 'idle'; 
+                        }
+                    }
+                } else if (serf.state === 'following_path') {
+                     if (!serf.path || serf.path.length === 0) {
+                        console.log(`DEBUG PATH FOLLOW END: Serf ${serf.id} path empty. TargetPlantingSpot: ${!!serf.targetPlantingSpot}, TargetResourceNode: ${!!serf.targetResourceNode}, TargetScanSpot: ${!!serf.targetScanSpot}, TargetDepositNode: ${!!serf.targetDepositNode}, HasResource: ${serf.hasResource}`);
+                        if (serf.targetPlantingSpot && serf.profession === SERF_PROFESSIONS.FORESTER) { 
+                            serf.state = 'planting_tree'; serf.gatheringTimer = 0; 
+                            console.log(`Serf ID ${serf.id} (Forester) arrived at planting spot. State: planting_tree.`);
+                        } else if (serf.targetResourceNode && !serf.hasResource && (serf.profession === SERF_PROFESSIONS.WOODCUTTER || serf.profession === SERF_PROFESSIONS.STONEMASON)) {
+                             serf.state = 'gathering_resource'; serf.gatheringTimer = 0;
+                             console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at resource node. State: gathering_resource.`);
+                        } else if (serf.targetScanSpot && serf.profession === SERF_PROFESSIONS.GEOLOGIST) { 
+                            serf.state = 'scanning'; serf.gatheringTimer = 0; 
+                            console.log(`Serf ID ${serf.id} (Geologist) arrived at scan spot (${serf.targetScanSpot.gridX}, ${serf.targetScanSpot.gridZ}). State: scanning.`);
+                        } else if (serf.targetDepositNode && serf.profession === SERF_PROFESSIONS.MINER && !serf.hasResource) {
+                            serf.state = 'mining_deposit'; serf.gatheringTimer = 0;
+                            console.log(`Serf ID ${serf.id} (Miner) arrived at ${serf.targetDepositNode.type} deposit at (${serf.targetDepositNode.gridX}, ${serf.targetDepositNode.gridZ}). State: mining_deposit.`);
+                        } else if (serf.currentJob && serf.hasResource) { // Common for resource carriers returning
+                             serf.state = 'depositing_resource';
+                             console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at ${serf.currentJob.info.name} to deposit. State: depositing_resource.`);
+                        } else {
+                            console.warn(`Serf ID ${serf.id} (${serf.profession}) finished path but unclear next state. Idling.`);
+                            serf.state = 'idle';
+                        }
+                        serf.target = null; 
+                        return; 
+                    }
+                    const nextWaypointGrid = serf.path[0]; 
+                    const nextWaypointWorldX = (nextWaypointGrid.x - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                    const nextWaypointWorldZ = (nextWaypointGrid.y - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                    const targetPosition = new THREE.Vector3(nextWaypointWorldX, 0, nextWaypointWorldZ);
+                    const direction = targetPosition.clone().sub(serf.model.position).normalize();
+                    const distanceToWaypoint = serf.model.position.distanceTo(targetPosition);
+                    const moveDistance = serf.serfSpeed * deltaTime;
+
+                    console.log(`DEBUG PATH MOVE: Serf ${serf.id} (${serf.profession}) to WP (${nextWaypointGrid.x},${nextWaypointGrid.y}). Dist: ${distanceToWaypoint.toFixed(3)}, MoveDist: ${moveDistance.toFixed(5)}. PathLen: ${serf.path.length}`);
+
+                    if (distanceToWaypoint <= moveDistance || distanceToWaypoint < 0.05) {
+                        console.log(`DEBUG PATH SHIFT: Serf ${serf.id} reached waypoint. Old path len: ${serf.path.length}`);
+                        serf.model.position.copy(targetPosition); 
+                        serf.path.shift(); 
+                        console.log(`DEBUG PATH SHIFT: Serf ${serf.id} new path len: ${serf.path ? serf.path.length : 'null'}`);
+                    } else {
+                        serf.model.position.add(direction.multiplyScalar(moveDistance));
+                    }
+                } else if (serf.state === 'mining_deposit') {
+                    if (!serf.targetDepositNode) {
+                        console.warn(`Serf ID ${serf.id} (Miner) in mining_deposit without target. Resetting.`);
+                        serf.state = 'seeking_deposit_node';
+                    } else {
+                        serf.gatheringTimer += deltaTime;
+                        if (serf.gatheringTimer >= serf.miningDuration) {
+                            const { gridX, gridZ, type, richness } = serf.targetDepositNode;
+                            console.log(`Serf ID ${serf.id} (Miner) finished mining ${type} at grid(${gridX}, ${gridZ}). Richness: ${richness}`);
+                            
+                            let resourceTypeToGive;
+                            if (type === 'iron') resourceTypeToGive = RESOURCE_TYPES.IRON_ORE;
+                            else if (type === 'coal') resourceTypeToGive = RESOURCE_TYPES.COAL_ORE;
+                            else if (type === 'gold') resourceTypeToGive = RESOURCE_TYPES.GOLD_ORE;
+                            
+                            if (resourceTypeToGive) {
+                                resourceManager.addResource(resourceTypeToGive, 1); // For now, 1 unit regardless of richness
+                                console.log(`Serf ID ${serf.id} (Miner) collected 1 ${resourceTypeToGive}.`);
+                                serf.hasResource = true; 
+                                // TODO: Add visual for carrying ore
+                            } else {
+                                console.warn(`Serf ID ${serf.id} (Miner) mined unknown deposit type: ${type}`);
+                            }
+                            
+                            // For now, deposits are infinite. Later, could deplete tile.potentialDeposits[type]
+                            // serf.targetDepositNode = null; // Clear after mining
+                            serf.gatheringTimer = 0;
+                            serf.state = 'returning_resource'; // Path back to mine
+                            console.log(`Serf ID ${serf.id} (Miner) needs to return to ${serf.currentJob.info.name} with ${type} ore. State: ${serf.state}.`);
+                        }
+                    }
+                } else if (serf.state === 'returning_resource') { // Miner returning to Mine building
+                    if (!serf.path || serf.path.length === 0) {
+                        const startGridX = Math.round(serf.model.position.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const startGridZ = Math.round(serf.model.position.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        const hutWorldPos = serf.currentJob.model.position;
+                        const endGridX = Math.round(hutWorldPos.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const endGridZ = Math.round(hutWorldPos.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        
+                        console.log(`Serf ID ${serf.id} (${serf.profession}) calculating path from (${startGridX},${startGridZ}) to hut at (${endGridX},${endGridZ})`);
+                        serf.path = findPathAStar({x: startGridX, y: startGridZ}, {x: endGridX, y: endGridZ}, this.gameMap, TERRAIN_TYPES);
+                        if (serf.path && serf.path.length > 0) {
+                            serf.state = 'following_path';
+                        } else {
+                            console.warn(`Serf ID ${serf.id} (${serf.profession}) could not find path to hut. Teleporting.`);
+                            serf.model.position.set(hutWorldPos.x, 0, hutWorldPos.z + 1); 
+                            serf.state = 'depositing_resource';
+                        }
+                    }
+                } else if (serf.state === 'depositing_resource') { // Miner depositing at Mine
+                    if (serf.profession === SERF_PROFESSIONS.MINER) {
+                        console.log(`Serf ID ${serf.id} (Miner) "deposited" ore at ${serf.currentJob.info.name}. (Resource already added at extraction)`);
+                        serf.hasResource = false;
+                        serf.targetDepositNode = null; // Clear deposit target after successful cycle
+                        // TODO: Remove visual for carrying ore
+                        serf.state = 'working'; // Go back to seeking new deposit
+                    } else { // Existing logic for Woodcutter/Stonemason
+                        console.log(`Serf ID ${serf.id} (${serf.profession}) deposited resource at ${serf.currentJob.info.name}.`);
+                        serf.hasResource = false;
+                        if (serf.carriedItemMesh) {
+                            serf.model.remove(serf.carriedItemMesh);
+                            serf.carriedItemMesh.traverse(o => { if(o.isMesh) { o.geometry.dispose(); o.material.dispose(); }});
+                            serf.carriedItemMesh = null;
+                            console.log(`Serf ID ${serf.id} dropped off the resource item.`);
+                        }
+                        serf.state = 'working'; 
+                    }
+                }
+
+
             }
             
             // Generic 'working' state logic (like food consumption for non-resource gathering jobs)
             // This is for serfs whose job is AT the building (e.g., Miller, Baker)
-            // Woodcutters/Stonemasons/Foresters/Geologists are handled above and their 'working' state is a transition to seeking.
+            // Woodcutters/Stonemasons/Foresters/Geologists/Miners are handled above and their 'working' state is a transition to seeking.
             if (serf.model && serf.state === 'working' && serf.currentJob && 
                 serf.profession !== SERF_PROFESSIONS.WOODCUTTER &&
                 serf.profession !== SERF_PROFESSIONS.STONEMASON &&
                 serf.profession !== SERF_PROFESSIONS.FORESTER &&
-                serf.profession !== SERF_PROFESSIONS.GEOLOGIST) { // Added Geologist exclusion
+                serf.profession !== SERF_PROFESSIONS.GEOLOGIST &&
+                serf.profession !== SERF_PROFESSIONS.MINER) { // Added Miner exclusion
                 const jobInfo = serf.currentJob.info;
                 if (jobInfo.consumesFood && jobInfo.foodConsumptionRate && jobInfo.foodCheckIntervalMs) {
                     const now = Date.now();
