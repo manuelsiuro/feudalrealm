@@ -171,8 +171,9 @@ if (uiOverlay) {
     miniMapPanel.textContent = 'Mini-map';
     uiOverlay.appendChild(miniMapPanel);
 
-
+    // Define updateResourceUI in a scope accessible by the event listener
     function updateResourceUI(stockpiles) {
+        if (!resourcePanel) return; // Guard if resourcePanel isn't created yet
         resourcePanel.innerHTML = '<h3>Resources</h3>';
         const ul = document.createElement('ul');
         ul.style.listStyle = 'none';
@@ -185,8 +186,13 @@ if (uiOverlay) {
         resourcePanel.appendChild(ul);
     }
     
-    resourceManager.onChange(updateResourceUI);
-    updateResourceUI(resourceManager.getAllStockpiles()); // Initial display
+    resourceManager.onChange(updateResourceUI); // Register listener
+    
+    // Initial display after resourceManager is ready and UI panel exists
+    if (resourcePanel) {
+       updateResourceUI(resourceManager.getAllStockpiles());
+    }
+
 
     // Test buttons for resource manipulation
     const testButtonContainer = document.createElement('div');
@@ -561,7 +567,13 @@ window.addEventListener('keydown', (event) => {
     if (event.key === 'a' || event.key === 'A') {
         console.log("DEBUG: 'A' key pressed. Adding 1 TOOLS_AXE.");
         resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
-        console.log(`DEBUG: TOOLS_AXE count after key press: ${resourceManager.getResourceCount(RESOURCE_TYPES.TOOLS_AXE)}`);
-        // UI should update via resourceManager.onChange callback
+        console.log("DEBUG: TOOLS_AXE count after key press:", resourceManager.getResourceCount(RESOURCE_TYPES.TOOLS_AXE));
+        if (typeof updateResourceUI === 'function') updateResourceUI(resourceManager.getAllStockpiles()); 
+    }
+    if (event.key.toLowerCase() === 'p') {
+        console.log("DEBUG: 'P' key pressed. Adding 1 TOOLS_PICKAXE.");
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
+        console.log("DEBUG: TOOLS_PICKAXE count after key press:", resourceManager.getResourceCount(RESOURCE_TYPES.TOOLS_PICKAXE));
+        if (typeof updateResourceUI === 'function') updateResourceUI(resourceManager.getAllStockpiles());
     }
 });

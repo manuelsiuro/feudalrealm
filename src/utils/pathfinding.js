@@ -28,8 +28,11 @@ function isWalkable(gridX, gridY, gameMap, TERRAIN_TYPES) {
     const tile = gameMap.getTile(gridX, gridY);
     if (!tile) return false; // Out of bounds
 
+    if (!tile) return false; // Out of bounds
+
     // Define non-walkable types
     const nonWalkable = [TERRAIN_TYPES.WATER, TERRAIN_TYPES.MOUNTAIN]; // Example
+    // console.log(`Pathfinding: Checking tile (${gridX}, ${gridY}) - Type: ${tile.terrainType}, Walkable: ${!nonWalkable.includes(tile.terrainType)}`); // DEBUG
     return !nonWalkable.includes(tile.terrainType);
 }
 
