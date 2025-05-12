@@ -209,10 +209,17 @@ class SerfManager {
                                 // console.log(`Checking grid (${targetGridX}, ${targetGridZ})`); // Optional: very verbose
                                 const tile = this.gameMap.getTile(targetGridX, targetGridZ); 
                                 
+                                // Check if the tile is a forest and, if resource amounts are tracked, has resources
                                 if (tile && tile.terrainType === TERRAIN_TYPES.FOREST) {
+                                    // If resourceAmount is available and 0, skip this tile
+                                    if (typeof tile.resourceAmount === 'number' && tile.resourceAmount <= 0) {
+                                        // console.log(`Serf ID ${serf.id} found depleted tree at (${targetGridX}, ${targetGridZ}). Skipping.`);
+                                        continue; // Skip this depleted forest tile
+                                    }
+
                                     // Convert target grid coordinates back to world coordinates for the serf's target
-                                    const treeWorldX = (targetGridX - (this.gameMap.width - 1) / 2) * TILE_SIZE; // Used imported TILE_SIZE
-                                    const treeWorldZ = (targetGridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE; // Used imported TILE_SIZE
+                                    const treeWorldX = (targetGridX - (this.gameMap.width - 1) / 2) * TILE_SIZE; 
+                                    const treeWorldZ = (targetGridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE; 
                                     
                                     serf.targetResourceNode = { 
                                         gridX: targetGridX, // Store grid coords for reference
@@ -247,7 +254,18 @@ class SerfManager {
                     } else {
                         serf.gatheringTimer += deltaTime;
                         if (serf.gatheringTimer >= serf.gatheringDuration) {
-                            console.log(`Serf ID ${serf.id} (Woodcutter) finished gathering at tree.`);
+                            console.log(`Serf ID ${serf.id} (Woodcutter) finished gathering at tree node: grid(${serf.targetResourceNode.gridX}, ${serf.targetResourceNode.gridZ}).`);
+                            
+                            // Attempt to deplete the node on the map
+                            if (this.gameMap && typeof this.gameMap.depleteResourceNode === 'function') {
+                                const remaining = this.gameMap.depleteResourceNode(serf.targetResourceNode.gridX, serf.targetResourceNode.gridZ, 1);
+                                if (remaining <= 0) {
+                                    console.log(`Serf ID ${serf.id} noted that node (${serf.targetResourceNode.gridX}, ${serf.targetResourceNode.gridZ}) is now depleted.`);
+                                }
+                            } else {
+                                console.warn("SerfManager: gameMap.depleteResourceNode method not found. Node depletion on map skipped.");
+                            }
+
                             serf.hasResource = true; 
                             
                             // Create and attach log model
