@@ -599,12 +599,14 @@ class SerfManager {
                         }
                     }
                 } else if (serf.state === 'following_path') { // Forester also uses this
+                    // console.log(`DEBUG PATH FOLLOW: Serf ${serf.id} (${serf.profession}) Path length: ${serf.path ? serf.path.length : 'null'}. Has targetPlantingSpot: ${!!serf.targetPlantingSpot}, Has targetResourceNode: ${!!serf.targetResourceNode}, HasResource: ${serf.hasResource}`);
                     if (!serf.path || serf.path.length === 0) {
-                        if (serf.targetPlantingSpot) { // Arrived at planting spot
+                        console.log(`DEBUG PATH FOLLOW END: Serf ${serf.id} path empty. TargetPlantingSpot: ${!!serf.targetPlantingSpot}, TargetResourceNode: ${!!serf.targetResourceNode}, HasResource: ${serf.hasResource}`);
+                        if (serf.targetPlantingSpot && serf.profession === SERF_PROFESSIONS.FORESTER) { // Arrived at planting spot
                             console.log(`Serf ID ${serf.id} (Forester) arrived at planting spot. State: planting_tree.`);
                             serf.state = 'planting_tree';
                             serf.gatheringTimer = 0; // Reuse gatheringTimer for planting
-                        } else if (serf.targetResourceNode && !serf.hasResource) { // Woodcutter/Stonemason arriving at resource
+                        } else if (serf.targetResourceNode && !serf.hasResource && (serf.profession === SERF_PROFESSIONS.WOODCUTTER || serf.profession === SERF_PROFESSIONS.STONEMASON)) { // Woodcutter/Stonemason arriving at resource
                              console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at resource node. State: gathering_resource.`);
                              serf.state = 'gathering_resource'; serf.gatheringTimer = 0;
                         } else if (serf.currentJob && serf.hasResource) { // Woodcutter/Stonemason returning with resource
@@ -618,22 +620,27 @@ class SerfManager {
                         return; 
                     }
                     // ... (path following movement logic remains the same)
-                    const nextWaypointGrid = serf.path[0];
+                    const nextWaypointGrid = serf.path[0]; // This will error if path became empty and we didn't return
                     const nextWaypointWorldX = (nextWaypointGrid.x - (this.gameMap.width - 1) / 2) * TILE_SIZE;
                     const nextWaypointWorldZ = (nextWaypointGrid.y - (this.gameMap.height - 1) / 2) * TILE_SIZE;
                     const targetPosition = new THREE.Vector3(nextWaypointWorldX, 0, nextWaypointWorldZ);
                     const direction = targetPosition.clone().sub(serf.model.position).normalize();
                     const distanceToWaypoint = serf.model.position.distanceTo(targetPosition);
                     const moveDistance = serf.serfSpeed * deltaTime;
+
+                    // console.log(`DEBUG PATH FOLLOW MOVE: Serf ${serf.id} to waypoint (${nextWaypointGrid.x},${nextWaypointGrid.y}). Dist: ${distanceToWaypoint.toFixed(2)}, MoveDist: ${moveDistance.toFixed(2)}`);
+
                     if (distanceToWaypoint <= moveDistance || distanceToWaypoint < 0.05) {
-                        serf.model.position.copy(targetPosition); serf.path.shift();
+                        serf.model.position.copy(targetPosition); 
+                        serf.path.shift(); 
+                        // console.log(`DEBUG PATH FOLLOW SHIFT: Serf ${serf.id} reached waypoint. Path remaining: ${serf.path ? serf.path.length : 'null'}`);
                     } else {
                         serf.model.position.add(direction.multiplyScalar(moveDistance));
                     }
 
                 } else if (serf.state === 'planting_tree') {
                     if (!serf.targetPlantingSpot) {
-                        console.warn(`Serf ID ${serf.id} (Forester) in planting_tree without target. Resetting.`);
+                        console.warn(`Serf ID ${serf.id} (Forester) in planting_tree without targetPlantingSpot. Resetting.`);
                         serf.state = 'seeking_planting_spot';
                     } else {
                         serf.gatheringTimer += deltaTime; // Reuse for planting time
