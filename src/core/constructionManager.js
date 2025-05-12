@@ -55,6 +55,16 @@ export const BUILDING_DATA = {
         jobProfession: SERF_PROFESSIONS.FISHERMAN,
         requiredTool: RESOURCE_TYPES.TOOLS_FISHING_ROD,
     },
+    GEOLOGISTS_HUT: {
+        name: "Geologist's Hut",
+        cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 5 },
+        creator: Buildings.createGeologistsHut,
+        tier: 1,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.GEOLOGIST,
+        // Geologists don't produce resources directly, they find them.
+        // No required tool specified for Geologist in game.md for basic scanning.
+    },
     // Add more buildings as they are implemented for construction
     // Example:
     // SAWMILL: { name: 'Sawmill', cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 }, creator: Buildings.createSawmill, tier: 2 },

@@ -287,6 +287,7 @@ if (uiOverlay) {
 
 
         button.addEventListener('click', () => {
+            console.log(`UI: Construction button clicked for building key: ${building.key}, name: ${building.name}`); // Added log
             constructionManager.startPlacement(building.key);
         });
         constructionPanel.appendChild(button);

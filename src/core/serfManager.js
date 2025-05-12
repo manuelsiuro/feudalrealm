@@ -755,18 +755,36 @@ class SerfManager {
                     const distanceToWaypoint = serf.model.position.distanceTo(targetPosition);
                     const moveDistance = serf.serfSpeed * deltaTime;
 
-                    // console.log(`DEBUG PATH FOLLOW MOVE: Serf ${serf.id} to waypoint (${nextWaypointGrid.x},${nextWaypointGrid.y}). Dist: ${distanceToWaypoint.toFixed(2)}, MoveDist: ${moveDistance.toFixed(2)}`);
+                    console.log(`DEBUG PATH MOVE: Serf ${serf.id} (${serf.profession}) to WP (${nextWaypointGrid.x},${nextWaypointGrid.y}). Dist: ${distanceToWaypoint.toFixed(3)}, MoveDist: ${moveDistance.toFixed(5)}. PathLen: ${serf.path.length}`);
 
                     if (distanceToWaypoint <= moveDistance || distanceToWaypoint < 0.05) {
+                        console.log(`DEBUG PATH SHIFT: Serf ${serf.id} reached waypoint. Old path len: ${serf.path.length}`);
                         serf.model.position.copy(targetPosition); 
                         serf.path.shift(); 
-                        // console.log(`DEBUG PATH FOLLOW SHIFT: Serf ${serf.id} reached waypoint. Path remaining: ${serf.path ? serf.path.length : 'null'}`);
+                        console.log(`DEBUG PATH SHIFT: Serf ${serf.id} new path len: ${serf.path ? serf.path.length : 'null'}`);
                     } else {
                         serf.model.position.add(direction.multiplyScalar(moveDistance));
                     }
 
-                } else if (serf.state === 'planting_tree') { // Forester logic (unchanged)
-                    // ... (existing planting_tree logic) ...
+                } else if (serf.state === 'planting_tree') { 
+                    // Forester logic
+                    if (!serf.targetPlantingSpot) {
+                        console.warn(`Serf ID ${serf.id} (Forester) in planting_tree without targetPlantingSpot. Resetting.`);
+                        serf.state = 'seeking_planting_spot';
+                    } else {
+                        serf.gatheringTimer += deltaTime; 
+                        if (serf.gatheringTimer >= serf.gatheringDuration) { 
+                            console.log(`Serf ID ${serf.id} (Forester) finished planting at grid(${serf.targetPlantingSpot.gridX}, ${serf.targetPlantingSpot.gridZ}).`);
+                            if (this.gameMap && typeof this.gameMap.changeTileType === 'function') {
+                                this.gameMap.changeTileType(serf.targetPlantingSpot.gridX, serf.targetPlantingSpot.gridZ, TERRAIN_TYPES.FOREST);
+                            } else {
+                                console.warn("SerfManager: gameMap.changeTileType method not found. Planting on map skipped.");
+                            }
+                            serf.targetPlantingSpot = null;
+                            serf.gatheringTimer = 0;
+                            serf.state = 'working'; 
+                        }
+                    }
                 } else if (serf.state === 'scanning') { // Geologist logic
                     if (!serf.targetScanSpot) {
                         console.warn(`Serf ID ${serf.id} (Geologist) in scanning state without targetScanSpot. Resetting.`);
