@@ -96,15 +96,22 @@ class SerfManager {
             id: this.serfIdCounter++,
             model: serfModel,
             profession: profession,
-            state: 'idle', // States: 'idle', 'moving_to_job', 'working', 'seeking_resource_node', 'seeking_planting_spot', 'following_path', 'gathering_resource', 'planting_tree', 'returning_resource', 'depositing_resource'
-            target: null, // Target Vector3, building object, or resource node object
+            // States: 'idle', 'moving_to_job', 'working', 
+            // Resource Gathering: 'seeking_resource_node', 'following_path', 'gathering_resource', 'returning_resource', 'depositing_resource'
+            // Forester: 'seeking_planting_spot', 'following_path', 'planting_tree'
+            // Geologist: 'seeking_scan_spot', 'following_path', 'scanning'
+            state: 'idle', 
+            target: null, // Generic target (Vector3, building, node)
             path: [],
             currentJob: null, 
-            targetResourceNode: null, // e.g., {x, z, type: 'tree'}
-            gatheringTimer: 0,
-            gatheringDuration: 5, // seconds to gather resource or plant tree
-            hasResource: false, // Tracks if serf is carrying a resource (not applicable for Forester planting)
+            targetResourceNode: null, // For Woodcutter/Stonemason
+            targetPlantingSpot: null, // For Forester
+            targetScanSpot: null, // For Geologist {gridX, gridZ, worldX, worldZ}
+            gatheringTimer: 0, // Reused for planting, scanning
+            gatheringDuration: 5, // seconds to gather resource, plant tree, or scan
+            hasResource: false, // Tracks if serf is carrying a resource
             serfSpeed: 1.0, // World units per second
+            scanDuration: 8, // seconds for geologist to scan a tile
             // TODO: Add tool requirements, food needs, etc.
         };
 
@@ -658,15 +665,172 @@ class SerfManager {
                         }
                     }
                 }
+            } else if (serf.profession === SERF_PROFESSIONS.GEOLOGIST && serf.currentJob) {
+                console.log(`DEBUG: Serf ID ${serf.id} is a Geologist. Current state: ${serf.state}`);
+                if (serf.state === 'working' || serf.state === 'idle') {
+                    serf.state = 'seeking_scan_spot';
+                    console.log(`Serf ID ${serf.id} (Geologist at ${serf.currentJob.info.name}) is now seeking a scan spot.`);
+                }
+
+                if (serf.state === 'seeking_scan_spot') {
+                    if (!serf.targetScanSpot) {
+                        const searchRadius = 12; // Geologists might search further
+                        const buildingPos = serf.currentJob.model.position;
+                        const buildingGridX = Math.round(buildingPos.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                        const buildingGridZ = Math.round(buildingPos.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                        console.log(`Serf ID ${serf.id} (Geologist) searching for unscanned tile. Hut at grid (${buildingGridX}, ${buildingGridZ}). Radius: ${searchRadius}`);
+                        
+                        let foundSpot = false;
+                        // Search strategy: spiral outwards or random within radius? Let's try random nearby first.
+                        for (let attempt = 0; attempt < 20; attempt++) { // Limit attempts to avoid infinite loop
+                            const dx = Math.floor(Math.random() * (2 * searchRadius + 1)) - searchRadius;
+                            const dz = Math.floor(Math.random() * (2 * searchRadius + 1)) - searchRadius;
+                            if (dx === 0 && dz === 0) continue; 
+
+                            const targetGridX = buildingGridX + dx;
+                            const targetGridZ = buildingGridZ + dz;
+                            const tile = this.gameMap.getTile(targetGridX, targetGridZ);
+                            
+                            // Check if tile exists, is scannable (e.g., not water), and hasn't been scanned yet
+                            if (tile && tile.terrainType !== TERRAIN_TYPES.WATER && !tile.scannedByGeologist) {
+                                const spotWorldX = (targetGridX - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                                const spotWorldZ = (targetGridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                                
+                                serf.targetScanSpot = { gridX: targetGridX, gridZ: targetGridZ, worldX: spotWorldX, worldZ: spotWorldZ };
+                                
+                                const startGridX = Math.round(serf.model.position.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
+                                const startGridZ = Math.round(serf.model.position.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
+                                console.log(`Serf ID ${serf.id} (Geologist) found unscanned tile at grid (${targetGridX}, ${targetGridZ}). Attempting path from (${startGridX},${startGridZ}).`);
+                                const path = findPathAStar({x: startGridX, y: startGridZ}, {x: targetGridX, y: targetGridZ}, this.gameMap, TERRAIN_TYPES);
+
+                                if (path && path.length > 0) {
+                                    serf.path = path;
+                                    serf.state = 'following_path'; 
+                                    console.log(`Serf ID ${serf.id} (Geologist) path to scan spot found. Length: ${serf.path.length}. State: ${serf.state}.`);
+                                    foundSpot = true;
+                                    break; 
+                                } else {
+                                    console.log(`Serf ID ${serf.id} (Geologist) found unscanned tile (${targetGridX},${targetGridZ}) but no path. Trying again.`);
+                                    serf.targetScanSpot = null; // Clear invalid target
+                                }
+                            }
+                        } // End search attempts
+
+                        if (!foundSpot) {
+                            console.log(`Serf ID ${serf.id} (Geologist) found no pathable unscanned tiles nearby after ${20} attempts. Idling.`);
+                            serf.state = 'idle'; // Or maybe return to hut state?
+                        }
+                    }
+                } else if (serf.state === 'following_path') { // Geologist also uses this
+                    // console.log(`DEBUG PATH FOLLOW: Serf ${serf.id} (${serf.profession}) Path length: ${serf.path ? serf.path.length : 'null'}. Has targetPlantingSpot: ${!!serf.targetPlantingSpot}, Has targetResourceNode: ${!!serf.targetResourceNode}, HasResource: ${serf.hasResource}`);
+                    if (!serf.path || serf.path.length === 0) {
+                        console.log(`DEBUG PATH FOLLOW END: Serf ${serf.id} path empty. TargetPlantingSpot: ${!!serf.targetPlantingSpot}, TargetResourceNode: ${!!serf.targetResourceNode}, TargetScanSpot: ${!!serf.targetScanSpot}, HasResource: ${serf.hasResource}`);
+                        if (serf.targetPlantingSpot && serf.profession === SERF_PROFESSIONS.FORESTER) { // Forester arrived at planting spot
+                            console.log(`Serf ID ${serf.id} (Forester) arrived at planting spot. State: planting_tree.`);
+                            serf.state = 'planting_tree';
+                            serf.gatheringTimer = 0; 
+                        } else if (serf.targetResourceNode && !serf.hasResource && (serf.profession === SERF_PROFESSIONS.WOODCUTTER || serf.profession === SERF_PROFESSIONS.STONEMASON)) { // Woodcutter/Stonemason arriving at resource
+                             console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at resource node. State: gathering_resource.`);
+                             serf.state = 'gathering_resource'; serf.gatheringTimer = 0;
+                        } else if (serf.currentJob && serf.hasResource) { // Woodcutter/Stonemason returning with resource
+                             console.log(`Serf ID ${serf.id} (${serf.profession}) arrived at ${serf.currentJob.info.name} to deposit. State: depositing_resource.`);
+                             serf.state = 'depositing_resource';
+                        } else if (serf.targetScanSpot && serf.profession === SERF_PROFESSIONS.GEOLOGIST) { // Geologist arrived at scan spot
+                            console.log(`Serf ID ${serf.id} (Geologist) arrived at scan spot (${serf.targetScanSpot.gridX}, ${serf.targetScanSpot.gridZ}). State: scanning.`);
+                            serf.state = 'scanning';
+                            serf.gatheringTimer = 0; // Reuse timer for scanning duration
+                        } else {
+                            console.warn(`Serf ID ${serf.id} (${serf.profession}) finished path but unclear next state. Idling.`);
+                            serf.state = 'idle';
+                        }
+                        serf.target = null; 
+                        return; 
+                    }
+                    // ... (path following movement logic remains the same)
+                    const nextWaypointGrid = serf.path[0]; 
+                    const nextWaypointWorldX = (nextWaypointGrid.x - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+                    const nextWaypointWorldZ = (nextWaypointGrid.y - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+                    const targetPosition = new THREE.Vector3(nextWaypointWorldX, 0, nextWaypointWorldZ);
+                    const direction = targetPosition.clone().sub(serf.model.position).normalize();
+                    const distanceToWaypoint = serf.model.position.distanceTo(targetPosition);
+                    const moveDistance = serf.serfSpeed * deltaTime;
+
+                    // console.log(`DEBUG PATH FOLLOW MOVE: Serf ${serf.id} to waypoint (${nextWaypointGrid.x},${nextWaypointGrid.y}). Dist: ${distanceToWaypoint.toFixed(2)}, MoveDist: ${moveDistance.toFixed(2)}`);
+
+                    if (distanceToWaypoint <= moveDistance || distanceToWaypoint < 0.05) {
+                        serf.model.position.copy(targetPosition); 
+                        serf.path.shift(); 
+                        // console.log(`DEBUG PATH FOLLOW SHIFT: Serf ${serf.id} reached waypoint. Path remaining: ${serf.path ? serf.path.length : 'null'}`);
+                    } else {
+                        serf.model.position.add(direction.multiplyScalar(moveDistance));
+                    }
+
+                } else if (serf.state === 'planting_tree') { // Forester logic (unchanged)
+                    // ... (existing planting_tree logic) ...
+                } else if (serf.state === 'scanning') { // Geologist logic
+                    if (!serf.targetScanSpot) {
+                        console.warn(`Serf ID ${serf.id} (Geologist) in scanning state without targetScanSpot. Resetting.`);
+                        serf.state = 'seeking_scan_spot';
+                    } else {
+                        serf.gatheringTimer += deltaTime; // Reuse timer for scanning
+                        if (serf.gatheringTimer >= serf.scanDuration) { 
+                            const { gridX, gridZ } = serf.targetScanSpot;
+                            console.log(`Serf ID ${serf.id} (Geologist) finished scanning at grid(${gridX}, ${gridZ}).`);
+                            
+                            // Determine if a deposit is found (simple random chance for now)
+                            // This should ideally be based on pre-generated hidden map data
+                            let foundDeposit = false;
+                            const scanRoll = Math.random();
+                            const tile = this.gameMap.getTile(gridX, gridZ);
+
+                            // Higher chance on mountains
+                            const baseChance = (tile && tile.terrainType === TERRAIN_TYPES.MOUNTAIN) ? 0.3 : 0.1; 
+                            
+                            if (scanRoll < baseChance) { // Chance to find *something*
+                                const depositRoll = Math.random();
+                                let depositType = 'iron';
+                                let richness = 'low';
+                                if (depositRoll < 0.5) { // 50% chance Iron
+                                    depositType = 'iron';
+                                    richness = Math.random() < 0.3 ? 'high' : (Math.random() < 0.6 ? 'medium' : 'low');
+                                } else if (depositRoll < 0.8) { // 30% chance Coal
+                                    depositType = 'coal';
+                                     richness = Math.random() < 0.3 ? 'high' : (Math.random() < 0.6 ? 'medium' : 'low');
+                                } else { // 20% chance Gold
+                                    depositType = 'gold';
+                                    richness = Math.random() < 0.2 ? 'high' : (Math.random() < 0.5 ? 'medium' : 'low'); // Gold more likely low
+                                }
+                                
+                                if (this.gameMap && typeof this.gameMap.revealDeposit === 'function') {
+                                    this.gameMap.revealDeposit(gridX, gridZ, depositType, richness);
+                                    foundDeposit = true;
+                                } else {
+                                    console.warn("SerfManager: gameMap.revealDeposit method not found. Deposit finding skipped.");
+                                }
+                            } 
+                            
+                            // If nothing found, still mark as scanned
+                            if (!foundDeposit && this.gameMap && typeof this.gameMap.markTileScanned === 'function') {
+                                console.log(`Serf ID ${serf.id} (Geologist) found no deposits at (${gridX}, ${gridZ}). Marking as scanned.`);
+                                this.gameMap.markTileScanned(gridX, gridZ);
+                            }
+
+                            serf.targetScanSpot = null;
+                            serf.gatheringTimer = 0;
+                            serf.state = 'working'; // Go back to working (will lead to seeking new spot)
+                        }
+                    }
+                }
             }
             
             // Generic 'working' state logic (like food consumption for non-resource gathering jobs)
             // This is for serfs whose job is AT the building (e.g., Miller, Baker)
-            // Woodcutters/Stonemasons/Foresters are handled above and their 'working' state is a transition to seeking.
+            // Woodcutters/Stonemasons/Foresters/Geologists are handled above and their 'working' state is a transition to seeking.
             if (serf.model && serf.state === 'working' && serf.currentJob && 
                 serf.profession !== SERF_PROFESSIONS.WOODCUTTER &&
                 serf.profession !== SERF_PROFESSIONS.STONEMASON &&
-                serf.profession !== SERF_PROFESSIONS.FORESTER) {
+                serf.profession !== SERF_PROFESSIONS.FORESTER &&
+                serf.profession !== SERF_PROFESSIONS.GEOLOGIST) { // Added Geologist exclusion
                 const jobInfo = serf.currentJob.info;
                 if (jobInfo.consumesFood && jobInfo.foodConsumptionRate && jobInfo.foodCheckIntervalMs) {
                     const now = Date.now();
