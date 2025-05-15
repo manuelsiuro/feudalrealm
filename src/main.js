@@ -37,9 +37,9 @@ if (!uiOverlay) {
     console.error('Error: #ui-overlay not found. UI will not be rendered.');
 }
 
-// Scene
+// Scene with improved background
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x607D8B); // A neutral bluish-grey
+scene.background = new THREE.Color(0x87CEEB); // Lighter sky blue color for better visibility
 
 // Camera
 const camera = new THREE.PerspectiveCamera(
@@ -50,11 +50,20 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(0, 15, 15); // Default camera position for map view
 
-// Renderer
-const renderer = new THREE.WebGLRenderer({ canvas: gameCanvas || undefined, antialias: true });
+// Renderer with enhanced settings for better visual quality
+const renderer = new THREE.WebGLRenderer({ 
+    canvas: gameCanvas || undefined, 
+    antialias: true,
+    powerPreference: 'high-performance',
+    precision: 'highp' // Use high precision for better color accuracy
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio); 
-renderer.outputColorSpace = THREE.SRGBColorSpace; // Set output color space
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
+renderer.outputColorSpace = THREE.SRGBColorSpace; // Proper color space
+renderer.toneMapping = THREE.ACESFilmicToneMapping; // Adds cinematic quality with better contrast
+renderer.toneMappingExposure = 1.2; // Slightly brighter scene
+renderer.shadowMap.enabled = true; // Enable shadows
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadow edges
 
 if (!gameCanvas && appContainer) {
     appContainer.appendChild(renderer.domElement);
@@ -77,13 +86,19 @@ outlinePass.visibleEdgeColor.set('#ffffff');
 outlinePass.hiddenEdgeColor.set('#190a05'); // Optional: color for occluded parts
 composer.addPass(outlinePass);
 
-// FXAA pass for anti-aliasing if needed, especially with post-processing
+// Re-enable FXAA pass for better anti-aliasing
 let fxaaPass = new ShaderPass(FXAAShader);
 const pixelRatio = renderer.getPixelRatio();
-// Temporarily remove FXAA pass to check its impact on color
-// fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
-// fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
-// composer.addPass(fxaaPass);
+fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+composer.addPass(fxaaPass);
+
+// Import additional post-processing passes
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
+
+// Add gamma correction pass for accurate colors
+const gammaCorrectionPass = new ShaderPass(GammaCorrectionShader);
+composer.addPass(gammaCorrectionPass);
 
 
 // Controls
@@ -94,14 +109,30 @@ controls.minDistance = 5;
 controls.maxDistance = 100;
 controls.target.set(0, 0, 0); // Look at origin initially
 
-// Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Reverted intensity
+// Enhanced lighting setup for better scene illumination
+// Add ambient light with warmer tone for better visibility
+const ambientLight = new THREE.AmbientLight(0xfffbf0, 0.65); // Slightly warm tint and increased intensity
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Reverted intensity
-directionalLight.position.set(20, 30, 15);
-// directionalLight.castShadow = true; // Enable shadows later - can be performance intensive
+// Main directional light (sun-like) with shadows
+const directionalLight = new THREE.DirectionalLight(0xffffeb, 1.0); // Slightly increased intensity
+directionalLight.position.set(30, 50, 30); // Higher position for better coverage
+directionalLight.castShadow = true; // Enable shadows for depth and realism
+directionalLight.shadow.mapSize.width = 2048; // Higher resolution shadows
+directionalLight.shadow.mapSize.height = 2048;
+directionalLight.shadow.camera.near = 0.5;
+directionalLight.shadow.camera.far = 150;
+directionalLight.shadow.camera.left = -50;
+directionalLight.shadow.camera.right = 50;
+directionalLight.shadow.camera.top = 50;
+directionalLight.shadow.camera.bottom = -50;
+directionalLight.shadow.bias = -0.0003; // Reduces shadow acne
 scene.add(directionalLight);
+
+// Add a secondary fill light from another angle
+const fillLight = new THREE.DirectionalLight(0xc4d7f0, 0.35); // Slight blue tint
+fillLight.position.set(-20, 30, -20); // Coming from opposite angle
+scene.add(fillLight);
 
 // Placeholder for game elements (map, units, etc.)
 const gameElementsGroup = new THREE.Group();
@@ -264,14 +295,16 @@ if (uiOverlay) {
                 button.style.setProperty('--md-sys-color-primary', '#4CAF50'); // Green for available
                 button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text
                 button.style.fontWeight = 'bold'; // Make text more readable
+                button.style.opacity = '1';
                 button.style.cursor = 'pointer';
                 button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'; // Restore shadow
                 button.removeAttribute('title');
                 button.disabled = false;
             } else {
-                // Apply disabled styling using Material Design 3 variables
-                button.style.setProperty('--md-sys-color-primary', '#B71C1C'); // Dark red for disabled
+                // Apply disabled styling with much better visibility
+                button.style.setProperty('--md-sys-color-primary', '#FF0000'); // Darker gray for better contrast
                 button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text for better readability
+                button.style.opacity = '0.95'; // Almost fully visible for better readability
                 button.style.cursor = 'not-allowed';
                 button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)'; // Subtle shadow
                 
@@ -491,19 +524,13 @@ if (uiOverlay) {
                 </div>
             </div>
         `;
-        // Apply premium styling for all building buttons with enhanced visibility and modern design using MD3 variables
+        // Apply premium styling for all building buttons with enhanced visibility and modern design
         button.style.setProperty('--md-filled-button-label-text-font-size', '1em');
         button.style.setProperty('--md-filled-button-container-height', 'auto');
-        
-        // MD3 disabled state styling
-        button.style.setProperty('--md-filled-button-disabled-container-opacity', '0.95'); // Higher visibility for disabled container
+        // Add proper MD3 disabled styles that will apply to disabled buttons
+        button.style.setProperty('--md-filled-button-disabled-container-opacity', '0.9'); // Higher visibility for disabled container
         button.style.setProperty('--md-filled-button-disabled-label-text-color', 'rgba(255, 255, 255, 0.95)'); // Bright text for disabled
         button.style.setProperty('--md-filled-button-disabled-label-text-opacity', '0.95'); // Higher visibility for disabled text
-        
-        // MD3 interaction states (improved hover and press feedback)
-        button.style.setProperty('--md-filled-button-hover-state-layer-opacity', '0.12'); // Subtle hover effect
-        button.style.setProperty('--md-filled-button-pressed-state-layer-opacity', '0.2'); // More visible press effect
-        
         button.style.padding = '14px 12px';
         button.style.borderRadius = '8px';
         button.style.margin = '0 0 12px 0'; // Increased spacing between buttons
@@ -518,7 +545,7 @@ if (uiOverlay) {
         button.style.setProperty('--md-sys-color-primary', '#4CAF50'); // Default green for enabled buttons
         button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text for enabled
 
-        // Add hover effect for enabled buttons with improved MD3 compatibility
+        // Add hover effect for enabled buttons
         button.addEventListener('mouseover', () => {
             if (!button.disabled) {
                 button.style.transform = 'translateY(-2px)';
@@ -530,7 +557,7 @@ if (uiOverlay) {
         button.addEventListener('mouseout', () => {
             if (!button.disabled) {
                 button.style.transform = '';
-                button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
+                button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
                 button.style.setProperty('--md-sys-color-primary', '#4CAF50'); // Back to default green
             }
         });
@@ -817,28 +844,40 @@ function clearSelectedUnitInfo() {
 }
 
 
-// Handle window resize
+// Handle window resize with improved updates for all components
 window.addEventListener('resize', () => {
+    // Update camera
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight); // Update composer
     
-    // If FXAAPass was used, its resolution uniform would also need update here
-    // const pixelRatio = renderer.getPixelRatio();
-    // fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
-    // fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+    // Update renderer
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
+    // Update composer and all passes
+    composer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Update FXAA pass resolution uniforms
+    const pixelRatio = renderer.getPixelRatio();
+    fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+    fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+    
+    // Update outline pass
+    outlinePass.resolution.set(window.innerWidth, window.innerHeight);
 }, false);
 
-// Animation loop
+// Enhanced animation loop with better timing
 function animate() {
     requestAnimationFrame(animate);
     
+    const deltaTime = clock.getDelta(); // Get delta time once for all updates
+    
+    // Update controls and game logic
     controls.update();
     constructionManager.update(); 
-    serfManager.update(clock.getDelta(), constructionManager.placedBuildings); 
+    serfManager.update(deltaTime, constructionManager.placedBuildings); 
     
-    // renderer.render(scene, camera); // Use composer instead
+    // Render the scene with improved post-processing
     composer.render();
 }
 
