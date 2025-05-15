@@ -208,11 +208,103 @@ if (uiOverlay) {
         resourcePanel.appendChild(table);
     }
     
-    resourceManager.onChange(updateResourceUI); // Register listener
+    // Register listener to update both resource display and building buttons
+    resourceManager.onChange((stockpiles) => {
+        updateResourceUI(stockpiles);
+        updateBuildingButtons();
+    });
+    
+    // We'll define buildingButtons here so it's available to all functions
+    const buildingButtons = new Map();
+    
+    // Helper function to check if resources are sufficient for building
+    function checkSufficientResources(cost) {
+        if (Object.keys(cost).length === 0) return true;
+        
+        return Object.entries(cost).every(([resourceType, amount]) => {
+            const available = resourceManager.getResourceCount(resourceType);
+            return available >= amount;
+        });
+    }
+    
+    // Helper function to build a visual cost display with resource availability indicators
+    function buildCostDisplay(cost) {
+        if (Object.keys(cost).length === 0) return '<div style="font-size: 0.85em;"><b>Cost:</b> Free</div>';
+        
+        let costItems = Object.entries(cost).map(([res, amount]) => {
+            const available = resourceManager.getResourceCount(res);
+            const resourceName = res
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+                
+            // Enhanced color coding with better contrast and visibility
+            const color = available >= amount ? '#00FF00' : '#FF3333';
+            const availableText = `<span style="color: ${color}; font-weight: bold; text-shadow: 0px 0px 2px rgba(0,0,0,0.8);">${available}/${amount}</span>`;
+            
+            return `<div style="margin: 3px 0; display: flex; justify-content: space-between;"><span style="font-weight: 500;">${resourceName}:</span> ${availableText}</div>`;
+        }).join('');
+        
+        return `<div style="font-size: 0.9em; margin-bottom: 5px; background-color: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; text-align: center;"><b>Cost</b></div>${costItems}`;
+    }
+    
+    // Function to update button states based on current resources
+    function updateBuildingButtons() {
+        buildingButtons.forEach(({ button, cost }, key) => {
+            const canBuild = checkSufficientResources(cost);
+            
+            // Update the cost display with current resource values
+            const costContainer = button.querySelector('div > div:nth-child(2)');
+            if (costContainer) {
+                costContainer.innerHTML = buildCostDisplay(cost).replace('<div style="font-size: 0.85em; margin-bottom: 2px;"><b>Cost:</b></div>', '');
+            }
+            
+            if (canBuild) {
+                // Reset to enabled styling with improved contrast
+                button.style.setProperty('--md-sys-color-primary', '#4CAF50'); // Green for available
+                button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text
+                button.style.fontWeight = 'bold'; // Make text more readable
+                button.style.cursor = 'pointer';
+                button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)'; // Restore shadow
+                button.removeAttribute('title');
+                button.disabled = false;
+            } else {
+                // Apply disabled styling using Material Design 3 variables
+                button.style.setProperty('--md-sys-color-primary', '#B71C1C'); // Dark red for disabled
+                button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text for better readability
+                button.style.cursor = 'not-allowed';
+                button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)'; // Subtle shadow
+                
+                // Create tooltip showing missing resources with more details
+                const missingResources = Object.entries(cost)
+                    .filter(([resource, amount]) => resourceManager.getResourceCount(resource) < amount)
+                    .map(([resource, amount]) => {
+                        const current = resourceManager.getResourceCount(resource);
+                        // Format resource name more clearly
+                        const resourceName = resource
+                            .split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                            .join(' ');
+                        return `${resourceName}: ${current}/${amount}`;
+                    })
+                    .join(', ');
+                
+                // Enhanced tooltip with more context
+                button.title = missingResources ? `Missing Resources: ${missingResources}` : 'Not enough resources';
+                
+                // Clear any hover transformations
+                button.style.transform = '';
+                button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)'; // Flatter shadow for disabled
+                
+                button.disabled = true;
+            }
+        });
+    }
     
     // Initial display after resourceManager is ready and UI panel exists
     if (resourcePanel) {
        updateResourceUI(resourceManager.getAllStockpiles());
+       // updateBuildingButtons will be called after construction panel is created
     }
 
 
@@ -315,11 +407,13 @@ if (uiOverlay) {
     constructionPanel.style.bottom = '10px';
     constructionPanel.style.right = '10px';
     constructionPanel.style.padding = '10px';
-    constructionPanel.style.backgroundColor = 'rgba(0,0,0,0.7)';
-    constructionPanel.style.borderRadius = '8px';
+    constructionPanel.style.backgroundColor = 'rgba(25,25,35,0.85)'; // Slightly blue-tinted dark background for better contrast
+    constructionPanel.style.borderRadius = '10px';
     constructionPanel.style.display = 'flex';
     constructionPanel.style.flexDirection = 'column';
     constructionPanel.style.gap = '8px';
+    constructionPanel.style.border = '1px solid rgba(255,255,255,0.2)'; // Subtle border
+    constructionPanel.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)'; // Stronger shadow for panel
     constructionPanel.style.maxHeight = '320px'; // Fixed height for about 5-6 buttons
     constructionPanel.style.overflowY = 'auto'; // Make it scrollable
     constructionPanel.style.overflowX = 'hidden'; // Prevent horizontal scrolling
@@ -349,37 +443,140 @@ if (uiOverlay) {
     `;
     document.head.appendChild(scrollbarStyle);
     
+    // Add title for building panel
+    const buildingsTitle = document.createElement('h3');
+    buildingsTitle.textContent = 'Buildings';
+    buildingsTitle.style.textAlign = 'center';
+    buildingsTitle.style.margin = '2px 0 12px 0';
+    buildingsTitle.style.color = 'white';
+    buildingsTitle.style.textShadow = '0 0 5px rgba(0,0,0,0.5)';
+    buildingsTitle.style.letterSpacing = '1px';
+    buildingsTitle.style.fontSize = '1.3em';
+    buildingsTitle.style.paddingBottom = '6px';
+    buildingsTitle.style.borderBottom = '1px solid rgba(255,255,255,0.3)';
+    constructionPanel.appendChild(buildingsTitle);
+    
+    // buildingButtons is already declared above
     const availableBuildings = constructionManager.getAvailableBuildings();
     availableBuildings.forEach(building => {
         const button = document.createElement('md-filled-button');
         
-        let costString = 'Cost: ';
+        // Create more readable resource cost display
+        let costDisplay = '';
         if (Object.keys(building.cost).length > 0) {
-            costString += Object.entries(building.cost)
-                .map(([res, amount]) => `${amount} ${res.replace('_',' ').toUpperCase()}`)
-                .join(', ');
+            // Format each resource with proper capitalization and spacing
+            costDisplay = Object.entries(building.cost)
+                .map(([res, amount]) => {
+                    // Format resource name with first letter capitalized only (not all caps)
+                    const resourceName = res
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                        .join(' ');
+                    return `${amount} ${resourceName}`;
+                })
+                .join('<br>');
         } else {
-            costString += 'Free';
+            costDisplay = 'Free';
         }
+        
+        // Create more detailed cost display with visual indicators
+        const costString = buildCostDisplay(building.cost);
 
+        // Create a more detailed and visually appealing button content with enhanced visibility and contrast
         button.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                <div>${building.name}</div>
-                <div style="font-size: 0.8em; opacity: 0.8;">${costString}</div>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
+                <div style="font-weight: bold; margin-bottom: 6px; font-size: 1.1em; text-shadow: 0px 0px 3px rgba(0,0,0,0.5); letter-spacing: 0.5px;">${building.name}</div>
+                <div style="font-size: 0.9em; width: 100%; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.4); background-color: rgba(0,0,0,0.15); border-radius: 4px; padding: 6px 3px 3px 3px;">
+                    ${costString}
+                </div>
             </div>
         `;
-        button.style.setProperty('--md-filled-button-label-text-font-size', '0.9em'); // Adjust if needed
-        button.style.setProperty('--md-filled-button-container-height', 'auto'); // Allow button to grow
-        button.style.padding = '8px 12px';
+        // Apply premium styling for all building buttons with enhanced visibility and modern design using MD3 variables
+        button.style.setProperty('--md-filled-button-label-text-font-size', '1em');
+        button.style.setProperty('--md-filled-button-container-height', 'auto');
+        
+        // MD3 disabled state styling
+        button.style.setProperty('--md-filled-button-disabled-container-opacity', '0.95'); // Higher visibility for disabled container
+        button.style.setProperty('--md-filled-button-disabled-label-text-color', 'rgba(255, 255, 255, 0.95)'); // Bright text for disabled
+        button.style.setProperty('--md-filled-button-disabled-label-text-opacity', '0.95'); // Higher visibility for disabled text
+        
+        // MD3 interaction states (improved hover and press feedback)
+        button.style.setProperty('--md-filled-button-hover-state-layer-opacity', '0.12'); // Subtle hover effect
+        button.style.setProperty('--md-filled-button-pressed-state-layer-opacity', '0.2'); // More visible press effect
+        
+        button.style.padding = '14px 12px';
         button.style.borderRadius = '8px';
+        button.style.margin = '0 0 12px 0'; // Increased spacing between buttons
+        button.style.width = '100%'; // Make all buttons same width
+        button.style.boxSizing = 'border-box'; // Include padding in width calculation
+        button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)'; // Enhanced shadow for depth
+        button.style.transition = 'all 0.2s ease-in-out'; // Smooth transitions for hover effects
+        button.style.border = '1px solid rgba(255,255,255,0.15)'; // Subtle border for definition
+        button.style.letterSpacing = '0.3px'; // Improved text readability
+        
+        // Add custom CSS variables for both enabled and disabled states
+        button.style.setProperty('--md-sys-color-primary', '#4CAF50'); // Default green for enabled buttons
+        button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text for enabled
+
+        // Add hover effect for enabled buttons with improved MD3 compatibility
+        button.addEventListener('mouseover', () => {
+            if (!button.disabled) {
+                button.style.transform = 'translateY(-2px)';
+                button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.4)';
+                button.style.setProperty('--md-sys-color-primary', '#5DBF60'); // Slightly lighter green on hover
+            }
+        });
+        
+        button.addEventListener('mouseout', () => {
+            if (!button.disabled) {
+                button.style.transform = '';
+                button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
+                button.style.setProperty('--md-sys-color-primary', '#4CAF50'); // Back to default green
+            }
+        });
 
         button.addEventListener('click', () => {
             console.log(`UI: Construction button clicked for building key: ${building.key}, name: ${building.name}`); // Added log
             constructionManager.startPlacement(building.key);
         });
+        
+        // Check if resources are sufficient and set initial button state
+        const canBuild = checkSufficientResources(building.cost);
+        if (!canBuild) {
+            // Enhanced styling for disabled buttons with better visibility using MD3 variables
+            button.style.setProperty('--md-sys-color-primary', '#B71C1C'); // Dark red for disabled buttons
+            button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF'); // White text for better readability
+            button.style.cursor = 'not-allowed'; // Show "not-allowed" cursor on hover
+            button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)'; // Subtle shadow
+            
+            // Add a distinctive border to highlight it's disabled but visible
+            button.style.border = '1px solid rgba(255,255,255,0.2)';
+            
+            // Add a tooltip to explain why it's disabled
+            button.title = 'Not enough resources';
+            
+            // Using disabled attribute for functionality but maintaining visibility with our custom MD3 properties
+            button.disabled = true;
+        } else {
+            // Add bold text for enabled buttons to improve readability
+            button.style.fontWeight = 'bold';
+        }
+        
+        // Store button in the map for later updates
+        buildingButtons.set(building.key, { button, cost: building.cost });
+        
         constructionPanel.appendChild(button);
     });
+    
+    // checkSufficientResources and updateBuildingButtons functions are already declared above
+    
+    // Register listener for resource changes to update building buttons
+    // (We need to modify the existing onChange registration since we created a new one)
     uiOverlay.appendChild(constructionPanel);
+    
+    // Now that the construction panel is created and all building buttons are added,
+    // we can update their states based on available resources
+    updateBuildingButtons();
 }
 
 // Mouse move for placement indicator
