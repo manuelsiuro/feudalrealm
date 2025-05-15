@@ -110,10 +110,193 @@ export const BUILDING_DATA = {
         foodConsumptionRate: 0.1, // e.g., 0.1 units per some interval while working
         foodCheckIntervalMs: 10000, // Check/consume food every 10 seconds
     },
-
-    // Add more buildings as they are implemented for construction
-    // Example:
-    // SAWMILL: { name: 'Sawmill', cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 }, creator: Buildings.createSawmill, tier: 2 },
+    FARM: {
+        name: 'Farm',
+        cost: { [RESOURCE_TYPES.WOOD]: 20 },
+        creator: Buildings.createFarm,
+        tier: 1,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.FARMER,
+        producesResource: RESOURCE_TYPES.GRAIN,
+        productionRate: 1,
+        productionIntervalMs: 15000,
+        requiredTool: RESOURCE_TYPES.TOOLS_SCYTHE
+    },
+    IRON_MINE: {
+        name: 'Iron Mine',
+        cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
+        creator: () => Buildings.createMine('iron'),
+        tier: 2,
+        jobSlots: 2,
+        jobProfession: SERF_PROFESSIONS.MINER,
+        producesResource: RESOURCE_TYPES.IRON_ORE,
+        productionRate: 1,
+        productionIntervalMs: 20000,
+        requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH],
+        foodConsumptionRate: 0.2,
+        foodCheckIntervalMs: 12000
+    },
+    COAL_MINE: {
+        name: 'Coal Mine',
+        cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
+        creator: () => Buildings.createMine('coal'),
+        tier: 2,
+        jobSlots: 2,
+        jobProfession: SERF_PROFESSIONS.MINER,
+        producesResource: RESOURCE_TYPES.COAL_ORE,
+        productionRate: 1,
+        productionIntervalMs: 18000,
+        requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH],
+        foodConsumptionRate: 0.2,
+        foodCheckIntervalMs: 12000
+    },
+    GOLD_MINE: {
+        name: 'Gold Mine',
+        cost: { [RESOURCE_TYPES.WOOD]: 40, [RESOURCE_TYPES.STONE]: 20 },
+        creator: () => Buildings.createMine('gold'),
+        tier: 3,
+        jobSlots: 2,
+        jobProfession: SERF_PROFESSIONS.MINER,
+        producesResource: RESOURCE_TYPES.GOLD_ORE,
+        productionRate: 1,
+        productionIntervalMs: 30000,
+        requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH],
+        foodConsumptionRate: 0.2,
+        foodCheckIntervalMs: 12000
+    },
+    SAWMILL: {
+        name: 'Sawmill',
+        cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 },
+        creator: Buildings.createSawmill,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.SAWMILL_WORKER,
+        producesResource: RESOURCE_TYPES.PLANKS,
+        productionRate: 1,
+        productionIntervalMs: 12000,
+        requiredTool: RESOURCE_TYPES.TOOLS_HAMMER,
+        consumesFood: [RESOURCE_TYPES.BREAD],
+        foodConsumptionRate: 0.1,
+        foodCheckIntervalMs: 15000
+    },
+    WINDMILL: {
+        name: 'Windmill',
+        cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 15 },
+        creator: Buildings.createWindmill,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.MILLER,
+        producesResource: RESOURCE_TYPES.FLOUR,
+        productionRate: 1,
+        productionIntervalMs: 15000,
+        requiredTool: RESOURCE_TYPES.TOOLS_HAMMER
+    },
+    SLAUGHTERHOUSE: {
+        name: 'Slaughterhouse',
+        cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 10 },
+        creator: Buildings.createSlaughterhouse,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.BUTCHER,
+        producesResource: RESOURCE_TYPES.MEAT,
+        productionRate: 2,
+        productionIntervalMs: 15000,
+        requiredTool: RESOURCE_TYPES.TOOLS_AXE
+    },
+    IRON_SMELTER: {
+        name: 'Iron Smelter',
+        cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 20 },
+        creator: Buildings.createIronSmelter,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.SMELTER_WORKER,
+        producesResource: RESOURCE_TYPES.IRON_BARS,
+        productionRate: 1,
+        productionIntervalMs: 20000,
+        consumesFood: [RESOURCE_TYPES.BREAD],
+        foodConsumptionRate: 0.1,
+        foodCheckIntervalMs: 20000
+    },
+    TOOLMAKERS_WORKSHOP: {
+        name: "Toolmaker's Workshop",
+        cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 10 },
+        creator: Buildings.createToolmakersWorkshop,
+        tier: 3,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.TOOLMAKER,
+        producesResource: null, // Produces multiple tool types
+        productionRate: 1,
+        productionIntervalMs: 25000,
+        requiredTool: RESOURCE_TYPES.TOOLS_HAMMER
+    },
+    GOLDSMITHS_MINT: {
+        name: "Goldsmith's Mint",
+        cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 20 },
+        creator: Buildings.createGoldsmithsMint,
+        tier: 3,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.GOLDSMITH,
+        producesResource: RESOURCE_TYPES.GOLD_BARS,
+        productionRate: 1,
+        productionIntervalMs: 30000
+    },
+    BLACKSMITH_ARMORY: {
+        name: 'Blacksmith Armory',
+        cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
+        creator: Buildings.createBlacksmithArmory,
+        tier: 3,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.BLACKSMITH,
+        producesResource: null, // Produces weapons and tools
+        productionRate: 1,
+        productionIntervalMs: 25000,
+        requiredTool: RESOURCE_TYPES.TOOLS_HAMMER
+    },
+    GUARD_HUT: {
+        name: 'Guard Hut',
+        cost: { [RESOURCE_TYPES.WOOD]: 15, [RESOURCE_TYPES.STONE]: 5 },
+        creator: Buildings.createGuardHut,
+        tier: 1,
+        jobSlots: 1
+    },
+    WATCHTOWER: {
+        name: 'Watchtower',
+        cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 15 },
+        creator: Buildings.createWatchtower,
+        tier: 2,
+        jobSlots: 1
+    },
+    BARRACKS_FORTRESS: {
+        name: 'Barracks/Fortress',
+        cost: { [RESOURCE_TYPES.STONE]: 100, [RESOURCE_TYPES.WOOD]: 50 },
+        creator: Buildings.createBarracksFortress,
+        tier: 3,
+        jobSlots: 5
+    },
+    WAREHOUSE_STOREHOUSE: {
+        name: 'Warehouse/Storehouse',
+        cost: { [RESOURCE_TYPES.WOOD]: 50, [RESOURCE_TYPES.STONE]: 20 },
+        creator: Buildings.createWarehouseStorehouse,
+        tier: 1
+    },
+    BUILDERS_HUT: {
+        name: "Builder's Hut",
+        cost: { [RESOURCE_TYPES.WOOD]: 5 },
+        creator: Buildings.createBuildersHut,
+        tier: 1,
+        jobSlots: 3,
+        jobProfession: SERF_PROFESSIONS.BUILDER
+    },
+    HARBOR: {
+        name: 'Harbor',
+        cost: { [RESOURCE_TYPES.WOOD]: 75, [RESOURCE_TYPES.STONE]: 25 },
+        creator: Buildings.createHarbor,
+        tier: 3,
+        jobSlots: 2
+    }
 };
 
 class ConstructionManager {

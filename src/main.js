@@ -320,6 +320,34 @@ if (uiOverlay) {
     constructionPanel.style.display = 'flex';
     constructionPanel.style.flexDirection = 'column';
     constructionPanel.style.gap = '8px';
+    constructionPanel.style.maxHeight = '320px'; // Fixed height for about 5-6 buttons
+    constructionPanel.style.overflowY = 'auto'; // Make it scrollable
+    constructionPanel.style.overflowX = 'hidden'; // Prevent horizontal scrolling
+    
+    // Custom scrollbar styling
+    constructionPanel.style.scrollbarWidth = 'thin'; // Firefox
+    constructionPanel.style.scrollbarColor = 'rgba(255, 255, 255, 0.5) rgba(0, 0, 0, 0.3)'; // Firefox
+    
+    // Add a custom scrollbar style for Webkit browsers (Chrome, Safari)
+    const scrollbarStyle = document.createElement('style');
+    scrollbarStyle.textContent = `
+        #construction-panel::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        #construction-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+        #construction-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+        }
+        #construction-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.7);
+        }
+    `;
+    document.head.appendChild(scrollbarStyle);
     
     const availableBuildings = constructionManager.getAvailableBuildings();
     availableBuildings.forEach(building => {
