@@ -65,6 +65,52 @@ export const BUILDING_DATA = {
         // Geologists don't produce resources directly, they find them.
         // No required tool specified for Geologist in game.md for basic scanning.
     },
+    BLACKSMITH: {
+        name: 'Blacksmith',
+        cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 },
+        creator: Buildings.createBlacksmithArmory,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.BLACKSMITH,
+        producesResource: RESOURCE_TYPES.TOOLS_AXE, // Example of producing tools
+        productionRate: 1, // 1 tool per interval
+        productionIntervalMs: 10000, // 10 seconds for 1 tool
+        requiredTool: RESOURCE_TYPES.TOOLS_HAMMER, // Example of a tool needed for production
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], // Added for testing
+        foodConsumptionRate: 0.1, // e.g., 0.1 units per some interval while working
+        foodCheckIntervalMs: 10000, // Check/consume food every 10 seconds
+    },
+    BAKERY: {
+        name: 'Bakery',
+        cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 5 },
+        creator: Buildings.createBakery,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.BAKER,
+        producesResource: RESOURCE_TYPES.BREAD,
+        productionRate: 1, // 1 bread per interval
+        productionIntervalMs: 10000, // 10 seconds for 1 bread
+        requiredTool: RESOURCE_TYPES.TOOLS_HAMMER, // Example of a tool needed for production
+        consumesFood: [RESOURCE_TYPES.GRAIN], // Needs grain to produce bread
+        foodConsumptionRate: 0.1, // e.g., 0.1 units per some interval while working
+        foodCheckIntervalMs: 10000, // Check/consume food every 10 seconds
+    },
+    PIG_FARM: {
+        name: 'Pig Farm',
+        cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 10 },
+        creator: Buildings.createPigFarm,
+        tier: 2,
+        jobSlots: 1,
+        jobProfession: SERF_PROFESSIONS.PIG_FARMER,
+        producesResource: RESOURCE_TYPES.PIGS, // Assuming pigs are a resource type
+        productionRate: 1, // 1 pig per interval
+        productionIntervalMs: 20000, // 20 seconds for 1 pig
+        requiredTool: RESOURCE_TYPES.TOOLS_SCYTHE, // Example of a tool needed for production
+        consumesFood: [RESOURCE_TYPES.GRAIN], // Needs grain to produce pigs
+        foodConsumptionRate: 0.1, // e.g., 0.1 units per some interval while working
+        foodCheckIntervalMs: 10000, // Check/consume food every 10 seconds
+    },
+
     // Add more buildings as they are implemented for construction
     // Example:
     // SAWMILL: { name: 'Sawmill', cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 }, creator: Buildings.createSawmill, tier: 2 },

@@ -147,7 +147,7 @@ if (uiOverlay) {
     resourcePanel.style.backgroundColor = 'rgba(0,0,0,0.6)';
     resourcePanel.style.borderRadius = '8px';
     resourcePanel.style.color = 'white';
-    resourcePanel.style.minWidth = '150px';
+    resourcePanel.style.minWidth = '180px';
     uiOverlay.appendChild(resourcePanel);
 
     // Mini-map Placeholder
@@ -174,16 +174,38 @@ if (uiOverlay) {
     // Define updateResourceUI in a scope accessible by the event listener
     function updateResourceUI(stockpiles) {
         if (!resourcePanel) return; // Guard if resourcePanel isn't created yet
-        resourcePanel.innerHTML = '<h3>Resources</h3>';
-        const ul = document.createElement('ul');
-        ul.style.listStyle = 'none';
-        ul.style.padding = '0';
+        
+        // Create centered title
+        resourcePanel.innerHTML = '<h3 style="text-align: center; margin-bottom: 10px;">Resources</h3>';
+        
+        // Create table for better alignment
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        
         for (const type in stockpiles) {
-            const li = document.createElement('li');
-            li.textContent = `${type.replace('_', ' ').toUpperCase()}: ${stockpiles[type]}`;
-            ul.appendChild(li);
+            const row = table.insertRow();
+            
+            // Convert resource name: remove underscores, capitalize first letter only
+            const resourceName = type.split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+                
+            // Create left cell for resource name
+            const labelCell = row.insertCell(0);
+            labelCell.textContent = resourceName;
+            labelCell.style.textAlign = 'left';
+            labelCell.style.padding = '2px 0';
+            
+            // Create right cell for resource value
+            const valueCell = row.insertCell(1);
+            valueCell.textContent = stockpiles[type];
+            valueCell.style.textAlign = 'right';
+            valueCell.style.fontWeight = 'bold';
+            valueCell.style.padding = '2px 0';
         }
-        resourcePanel.appendChild(ul);
+        
+        resourcePanel.appendChild(table);
     }
     
     resourceManager.onChange(updateResourceUI); // Register listener
@@ -202,8 +224,10 @@ if (uiOverlay) {
     testButtonContainer.style.display = 'flex';
     testButtonContainer.style.gap = '8px';
 
+    /*
     const addWoodButton = document.createElement('md-filled-button');
     addWoodButton.textContent = '+10 Wood';
+    addWoodButton.style.borderRadius = '4px';
     addWoodButton.addEventListener('click', () => {
         console.log('UI: "+10 Wood" button clicked. Calling addResource.');
         const result = resourceManager.addResource(RESOURCE_TYPES.WOOD, 10);
@@ -213,6 +237,7 @@ if (uiOverlay) {
 
     const removeStoneButton = document.createElement('md-outlined-button');
     removeStoneButton.textContent = '-5 Stone';
+    removeStoneButton.style.borderRadius = '4px';
     removeStoneButton.addEventListener('click', () => resourceManager.removeResource(RESOURCE_TYPES.STONE, 5));
     testButtonContainer.appendChild(removeStoneButton);
 
@@ -220,9 +245,9 @@ if (uiOverlay) {
     const addAxeButtonWrapper = document.createElement('div'); // Wrapper div
     const addAxeButton = document.createElement('md-filled-button');
     addAxeButton.textContent = '+1 Axe';
+    addAxeButton.style.borderRadius = '4px';
     // Note: Event listener is now on the wrapper
     addAxeButtonWrapper.appendChild(addAxeButton); 
-    
     addAxeButtonWrapper.addEventListener('click', () => {
         console.log('UI: Wrapper for "+1 Axe" button clicked. Attempting to add 1 TOOLS_AXE.');
         resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
@@ -233,6 +258,7 @@ if (uiOverlay) {
 
     const addBreadButton = document.createElement('md-filled-button');
     addBreadButton.textContent = '+1 Bread';
+    addBreadButton.style.borderRadius = '4px';
     addBreadButton.addEventListener('click', () => {
         console.log('UI: "+1 Bread" button clicked.');
         resourceManager.addResource(RESOURCE_TYPES.BREAD, 1);
@@ -241,11 +267,44 @@ if (uiOverlay) {
 
     const addPickaxeButton = document.createElement('md-filled-button');
     addPickaxeButton.textContent = '+1 Pickaxe';
+    addPickaxeButton.style.borderRadius = '4px';
     addPickaxeButton.addEventListener('click', () => {
         console.log('UI: "+1 Pickaxe" button clicked.');
         resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
     });
     testButtonContainer.appendChild(addPickaxeButton);
+    */
+    // All Cheat buttons
+    const addCheatButton = document.createElement('md-filled-button');
+    addCheatButton.textContent = '+1000 All';
+    addCheatButton.style.borderRadius = '4px';
+    addCheatButton.addEventListener('click', () => {
+        console.log('UI: "+1000 All" button clicked.');
+        resourceManager.addResource(RESOURCE_TYPES.WOOD, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.STONE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.GRAIN, 1000);
+        
+        resourceManager.addResource(RESOURCE_TYPES.FISH, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.IRON_ORE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.COAL_ORE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.GOLD_ORE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.PLANKS, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.FLOUR, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.BREAD, 1000);
+
+        resourceManager.addResource(RESOURCE_TYPES.MEAT, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.IRON_BARS, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.GOLD_BARS, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_SCYTHE, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_HAMMER, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.TOOLS_FISHING_ROD, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.SWORDS, 1000);
+        resourceManager.addResource(RESOURCE_TYPES.SHIELDS, 1000);
+    });
+    testButtonContainer.appendChild(addCheatButton);
+
     
     uiOverlay.appendChild(testButtonContainer);
 
@@ -284,7 +343,7 @@ if (uiOverlay) {
         button.style.setProperty('--md-filled-button-label-text-font-size', '0.9em'); // Adjust if needed
         button.style.setProperty('--md-filled-button-container-height', 'auto'); // Allow button to grow
         button.style.padding = '8px 12px';
-
+        button.style.borderRadius = '8px';
 
         button.addEventListener('click', () => {
             console.log(`UI: Construction button clicked for building key: ${building.key}, name: ${building.name}`); // Added log
