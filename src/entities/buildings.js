@@ -545,230 +545,303 @@ export function createSlaughterhouse() {
 }
 
 export function createIronSmelter() {
-    const smelterGroup = new THREE.Group();
-    smelterGroup.name = 'Iron Smelter';
+    const group = new THREE.Group();
+    group.name = 'Iron Smelter';
     const baseUnit = 0.7;
-    const baseWidth = baseUnit * 2;
-    const baseHeight = baseUnit * 1;
-    const baseDepth = baseUnit * 1.5;
+
+    // Base
+    const baseWidth = baseUnit * 1.8;
+    const baseHeight = baseUnit * 1.2;
+    const baseDepth = baseUnit * 1.8;
     const baseGeometry = new THREE.BoxGeometry(baseWidth, baseHeight, baseDepth);
-    const baseMesh = createMesh(baseGeometry, COLORS.DARK_GREY, 'Base');
-    smelterGroup.add(baseMesh);
-    const furnaceWidth = baseUnit * 0.8;
-    const furnaceHeight = baseUnit * 2.5; 
-    const furnaceDepth = baseUnit * 0.8;
-    const furnaceGeom = new THREE.CylinderGeometry(furnaceWidth / 2 * 0.8, furnaceWidth / 2, furnaceHeight, 8);
-    const furnaceMesh = createMesh(furnaceGeom, COLORS.BLACK, 'FurnaceChimney'); 
-    furnaceMesh.position.y = baseHeight / 2 + furnaceHeight / 2 - 0.1; 
-    smelterGroup.add(furnaceMesh);
+    const baseMesh = createMesh(baseGeometry, COLORS.DARK_GREY, 'SmelterBase');
+    group.add(baseMesh);
+
+    // Furnace/Chimney (taller, slightly tapering square or cylindrical cuboid)
+    const chimneyWidth = baseUnit * 0.8;
+    const chimneyHeight = baseUnit * 2.5;
+    const chimneyDepth = baseUnit * 0.8;
+    // Approximating taper by making top slightly smaller if using Cylinder, or just use Box for simplicity
+    const chimneyGeometry = new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyDepth);
+    const chimneyMesh = createMesh(chimneyGeometry, COLORS.BLACK, 'FurnaceChimney');
+    // Position it on top and slightly to one side/rear of the base
+    chimneyMesh.position.set(0, baseHeight / 2 + chimneyHeight / 2 - 0.1, -baseDepth / 4);
+    group.add(chimneyMesh);
+
+    // Glow (small bright orange or red cube at the base of the furnace/chimney)
     const glowSize = baseUnit * 0.3;
     const glowGeometry = new THREE.BoxGeometry(glowSize, glowSize, glowSize);
-    const glowMesh = createMesh(glowGeometry, COLORS.ORANGE, 'Glow');
-    glowMesh.position.set(0, baseHeight / 2 + glowSize / 2 - baseHeight * 0.1, furnaceDepth / 2 + glowSize / 2);
-    smelterGroup.add(glowMesh);
-    smelterGroup.position.y = baseHeight / 2;
-    return smelterGroup;
+    const glowMesh = createMesh(glowGeometry, COLORS.ORANGE, 'FurnaceGlow');
+    // Position at the front-bottom of the chimney
+    glowMesh.position.set(chimneyMesh.position.x, chimneyMesh.position.y - chimneyHeight / 2 + glowSize / 2, chimneyMesh.position.z + chimneyDepth / 2);
+    group.add(glowMesh);
+
+    group.position.y = baseHeight / 2;
+    return group;
 }
 
 export function createToolmakersWorkshop() {
-    const workshopGroup = new THREE.Group();
-    workshopGroup.name = "Toolmaker's Workshop";
+    const group = new THREE.Group();
+    group.name = "Toolmaker's Workshop";
     const baseUnit = 0.6;
-    const bWidth = baseUnit * 2.2;
-    const bHeight = baseUnit * 1.3;
-    const bDepth = baseUnit * 1.8;
-    const bGeometry = new THREE.BoxGeometry(bWidth, bHeight, bDepth);
-    const bMesh = createMesh(bGeometry, COLORS.BROWN, 'Building');
-    workshopGroup.add(bMesh);
-    const roofWidth = bWidth * 1.05;
-    const roofHeight = baseUnit * 0.5; 
-    const roofDepth = bDepth * 1.05;
-    const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
-    const roofMesh = createMesh(roofGeometry, COLORS.STONE_GREY, 'Roof'); 
-    roofMesh.position.y = bHeight / 2 + roofHeight / 2 - 0.05;
-    workshopGroup.add(roofMesh);
-    const anvilBaseWidth = baseUnit * 0.2;
+
+    // Building
+    const buildingWidth = baseUnit * 2.0;
+    const buildingHeight = baseUnit * 1.3;
+    const buildingDepth = baseUnit * 1.6;
+    const buildingGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+    const buildingMesh = createMesh(buildingGeometry, COLORS.BROWN, 'WorkshopBuilding');
+    group.add(buildingMesh);
+
+    // Roof
+    const roofWidth = buildingWidth * 1.1;
+    const roofHeight = baseUnit * 0.5;
+    const roofDepth = buildingDepth * 1.1;
+    const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth); // Sloped cuboid roof
+    const roofMesh = createMesh(roofGeometry, COLORS.STONE_GREY, 'WorkshopRoof'); // Changed to STONE_GREY from Grey
+    roofMesh.position.y = buildingHeight / 2 + roofHeight / 2 - 0.05;
+    group.add(roofMesh);
+
+    // Anvil (Optional: T-shaped structure of two grey cuboids)
     const anvilBaseHeight = baseUnit * 0.3;
-    const anvilTopWidth = baseUnit * 0.4;
+    const anvilBaseSize = baseUnit * 0.2;
     const anvilTopHeight = baseUnit * 0.15;
-    const anvilBaseGeo = new THREE.BoxGeometry(anvilBaseWidth, anvilBaseHeight, anvilBaseWidth);
-    const anvilBase = createMesh(anvilBaseGeo, COLORS.DARK_GREY, 'AnvilBase');
-    anvilBase.position.set(bWidth / 2 + anvilBaseWidth / 2 + 0.1, -bHeight / 2 + anvilBaseHeight / 2, 0);
-    const anvilTopGeo = new THREE.BoxGeometry(anvilTopWidth, anvilTopHeight, anvilBaseWidth);
-    const anvilTop = createMesh(anvilTopGeo, COLORS.DARK_GREY, 'AnvilTop');
-    anvilTop.position.y = anvilBaseHeight / 2 + anvilTopHeight / 2;
-    anvilBase.add(anvilTop); 
-    workshopGroup.add(anvilBase);
-    workshopGroup.position.y = bHeight / 2;
-    return workshopGroup;
+    const anvilTopWidth = baseUnit * 0.4;
+    const anvilTopDepth = baseUnit * 0.2;
+
+    const anvilBaseGeom = new THREE.BoxGeometry(anvilBaseSize, anvilBaseHeight, anvilBaseSize);
+    const anvilBaseMesh = createMesh(anvilBaseGeom, COLORS.DARK_GREY, 'AnvilBase');
+    anvilBaseMesh.position.set(buildingWidth / 2 + anvilTopWidth / 2, -buildingHeight / 2 + anvilBaseHeight / 2, 0);
+    group.add(anvilBaseMesh);
+
+    const anvilTopGeom = new THREE.BoxGeometry(anvilTopWidth, anvilTopHeight, anvilTopDepth);
+    const anvilTopMesh = createMesh(anvilTopGeom, COLORS.DARK_GREY, 'AnvilTop');
+    anvilTopMesh.position.set(0, anvilBaseHeight / 2 + anvilTopHeight / 2, 0);
+    anvilBaseMesh.add(anvilTopMesh);
+
+    group.position.y = buildingHeight / 2;
+    return group;
 }
 
 export function createGoldsmithsMint() {
-    const mintGroup = new THREE.Group();
-    mintGroup.name = "Goldsmith's Mint";
+    const group = new THREE.Group();
+    group.name = "Goldsmith / Mint"; // Adjusted name to match markdown
     const baseUnit = 0.65;
-    const bWidth = baseUnit * 2;
-    const bHeight = baseUnit * 1.4;
-    const bDepth = baseUnit * 1.6;
-    const bGeometry = new THREE.BoxGeometry(bWidth, bHeight, bDepth);
-    const bMesh = createMesh(bGeometry, COLORS.BEIGE, 'Building'); 
-    mintGroup.add(bMesh);
-    const roofWidth = bWidth * 1.05;
-    const roofHeight = baseUnit * 0.3; 
-    const roofDepth = bDepth * 1.05;
+
+    // Building (sturdy, medium-sized cuboid)
+    const buildingWidth = baseUnit * 2.0;
+    const buildingHeight = baseUnit * 1.4;
+    const buildingDepth = baseUnit * 1.6;
+    const buildingGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+    const buildingMesh = createMesh(buildingGeometry, COLORS.BEIGE, 'MintBuilding'); // Light Grey or Beige
+    group.add(buildingMesh);
+
+    // Roof (flat or slightly sloped cuboid)
+    const roofWidth = buildingWidth * 1.05;
+    const roofHeight = baseUnit * 0.3; // Flat or slightly sloped
+    const roofDepth = buildingDepth * 1.05;
     const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
-    const roofMesh = createMesh(roofGeometry, COLORS.DARK_GREY, 'Roof');
-    roofMesh.position.y = bHeight / 2 + roofHeight / 2 - 0.05;
-    mintGroup.add(roofMesh);
+    const roofMesh = createMesh(roofGeometry, COLORS.DARK_GREY, 'MintRoof');
+    roofMesh.position.y = buildingHeight / 2 + roofHeight / 2 - 0.02; // Adjust for slight slope if needed
+    group.add(roofMesh);
+
+    // Accent (prominent bright yellow cube or small pyramid on roof or above entrance)
     const accentSize = baseUnit * 0.3;
-    const accentGeometry = new THREE.BoxGeometry(accentSize, accentSize, accentSize); 
-    const accentMesh = createMesh(accentGeometry, COLORS.YELLOW, 'Accent');
+    // Using a cube for simplicity as per description "yellow cube or small pyramid"
+    const accentGeometry = new THREE.BoxGeometry(accentSize, accentSize, accentSize);
+    const accentMesh = createMesh(accentGeometry, COLORS.YELLOW, 'MintAccent');
+    // Position on the center of the roof
     accentMesh.position.y = roofHeight / 2 + accentSize / 2; 
-    roofMesh.add(accentMesh); 
-    mintGroup.position.y = bHeight / 2;
-    return mintGroup;
+    roofMesh.add(accentMesh); // Add to roof so it moves with it
+
+    group.position.y = buildingHeight / 2;
+    return group;
 }
 
 export function createBlacksmithArmory() {
-    const armoryGroup = new THREE.Group();
-    armoryGroup.name = 'Blacksmith / Armory';
+    const group = new THREE.Group();
+    group.name = 'Blacksmith / Armory';
     const baseUnit = 0.7;
-    const bWidth = baseUnit * 2.5;
-    const bHeight = baseUnit * 1.5;
-    const bDepth = baseUnit * 2;
-    const bGeometry = new THREE.BoxGeometry(bWidth, bHeight, bDepth);
-    const bMesh = createMesh(bGeometry, COLORS.DARK_GREY, 'Building'); 
-    armoryGroup.add(bMesh);
-    const roofWidth = bWidth * 1.05;
-    const roofHeight = baseUnit * 0.2;
-    const roofDepth = bDepth * 1.05;
-    const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
-    const roofMesh = createMesh(roofGeometry, COLORS.BLACK, 'Roof');
-    roofMesh.position.y = bHeight / 2 + roofHeight / 2 - 0.02;
-    armoryGroup.add(roofMesh);
-    const openingWidth = bWidth * 0.4;
-    const openingHeight = bHeight * 0.5;
-    const openingDepthVal = 0.1;
-    const openingGeometry = new THREE.BoxGeometry(openingWidth, openingHeight, openingDepthVal);
-    const openingMesh = createMesh(openingGeometry, 0x222222, 'OpeningRecess'); 
-    openingMesh.position.set(0, -bHeight / 2 + openingHeight / 2 + baseUnit * 0.1, bDepth / 2 - openingDepthVal / 2 + 0.01);
-    armoryGroup.add(openingMesh);
+
+    // Building (dark grey or black cuboid)
+    const buildingWidth = baseUnit * 2.5;
+    const buildingHeight = baseUnit * 1.5;
+    const buildingDepth = baseUnit * 2.0;
+    const buildingGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+    const buildingMesh = createMesh(buildingGeometry, COLORS.DARK_GREY, 'ArmoryBuilding');
+    group.add(buildingMesh);
+
+    // Forge Glow (orange or red glow represented by a colored cube visible from an opening)
+    // Create an opening first (indentation)
+    const openingWidth = buildingWidth * 0.4;
+    const openingHeight = buildingHeight * 0.5;
+    const openingDepth = baseUnit * 0.2; // Depth of the opening itself
+    const openingGeometry = new THREE.BoxGeometry(openingWidth, openingHeight, openingDepth);
+    const openingMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 }); // Darker interior for opening
+    const openingMesh = new THREE.Mesh(openingGeometry, openingMaterial);
+    openingMesh.name = 'ArmoryOpening';
+    // Position opening on the front face, slightly recessed
+    openingMesh.position.set(0, -buildingHeight / 2 + openingHeight / 2, buildingDepth / 2 - openingDepth / 2 + 0.01);
+    group.add(openingMesh);
+
     const glowSize = openingWidth * 0.3;
     const glowGeometry = new THREE.BoxGeometry(glowSize, glowSize, glowSize);
     const glowMesh = createMesh(glowGeometry, COLORS.ORANGE, 'ForgeGlow');
-    glowMesh.position.set(0, 0, -openingDepthVal/2 - glowSize/2); 
+    // Position glow inside the opening
+    glowMesh.position.set(0, 0, -openingDepth / 2 + glowSize / 2 + 0.05); // Slightly forward within opening
     openingMesh.add(glowMesh);
-    const chimneyWidth = baseUnit * 0.5;
+
+    // Chimney (short, wide, black cuboid chimney)
+    const chimneyWidth = baseUnit * 0.6;
     const chimneyHeight = baseUnit * 0.8;
-    const chimneyDepth = baseUnit * 0.5;
+    const chimneyDepth = baseUnit * 0.6;
     const chimneyGeometry = new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyDepth);
-    const chimneyMesh = createMesh(chimneyGeometry, COLORS.BLACK, 'Chimney');
-    chimneyMesh.position.set(bWidth / 2 - chimneyWidth, bHeight / 2 + chimneyHeight / 2, -bDepth / 2 + chimneyDepth);
-    armoryGroup.add(chimneyMesh);
-    armoryGroup.position.y = bHeight / 2;
-    return armoryGroup;
+    const chimneyMesh = createMesh(chimneyGeometry, COLORS.BLACK, 'ArmoryChimney');
+    // Position chimney on the roof, towards the back
+    chimneyMesh.position.set(0, buildingHeight / 2 + chimneyHeight / 2, -buildingDepth / 4);
+    group.add(chimneyMesh);
+
+    group.position.y = buildingHeight / 2;
+    return group;
 }
 
 export function createGuardHut() {
-    const hutGroup = new THREE.Group();
-    hutGroup.name = 'Guard Hut';
+    const group = new THREE.Group();
+    group.name = 'Guard Hut';
     const baseUnit = 0.5;
-    const sWidth = baseUnit * 1.5;
-    const sHeight = baseUnit * 1.2;
-    const sDepth = baseUnit * 1.5;
-    const sGeometry = new THREE.BoxGeometry(sWidth, sHeight, sDepth);
-    const sMesh = createMesh(sGeometry, COLORS.DARK_GREY, 'Structure');
-    hutGroup.add(sMesh);
-    const bannerSize = sWidth * 0.8;
-    const bannerHeight = baseUnit * 0.2;
-    const bannerGeometry = new THREE.BoxGeometry(bannerSize, bannerHeight, bannerSize);
-    const bannerMesh = createMesh(bannerGeometry, COLORS.RED, 'Banner');
-    bannerMesh.position.y = sHeight / 2 + bannerHeight / 2;
-    hutGroup.add(bannerMesh);
-    hutGroup.position.y = sHeight / 2;
-    return hutGroup;
+
+    // Structure (small, robust-looking square cuboid)
+    const structureWidth = baseUnit * 1.8; // Square base
+    const structureHeight = baseUnit * 1.5;
+    const structureDepth = baseUnit * 1.8;
+    const structureGeometry = new THREE.BoxGeometry(structureWidth, structureHeight, structureDepth);
+    const structureMesh = createMesh(structureGeometry, COLORS.DARK_GREY, 'GuardHutStructure');
+    group.add(structureMesh);
+
+    // Roof/Banner (slightly smaller, flat red cuboid or a small red pyramid on top)
+    // Using a flat red cuboid as a simpler banner/roof accent
+    const bannerWidth = structureWidth * 0.8;
+    const bannerHeight = baseUnit * 0.25;
+    const bannerDepth = structureDepth * 0.8;
+    const bannerGeometry = new THREE.BoxGeometry(bannerWidth, bannerHeight, bannerDepth);
+    const bannerMesh = createMesh(bannerGeometry, COLORS.RED, 'GuardHutBanner');
+    bannerMesh.position.y = structureHeight / 2 + bannerHeight / 2;
+    group.add(bannerMesh);
+
+    group.position.y = structureHeight / 2;
+    return group;
 }
 
 export function createWatchtower() {
-    const towerGroup = new THREE.Group();
-    towerGroup.name = 'Watchtower';
-    const baseUnit = 0.4; 
+    const group = new THREE.Group();
+    group.name = 'Watchtower';
+    const baseUnit = 0.4; // As per markdown
+
+    // Tower (tall, relatively thin cylinder or square prism)
     const towerRadius = baseUnit * 1.2;
-    const towerHeight = baseUnit * 5;
-    const towerSegments = 8; 
-    const towerGeometry = new THREE.CylinderGeometry(towerRadius, towerRadius * 0.9, towerHeight, towerSegments); 
-    const towerMesh = createMesh(towerGeometry, COLORS.STONE_GREY, 'Tower');
-    towerGroup.add(towerMesh);
-    const topRadius = towerRadius * 1.2;
-    const topHeight = baseUnit * 0.8;
-    const topGeometry = new THREE.CylinderGeometry(topRadius, topRadius, topHeight, towerSegments);
-    const topMesh = createMesh(topGeometry, COLORS.STONE_GREY, 'TopPlatform');
-    topMesh.position.y = towerHeight / 2 + topHeight / 2 - 0.1;
-    towerGroup.add(topMesh);
-    const crenellationSize = baseUnit * 0.3;
-    const numCrenellations = towerSegments;
+    const towerHeight = baseUnit * 7; // Adjusted for "very tall" perception, was 5
+    const towerSegments = 8; // For cylinder or square prism approximation
+    const towerGeometry = new THREE.CylinderGeometry(towerRadius * 0.9, towerRadius, towerHeight, towerSegments); // Slightly tapered
+    const towerMesh = createMesh(towerGeometry, COLORS.STONE_GREY, 'WatchtowerTower');
+    group.add(towerMesh);
+
+    // Top (slightly wider cylinder or square prism on top)
+    const topPlatformRadius = towerRadius * 1.3;
+    const topPlatformHeight = baseUnit * 1.0;
+    const topPlatformGeometry = new THREE.CylinderGeometry(topPlatformRadius, topPlatformRadius, topPlatformHeight, towerSegments);
+    const topPlatformMesh = createMesh(topPlatformGeometry, COLORS.STONE_GREY, 'WatchtowerTopPlatform');
+    topPlatformMesh.position.y = towerHeight / 2 + topPlatformHeight / 2 - 0.05; // Sit on top
+    group.add(topPlatformMesh);
+
+    // Crenellations (small cubes around its upper edge)
+    const crenellationSize = baseUnit * 0.4;
+    const numCrenellations = towerSegments; // Match tower segments for a consistent look
     for (let i = 0; i < numCrenellations; i++) {
         const angle = (i / numCrenellations) * Math.PI * 2;
-        const crenGeo = new THREE.BoxGeometry(crenellationSize, crenellationSize * 1.2, crenellationSize);
+        // Make crenellations cuboid as per "small cubes"
+        const crenGeo = new THREE.BoxGeometry(crenellationSize, crenellationSize * 1.2, crenellationSize * 0.8);
         const cren = createMesh(crenGeo, COLORS.STONE_GREY, `Crenellation_${i}`);
         cren.position.set(
-            Math.cos(angle) * (topRadius - crenellationSize / 3),
-            topHeight / 2 + (crenellationSize * 1.2) / 2,
-            Math.sin(angle) * (topRadius - crenellationSize / 3)
+            Math.cos(angle) * (topPlatformRadius - crenellationSize / 3), 
+            topPlatformHeight / 2 + (crenellationSize * 1.2) / 2 - 0.05, 
+            Math.sin(angle) * (topPlatformRadius - crenellationSize / 3)
         );
-        cren.lookAt(0, cren.position.y, 0); 
-        topMesh.add(cren); 
+        // Orient crenellations to face outwards, aligning with the circular platform edge
+        cren.lookAt(new THREE.Vector3(0, cren.position.y, 0)); // Simple lookAt center
+        cren.rotation.y += Math.PI; // Correct orientation after lookAt if needed
+        topPlatformMesh.add(cren);
     }
-    const flagRadius = baseUnit * 0.2;
-    const flagHeight = baseUnit * 0.5;
-    const flagGeometry = new THREE.ConeGeometry(flagRadius, flagHeight, 4);
-    const flagMesh = createMesh(flagGeometry, COLORS.RED, 'Flag');
-    flagMesh.position.y = topHeight / 2 + flagHeight / 2;
-    flagMesh.rotation.y = Math.PI / 4;
-    topMesh.add(flagMesh);
-    towerGroup.position.y = towerHeight / 2;
-    return towerGroup;
+
+    // Flag (small red pyramid on the very top)
+    const flagBaseRadius = baseUnit * 0.15;
+    const flagHeight = baseUnit * 0.6;
+    const flagGeometry = new THREE.ConeGeometry(flagBaseRadius, flagHeight, 4); // Pyramid shape
+    const flagMesh = createMesh(flagGeometry, COLORS.RED, 'WatchtowerFlag');
+    flagMesh.position.y = topPlatformHeight / 2 + flagHeight / 2; // On top of the platform
+    flagMesh.rotation.y = Math.PI / 4; // Align one face of pyramid
+    topPlatformMesh.add(flagMesh); // Add to top platform
+
+    group.position.y = towerHeight / 2;
+    return group;
 }
 
 export function createBarracksFortress() {
     const fortressGroup = new THREE.Group();
     fortressGroup.name = 'Barracks / Fortress';
-    const baseUnit = 0.9;
-    const mainWidth = baseUnit * 4.5;
-    const mainHeight = baseUnit * 2.2;
-    const mainDepth = baseUnit * 3.5;
+    const baseUnit = 0.9; // As per markdown: Large footprint
+
+    // Main Structure (large, wide, medium-height cuboid)
+    const mainWidth = baseUnit * 4.5; // "wide"
+    const mainHeight = baseUnit * 2.2; // "medium-height"
+    const mainDepth = baseUnit * 3.5; // "wide"
     const mainGeometry = new THREE.BoxGeometry(mainWidth, mainHeight, mainDepth);
-    const mainMesh = createMesh(mainGeometry, COLORS.DARK_GREY, 'MainStructure'); 
+    const mainMesh = createMesh(mainGeometry, COLORS.DARK_GREY, 'MainStructure'); // Dark Grey or Black
     fortressGroup.add(mainMesh);
-    const towerWidth = baseUnit * 1;
-    const towerHeight = mainHeight * 1.2; 
-    const towerDepth = baseUnit * 1;
+
+    // Towers (Optional: Smaller square cuboids at the corners, slightly taller)
+    const numTowers = 4; // Standard four corner towers
+    const towerWidth = baseUnit * 1.0; // "Smaller square cuboids"
+    const towerHeight = mainHeight * 1.2; // "slightly taller than the main structure"
+    const towerDepth = baseUnit * 1.0;
+    const towerGeometry = new THREE.BoxGeometry(towerWidth, towerHeight, towerDepth);
+
     const towerPositions = [
         { x: mainWidth / 2 - towerWidth / 2, z: mainDepth / 2 - towerDepth / 2 },
         { x: -mainWidth / 2 + towerWidth / 2, z: mainDepth / 2 - towerDepth / 2 },
         { x: mainWidth / 2 - towerWidth / 2, z: -mainDepth / 2 + towerDepth / 2 },
         { x: -mainWidth / 2 + towerWidth / 2, z: -mainDepth / 2 + towerDepth / 2 },
     ];
+
     towerPositions.forEach((pos, index) => {
-        const towerGeo = new THREE.BoxGeometry(towerWidth, towerHeight, towerDepth);
-        const tower = createMesh(towerGeo, COLORS.DARK_GREY, `FortressTower_${index}`);
-        tower.position.set(pos.x, -mainHeight/2 + towerHeight/2 , pos.z); 
+        const tower = createMesh(towerGeometry, COLORS.DARK_GREY, `FortressTower_${index}`);
+        // Towers should be grounded relative to the main structure's base, then rise up.
+        // The main structure's center is at y=0 for the group before final y adjustment.
+        // So, tower base should align with main structure base (-mainHeight/2)
+        // And its center will be at -mainHeight/2 + towerHeight/2.
+        tower.position.set(pos.x, -mainHeight / 2 + towerHeight / 2, pos.z);
+        fortressGroup.add(tower);
+
+        // Accents: Red pyramidal flags on any towers
         const flagRadius = towerWidth * 0.15;
         const flagHeight = towerWidth * 0.4;
-        const flagGeo = new THREE.ConeGeometry(flagRadius, flagHeight, 4);
+        const flagGeo = new THREE.ConeGeometry(flagRadius, flagHeight, 4); // Pyramid
         const flag = createMesh(flagGeo, COLORS.RED, `TowerFlag_${index}`);
-        flag.position.y = towerHeight / 2 + flagHeight / 2;
-        flag.rotation.y = Math.PI / 4;
-        tower.add(flag);
-        fortressGroup.add(tower);
+        flag.position.y = towerHeight / 2 + flagHeight / 2; // Position flag on top of the tower
+        flag.rotation.y = Math.PI / 4; // Align pyramid face
+        tower.add(flag); // Add flag to the tower
     });
+    
+    // Central Flag (Optional, but good for "prominent points")
     const centralFlagRadius = baseUnit * 0.2;
     const centralFlagHeight = baseUnit * 0.6;
     const centralFlagGeo = new THREE.ConeGeometry(centralFlagRadius, centralFlagHeight, 4);
     const centralFlag = createMesh(centralFlagGeo, COLORS.RED, 'CentralFlag');
+    // Position on top of the main structure's roof
     centralFlag.position.y = mainHeight / 2 + centralFlagHeight / 2;
     centralFlag.rotation.y = Math.PI / 4;
-    fortressGroup.add(centralFlag);
+    mainMesh.add(centralFlag); // Add to mainMesh so it's centered on the roof
+
+    // Adjust group position so its base is at y=0
     fortressGroup.position.y = mainHeight / 2;
     return fortressGroup;
 }
@@ -776,35 +849,56 @@ export function createBarracksFortress() {
 export function createWarehouseStorehouse() {
     const warehouseGroup = new THREE.Group();
     warehouseGroup.name = 'Warehouse / Storehouse';
-    const baseUnit = 0.8;
-    const bWidth = baseUnit * 5;
-    const bHeight = baseUnit * 1.8;
-    const bDepth = baseUnit * 2.5;
+    const baseUnit = 0.8; // "Large footprint"
+
+    // Building (long, wide, plain cuboid)
+    const bWidth = baseUnit * 5; // "long, wide"
+    const bHeight = baseUnit * 1.8; // "medium height"
+    const bDepth = baseUnit * 2.5; // "long, wide"
     const bGeometry = new THREE.BoxGeometry(bWidth, bHeight, bDepth);
-    const bMesh = createMesh(bGeometry, COLORS.BEIGE, 'Building'); 
+    const bMesh = createMesh(bGeometry, COLORS.BEIGE, 'Building'); // Light Brown or Beige
     warehouseGroup.add(bMesh);
-    const roofWidth = bWidth * 1.02; 
-    const roofHeight = baseUnit * 0.4;
-    const roofDepth = bDepth * 1.02;
+
+    // Roof (simple, large, slightly sloped cuboid)
+    const roofWidth = bWidth * 1.02; // Slightly overhang
+    const roofHeight = baseUnit * 0.4; // "slightly sloped" - represented by flat cuboid for simplicity
+    const roofDepth = bDepth * 1.02; // Slightly overhang
     const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
-    const roofMesh = createMesh(roofGeometry, COLORS.DARK_BROWN, 'Roof'); 
-    roofMesh.position.y = bHeight / 2 + roofHeight / 2 - 0.05;
+    const roofMesh = createMesh(roofGeometry, COLORS.DARK_BROWN, 'Roof'); // Darker Brown or Grey
+    roofMesh.position.y = bHeight / 2 + roofHeight / 2 - 0.05; // Sit on top, slight sink to ensure no gap
     warehouseGroup.add(roofMesh);
-    const doorWidth = baseUnit * 0.8;
-    const doorHeight = bHeight * 0.6;
-    const doorDepthVal = 0.05; 
-    const doorPositions = [
-        { x: -bWidth / 4, z: bDepth / 2 - doorDepthVal / 2 + 0.01, side: 'front' },
-        { x: bWidth / 4, z: bDepth / 2 - doorDepthVal / 2 + 0.01, side: 'front' },
-        { x: -bWidth / 4, z: -bDepth / 2 + doorDepthVal / 2 - 0.01, side: 'back' },
-        { x: bWidth / 4, z: -bDepth / 2 + doorDepthVal / 2 - 0.01, side: 'back' },
-    ];
-    doorPositions.forEach((pos, index) => {
-        const doorGeo = new THREE.BoxGeometry(doorWidth, doorHeight, doorDepthVal);
-        const door = createMesh(doorGeo, 0x5a3825, `DoorIndentation_${index}`); 
-        door.position.set(pos.x, -bHeight / 2 + doorHeight / 2, pos.z);
-        warehouseGroup.add(door);
-    });
+
+    // Doors (several wide, darker rectangular indentations)
+    const doorWidth = baseUnit * 0.8; // "wide"
+    const doorHeight = bHeight * 0.6; // Proportionate height
+    const doorDepthVal = 0.05; // Indentation depth
+
+    // Define positions for doors along the longer sides (width)
+    const numDoorsPerSide = 2; // "several"
+    const doorSpacingX = bWidth / (numDoorsPerSide + 1);
+
+    for (let i = 0; i < numDoorsPerSide; i++) {
+        const xPos = -bWidth / 2 + doorSpacingX * (i + 1);
+
+        // Front doors
+        const doorFrontGeo = new THREE.BoxGeometry(doorWidth, doorHeight, doorDepthVal);
+        // Darker material for indentation
+        const doorMaterial = new THREE.MeshStandardMaterial({ color: COLORS.DARK_GREY }); 
+        const doorFrontMesh = new THREE.Mesh(doorFrontGeo, doorMaterial);
+        doorFrontMesh.name = `WarehouseDoor_Front_${i}`;
+        // Position on the front face (positive Z), slightly indented
+        doorFrontMesh.position.set(xPos, -bHeight / 2 + doorHeight / 2, bDepth / 2 - doorDepthVal / 2 + 0.01);
+        warehouseGroup.add(doorFrontMesh);
+
+        // Back doors (optional, but good for symmetry)
+        const doorBackMesh = new THREE.Mesh(doorFrontGeo, doorMaterial); // Reuse geometry and material
+        doorBackMesh.name = `WarehouseDoor_Back_${i}`;
+        // Position on the back face (negative Z), slightly indented
+        doorBackMesh.position.set(xPos, -bHeight / 2 + doorHeight / 2, -bDepth / 2 + doorDepthVal / 2 - 0.01);
+        warehouseGroup.add(doorBackMesh);
+    }
+    
+    // Adjust group position so its base is at y=0
     warehouseGroup.position.y = bHeight / 2;
     return warehouseGroup;
 }
@@ -979,87 +1073,96 @@ export const BUILDING_INFO = {
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         gridSize: { width: 2, height: 1 },
         color: COLORS.BLACK,
-        mineType: 'coal'
+        mineType: 'coal' // Added to match iron_mine structure
     },
-    GOLD_MINE: {
+    GOLD_MINE: { // Assuming Gold Mine would be next, based on pattern
         name: "Gold Mine",
         key: 'GOLD_MINE',
-        cost: { WOOD: 50, STONE: 25 },
-        jobSlots: 2, // Gold is rarer
+        cost: { WOOD: 50, STONE: 25 }, // Example cost
+        jobSlots: 3,
         jobProfession: SERF_PROFESSIONS.MINER,
-        produces: [{ resource: RESOURCE_TYPES.GOLD_ORE, quantity: 1, interval: 30000 }],
+        produces: [{ resource: RESOURCE_TYPES.GOLD_ORE, quantity: 1, interval: 30000 }], // Example production
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         gridSize: { width: 2, height: 1 },
         color: COLORS.YELLOW,
         mineType: 'gold'
     },
+    STONE_MINE: { // Assuming Stone Mine would also be a variant
+        name: "Stone Mine",
+        key: 'STONE_MINE',
+        cost: { WOOD: 30, STONE: 10 }, // Example cost
+        jobSlots: 3,
+        jobProfession: SERF_PROFESSIONS.MINER,
+        produces: [{ resource: RESOURCE_TYPES.STONE, quantity: 2, interval: 15000 }], // Example production
+        requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
+        gridSize: { width: 2, height: 1 },
+        color: COLORS.LIGHT_GREY,
+        mineType: 'stone'
+    },
     SAWMILL: {
         name: "Sawmill",
         key: 'SAWMILL',
-        cost: { WOOD: 20, STONE: 10 },
+        cost: { WOOD: 25, STONE: 5 },
         jobSlots: 2,
         jobProfession: SERF_PROFESSIONS.SAWMILL_WORKER,
-        consumes: [{ resource: RESOURCE_TYPES.WOOD, quantity: 2 }], // Consumes 2 wood to make 1 plank
-        produces: [{ resource: RESOURCE_TYPES.PLANKS, quantity: 1, interval: 15000 }],
+        consumes: [{ resource: RESOURCE_TYPES.WOOD, quantity: 1 }],
+        produces: [{ resource: RESOURCE_TYPES.PLANKS, quantity: 2, interval: 15000 }], // 2 planks from 1 wood
         gridSize: { width: 3, height: 2 },
         color: COLORS.BROWN,
     },
     WINDMILL: {
         name: "Windmill",
         key: 'WINDMILL',
-        cost: { WOOD: 30, STONE: 15 },
+        cost: { WOOD: 30, STONE: 20 },
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.MILLER,
-        consumes: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 1 }],
-        produces: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1, interval: 12000 }],
-        gridSize: { width: 2, height: 2 }, // Tower base
+        consumes: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 2 }],
+        produces: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1, interval: 18000 }], // 1 flour from 2 grain
+        gridSize: { width: 2, height: 2 },
         color: COLORS.BEIGE,
     },
     BAKERY: {
         name: "Bakery",
         key: 'BAKERY',
-        cost: { WOOD: 20, STONE: 20 },
+        cost: { WOOD: 20, STONE: 15, [RESOURCE_TYPES.COAL_ORE]: 5 }, // Requires coal
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.BAKER,
-        consumes: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1 }], // Optional: add WOOD for fuel
-        produces: [{ resource: RESOURCE_TYPES.BREAD, quantity: 1, interval: 10000 }],
+        consumes: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1 }, { resource: RESOURCE_TYPES.COAL_ORE, quantity: 1 }],
+        produces: [{ resource: RESOURCE_TYPES.BREAD, quantity: 3, interval: 20000 }], // 3 bread from 1 flour
         gridSize: { width: 2, height: 2 },
         color: COLORS.TERRACOTTA,
     },
     PIG_FARM: {
         name: "Pig Farm",
         key: 'PIG_FARM',
-        cost: { WOOD: 25 },
+        cost: { WOOD: 40, [RESOURCE_TYPES.GRAIN]: 10 }, // Initial grain to start
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.PIG_FARMER,
-        // Pig farms grow pigs over time, not direct resource production in same way
-        // Could "produce" PIG_RESOURCE (live animal) or this is handled by task
-        produces: [{ resource: RESOURCE_TYPES.PIG, quantity: 1, interval: 45000 }], // Long interval for live animal
-        gridSize: { width: 3, height: 3 },
-        color: COLORS.PINK,
+        consumes: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 1 }], // Consumes grain to feed pigs
+        produces: [{ resource: RESOURCE_TYPES.PIG, quantity: 1, interval: 35000 }], // Produces a pig
+        gridSize: { width: 3, height: 2 },
+        color: COLORS.LIGHT_BROWN,
     },
     SLAUGHTERHOUSE: {
         name: "Slaughterhouse",
         key: 'SLAUGHTERHOUSE',
-        cost: { WOOD: 15, STONE: 10 },
+        cost: { WOOD: 25, STONE: 10 },
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.BUTCHER,
         consumes: [{ resource: RESOURCE_TYPES.PIG, quantity: 1 }],
-        produces: [{ resource: RESOURCE_TYPES.MEAT, quantity: 2, interval: 10000 }], // 1 pig -> 2 meat
+        produces: [{ resource: RESOURCE_TYPES.MEAT, quantity: 2, interval: 12000 }], // 2 meat from 1 pig
         gridSize: { width: 2, height: 2 },
         color: COLORS.MAROON,
     },
     IRON_SMELTER: {
         name: "Iron Smelter",
         key: 'IRON_SMELTER',
-        cost: { STONE: 30 },
-        jobSlots: 1,
+        cost: { STONE: 50, WOOD: 20 },
+        jobSlots: 2,
         jobProfession: SERF_PROFESSIONS.SMELTER_WORKER,
-        consumes: [
-            { resource: RESOURCE_TYPES.IRON_ORE, quantity: 1 },
-            { resource: RESOURCE_TYPES.COAL_ORE, quantity: 1 } // Fuel
-        ],
-        produces: [{ resource: RESOURCE_TYPES.IRON_BARS, quantity: 1, interval: 20000 }],
+        consumes: [{ resource: RESOURCE_TYPES.IRON_ORE, quantity: 2 }, { resource: RESOURCE_TYPES.COAL_ORE, quantity: 1 }],
+        produces: [{ resource: RESOURCE_TYPES.IRON_BAR, quantity: 1, interval: 22000 }],
+        // requiredTool: SERF_PROFESSIONS.SMELTER_WORKER.tool, // Smelter worker might have a tool
         gridSize: { width: 2, height: 2 },
         color: COLORS.DARK_GREY,
     },
@@ -1112,26 +1215,50 @@ export const BUILDING_INFO = {
         name: "Watchtower",
         key: 'WATCHTOWER',
         cost: { WOOD: 20, STONE: 15 },
-        jobSlots: 1,
-        // jobProfession: SERF_PROFESSIONS.GUARD,
+        jobSlots: 1, // For a guard/watchman
+        // jobProfession: SERF_PROFESSIONS.GUARD, // Assuming a Guard profession exists
+        territoryIncrease: 5, // Example value for territory expansion
         gridSize: { width: 1, height: 1 }, // Small footprint, tall model
         color: COLORS.STONE_GREY,
     },
     BARRACKS_FORTRESS: {
         name: "Barracks / Fortress",
         key: 'BARRACKS_FORTRESS',
-        cost: { STONE: 100, WOOD: 50 },
-        jobSlots: 5, // For training/housing soldiers
-        // jobProfession: SERF_PROFESSIONS.SOLDIER_TRAINER, // Or similar
-        gridSize: { width: 4, height: 3 },
+        cost: { STONE: 100, WOOD: 50, [RESOURCE_TYPES.IRON_BAR]: 10 }, // Added Iron Bars to cost
+        jobSlots: 5, // For training/housing soldiers/knights
+        // jobProfession: SERF_PROFESSIONS.KNIGHT, // Or a trainer profession
+        canTrain: [SERF_PROFESSIONS.KNIGHT], // Example: Can train Knights
+        territoryIncrease: 10, // Example value for significant territory expansion
+        gridSize: { width: 4, height: 3 }, // Matches visual description (large footprint)
         color: COLORS.DARK_GREY,
     },
     WAREHOUSE_STOREHOUSE: {
         name: "Warehouse / Storehouse",
         key: 'WAREHOUSE_STOREHOUSE',
         cost: { WOOD: 50, STONE: 20 },
-        // No job slots, passive storage increase (handled elsewhere)
-        gridSize: { width: 4, height: 2 },
+        // No job slots, passive storage increase
+        storageCapacityIncrease: { // Example: Increases capacity for all resources by a certain amount
+            [RESOURCE_TYPES.WOOD]: 200,
+            [RESOURCE_TYPES.STONE]: 200,
+            [RESOURCE_TYPES.IRON_ORE]: 100,
+            [RESOURCE_TYPES.COAL_ORE]: 100,
+            [RESOURCE_TYPES.GOLD_ORE]: 50,
+            [RESOURCE_TYPES.PLANKS]: 150,
+            [RESOURCE_TYPES.IRON_BAR]: 100,
+            [RESOURCE_TYPES.GOLD_BARS]: 50,
+            [RESOURCE_TYPES.TOOLS_AXE]: 20,
+            [RESOURCE_TYPES.TOOLS_PICKAXE]: 20,
+            // ... other storable resources
+            [RESOURCE_TYPES.GRAIN]: 100,
+            [RESOURCE_TYPES.FLOUR]: 80,
+            [RESOURCE_TYPES.BREAD]: 100,
+            [RESOURCE_TYPES.FISH]: 100,
+            [RESOURCE_TYPES.PIG]: 30,
+            [RESOURCE_TYPES.MEAT]: 80,
+            [RESOURCE_TYPES.SWORD]: 20,
+            [RESOURCE_TYPES.SHIELD]: 20,
+        },
+        gridSize: { width: 4, height: 2 }, // Matches visual description (large footprint)
         color: COLORS.BEIGE,
     },
     BUILDERS_HUT: {
@@ -1177,7 +1304,7 @@ export const BUILDING_CREATORS = {
     IRON_MINE: () => createMine('iron'),
     COAL_MINE: () => createMine('coal'),
     GOLD_MINE: () => createMine('gold'),
-    // STONE_MINE: () => createMine('stone'), // If stone is mined, not just from Quarry
+    STONE_MINE: () => createMine('stone'), // If stone is mined, not just from Quarry
     SAWMILL: createSawmill,
     WINDMILL: createWindmill,
     BAKERY: createBakery,

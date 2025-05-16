@@ -3,6 +3,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as Buildings from './entities/buildings.js';
 import * as Resources from './entities/resources.js';
 import * as Units from './entities/units.js';
+import * as Terrains from './entities/terrains.js'; // Import terrains
+import { GameMap } from './map/map.js'; // Import GameMap
+import { MapRenderer, TILE_SIZE, TILE_GAP } from './map/mapRenderer.js'; // Import MapRenderer
 
 // Get the container element
 const container = document.getElementById('app');
@@ -35,130 +38,218 @@ controls.maxDistance = 20;
 // controls.maxPolarAngle = Math.PI / 2; // Prevent camera from going below the ground
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // soft white light
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Slightly brighter ambient
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 10, 7.5);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Slightly stronger directional
+directionalLight.position.set(8, 15, 10);
+directionalLight.castShadow = true; // Enable shadows for the light
+// Configure shadow properties (optional, but good for quality)
+directionalLight.shadow.mapSize.width = 2048; // Increased shadow map size
+directionalLight.shadow.mapSize.height = 2048;
+directionalLight.shadow.camera.near = 0.5;
+directionalLight.shadow.camera.far = 100; // Increased far plane for larger scene
+directionalLight.shadow.camera.left = -50;
+directionalLight.shadow.camera.right = 50;
+directionalLight.shadow.camera.top = 50;
+directionalLight.shadow.camera.bottom = -50;
 scene.add(directionalLight);
 
-// --- Test Scene for All Buildings ---
+// Renderer shadow configuration
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+
+// --- Game Map Setup ---
+const MAP_WIDTH = 10; // Example map width
+const MAP_HEIGHT = 10; // Example map height
+const gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
+gameMap.generateMapFeatures(); // Populate with some basic terrain variations
+
+const mapRenderer = new MapRenderer(gameMap, scene);
+mapRenderer.renderMap(); // Render the initial state of the map
+
+// Adjust camera to view the new map
+const mapTotalWidth = MAP_WIDTH * (TILE_SIZE + TILE_GAP);
+const mapTotalDepth = MAP_HEIGHT * (TILE_SIZE + TILE_GAP);
+
+// --- Test Scene for All Buildings (Optional - can be removed or integrated with map) ---
+const SHOW_ASSET_GRIDS = false; // Set to true to show old asset grids, false to hide
+
 const allBuildingCreators = {
-    Castle: Buildings.createCastle,
-    WoodcuttersHut: Buildings.createWoodcuttersHut,
-    ForestersHut: Buildings.createForestersHut,
-    Quarry: Buildings.createQuarry,
-    FishermansHut: Buildings.createFishermansHut,
-    Farm: Buildings.createFarm,
-    GeologistsHut: Buildings.createGeologistsHut,
-    IronMine: () => Buildings.createMine('iron'),
     CoalMine: () => Buildings.createMine('coal'),
     GoldMine: () => Buildings.createMine('gold'),
-    StoneMine: () => Buildings.createMine('stone'),
+    // Row 3
+    StoneMine: () => Buildings.createMine('stone'), // Assuming this was intended
     Sawmill: Buildings.createSawmill,
     Windmill: Buildings.createWindmill,
     Bakery: Buildings.createBakery,
     PigFarm: Buildings.createPigFarm,
+    // Row 4
     Slaughterhouse: Buildings.createSlaughterhouse,
     IronSmelter: Buildings.createIronSmelter,
     ToolmakersWorkshop: Buildings.createToolmakersWorkshop,
     GoldsmithsMint: Buildings.createGoldsmithsMint,
     BlacksmithArmory: Buildings.createBlacksmithArmory,
+    // Row 5
     GuardHut: Buildings.createGuardHut,
     Watchtower: Buildings.createWatchtower,
     BarracksFortress: Buildings.createBarracksFortress,
     WarehouseStorehouse: Buildings.createWarehouseStorehouse,
     BuildersHut: Buildings.createBuildersHut,
+    // Row 6
     Harbor: Buildings.createHarbor,
 };
 
-const buildingSpacing = 5;
+const buildingSpacing = 6; // Increased spacing
 const buildingsPerRow = 5;
 let buildingCount = 0;
+const buildingGridBaseY = 0; // Base Y for buildings
 
 for (const name in allBuildingCreators) {
     if (Object.hasOwnProperty.call(allBuildingCreators, name)) {
         const createFunction = allBuildingCreators[name];
         const building = createFunction();
+        building.name = name; // Ensure name is set for debugging
+
+        // Enable shadows for building components
+        building.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
         
         const row = Math.floor(buildingCount / buildingsPerRow);
         const col = buildingCount % buildingsPerRow;
 
         building.position.set(
             col * buildingSpacing - (buildingsPerRow -1) * buildingSpacing / 2,
-            0, // y position will be set by the building's internal logic
-            row * buildingSpacing - (Object.keys(allBuildingCreators).length / buildingsPerRow -1) * buildingSpacing / 2
+            buildingGridBaseY, 
+            row * buildingSpacing - (Math.ceil(Object.keys(allBuildingCreators).length / buildingsPerRow) -1) * buildingSpacing / 2
         );
         scene.add(building);
-        console.log(`Added ${name} to scene at x:${building.position.x}, z:${building.position.z}`);
+        // console.log(`Added ${name} to scene at x:${building.position.x}, y:${building.position.y}, z:${building.position.z}`);
         buildingCount++;
     }
 }
-
-// Adjust camera to view the grid of buildings
 const totalRowsBuildings = Math.ceil(Object.keys(allBuildingCreators).length / buildingsPerRow);
-// camera.position.set(0, totalRowsBuildings * buildingSpacing * 0.6 , totalRowsBuildings * buildingSpacing * 0.8);
-// controls.target.set(0, 0, 0);
+const buildingGridDepth = totalRowsBuildings * buildingSpacing;
 
 
-// --- Test Scene for All Resources ---
+// --- Test Scene for All Terrains (Optional - can be removed or integrated with map) ---
+const allTerrainCreators = {
+    Grassland: () => Terrains.createGrassland({ width: 8, depth: 8 }),
+    Forest: () => Terrains.createForest({ width: 8, depth: 8 }, 0.6),
+    Mountain: () => Terrains.createMountain({ width: 6, depth: 6, height: 5 }),
+    WaterLake: () => Terrains.createWater({ width: 8, depth: 8 }, 'lake'),
+    WaterRiver: () => Terrains.createWater({ width: 3, depth: 10 }, 'river'),
+    Desert: () => Terrains.createDesert({ width: 8, depth: 8 }),
+};
+
+const terrainSpacing = 12; // Terrains are larger, need more space
+const terrainsPerRow = 3;
+let terrainCount = 0;
+// Place terrains behind buildings (more positive Z)
+const terrainGridOffsetZ = (buildingGridDepth / 2) + (Object.keys(allBuildingCreators).length > 0 ? 15 : 0);
+const terrainGridBaseY = 0; // Terrains are designed with base at y=0
+
+for (const name in allTerrainCreators) {
+    if (Object.hasOwnProperty.call(allTerrainCreators, name)) {
+        const createFunction = allTerrainCreators[name];
+        const terrain = createFunction();
+        terrain.name = name;
+
+        terrain.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        
+        const row = Math.floor(terrainCount / terrainsPerRow);
+        const col = terrainCount % terrainsPerRow;
+
+        terrain.position.set(
+            col * terrainSpacing - (terrainsPerRow -1) * terrainSpacing / 2,
+            terrainGridBaseY, 
+            row * terrainSpacing + terrainGridOffsetZ 
+        );
+        scene.add(terrain);
+        terrainCount++;
+    }
+}
+const totalRowsTerrains = Math.ceil(Object.keys(allTerrainCreators).length / terrainsPerRow);
+const terrainGridDepth = totalRowsTerrains * terrainSpacing;
+
+// --- Test Scene for All Resources (Optional - can be removed or integrated with map) ---
 const allResourceCreators = {
+    // Row 1
     WoodLog: Resources.createWoodLog,
     StoneBlock: Resources.createStoneBlock,
     GrainSack: Resources.createGrainSack,
     Fish: Resources.createFish,
     IronOreLump: Resources.createIronOreLump,
     CoalOreLump: Resources.createCoalOreLump,
+    // Row 2
     GoldOreLump: Resources.createGoldOreLump,
     Plank: Resources.createPlank,
     FlourSack: Resources.createFlourSack,
     BreadLoaf: Resources.createBreadLoaf,
     MeatPiece: Resources.createMeatPiece,
     IronBar: Resources.createIronBar,
+    // Row 3
     GoldBar: Resources.createGoldBar,
     Axe: Resources.createAxe,
     Pickaxe: Resources.createPickaxe,
     Scythe: Resources.createScythe,
     Hammer: Resources.createHammer,
+    // Row 4
     FishingRod: Resources.createFishingRod,
     Sword: Resources.createSword,
     Shield: Resources.createShield,
     Pig: Resources.createPig,
 };
 
-const resourceSpacing = 2;
+const resourceSpacing = 2.5; // Increased spacing
 const resourcesPerRow = 6;
 let resourceCount = 0;
-const resourceGridOffsetY = - (totalRowsBuildings * buildingSpacing / 2) - 5; // Place resources below buildings
+// Place resources in front of (more negative Z) buildings
+const resourceGridOffsetZ = - (buildingGridDepth / 2) - (Object.keys(allBuildingCreators).length > 0 ? 10 : 0); 
+const resourceGridBaseY = 0;
 
 for (const name in allResourceCreators) {
     if (Object.hasOwnProperty.call(allResourceCreators, name)) {
         const createFunction = allResourceCreators[name];
         const resource = createFunction();
+        resource.name = name;
+
+        resource.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true; // Resources can also receive shadows if on a plane
+            }
+        });
         
         const row = Math.floor(resourceCount / resourcesPerRow);
         const col = resourceCount % resourcesPerRow;
 
         resource.position.set(
             col * resourceSpacing - (resourcesPerRow -1) * resourceSpacing / 2,
-            0, // Place directly on the new ground plane y-level
-            row * resourceSpacing + resourceGridOffsetY
+            resourceGridBaseY, 
+            row * resourceSpacing + resourceGridOffsetZ
         );
         scene.add(resource);
-        console.log(`Added ${name} to scene at x:${resource.position.x}, z:${resource.position.z}`);
+        // console.log(`Added ${name} (Resource) to scene at x:${resource.position.x}, y:${resource.position.y}, z:${resource.position.z}`);
         resourceCount++;
     }
 }
-
-// Adjust camera to view both grids (approximate)
 const totalRowsResources = Math.ceil(Object.keys(allResourceCreators).length / resourcesPerRow);
-// const totalContentHeight = (totalRowsBuildings * buildingSpacing) + (totalRowsResources * resourceSpacing) + 5;
-// camera.position.set(0, totalContentHeight * 0.4, totalContentHeight * 0.5);
-// controls.target.set(0, -totalContentHeight * 0.2, 0); // Target a point between the two grids
+const resourceGridDepth = totalRowsResources * resourceSpacing;
 
 
-// --- Test Scene for All Units ---
+// --- Test Scene for All Units (Optional - can be removed or integrated with map) ---
 const allUnitCreators = {
+    // Row 1
     Transporter: Units.createTransporter,
     Builder: Units.createBuilder,
     Woodcutter: Units.createWoodcutter,
@@ -166,6 +257,7 @@ const allUnitCreators = {
     Stonemason: Units.createStonemason,
     Miner: Units.createMiner,
     Farmer: Units.createFarmer,
+    // Row 2
     Fisherman: Units.createFisherman,
     Miller: Units.createMiller,
     Baker: Units.createBaker,
@@ -173,56 +265,100 @@ const allUnitCreators = {
     Butcher: Units.createButcher,
     SawmillWorker: Units.createSawmillWorker,
     SmelterWorker: Units.createSmelterWorker,
+    // Row 3
     Goldsmith: Units.createGoldsmith,
     Toolmaker: Units.createToolmaker,
     Blacksmith: Units.createBlacksmith,
     Geologist: Units.createGeologist,
-    KnightBlue: () => Units.createKnight(0x0000FF), // Example player color
-    KnightRed: () => Units.createKnight(0xFF0000),   // Example player color
+    KnightBlue: () => Units.createKnight(Units.COLORS.PLAYER_BLUE), 
+    KnightRed: () => Units.createKnight(Units.COLORS.PLAYER_RED),   
+    KnightGreen: () => Units.createKnight(Units.COLORS.PLAYER_GREEN),
 };
 
-const unitSpacing = 1.5;
+const unitSpacing = 2.0; // Increased spacing
 const unitsPerRow = 7;
 let unitCount = 0;
-const unitGridOffsetY = resourceGridOffsetY - (totalRowsResources * resourceSpacing) - 5; // Place units below resources
+// Place units in front of resources
+const unitGridOffsetZ = resourceGridOffsetZ - (resourceGridDepth / 2) - (Object.keys(allResourceCreators).length > 0 ? 5 : 0);
+const unitGridBaseY = 0; // Units are designed with base at y=0
 
 for (const name in allUnitCreators) {
     if (Object.hasOwnProperty.call(allUnitCreators, name)) {
         const createFunction = allUnitCreators[name];
         const unit = createFunction();
+        unit.name = name;
+
+        unit.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
         
         const row = Math.floor(unitCount / unitsPerRow);
         const col = unitCount % unitsPerRow;
 
         unit.position.set(
             col * unitSpacing - (unitsPerRow -1) * unitSpacing / 2,
-            0, // y position will be set by the unit's internal logic (base at y=0)
-            row * unitSpacing + unitGridOffsetY
+            unitGridBaseY, 
+            row * unitSpacing + unitGridOffsetZ
         );
         scene.add(unit);
-        console.log(`Added ${name} to scene at x:${unit.position.x}, z:${unit.position.z}`);
+        // console.log(`Added ${name} (Unit) to scene at x:${unit.position.x}, y:${unit.position.y}, z:${unit.position.z}`);
         unitCount++;
     }
 }
-
-// Adjust camera to view all grids
 const totalRowsUnits = Math.ceil(Object.keys(allUnitCreators).length / unitsPerRow);
-const totalContentDepth = (totalRowsBuildings * buildingSpacing) + 
-                           (totalRowsResources * resourceSpacing) + 
-                           (totalRowsUnits * unitSpacing) + 15; // Extra spacing
+const unitGridDepth = totalRowsUnits * unitSpacing;
 
-camera.position.set(0, totalContentDepth * 0.3, totalContentDepth * 0.35);
-controls.target.set(0, -totalContentDepth * 0.25, 0); // Adjust target to be lower
-controls.maxDistance = Math.max(50, totalContentDepth); // Ensure camera can zoom out enough
+// Calculate overall content dimensions for camera setup
+let maxGridWidth = Math.max(
+    SHOW_ASSET_GRIDS ? buildingsPerRow * buildingSpacing : 0,
+    SHOW_ASSET_GRIDS ? resourcesPerRow * resourceSpacing : 0,
+    SHOW_ASSET_GRIDS ? unitsPerRow * unitSpacing : 0,
+    SHOW_ASSET_GRIDS ? terrainsPerRow * terrainSpacing : 0,
+    mapTotalWidth // Include map width
+);
+
+// Total depth now includes terrains, buildings, resources, units
+// Terrains are at positive Z, others at negative Z relative to origin or each other
+const positiveZExtent = SHOW_ASSET_GRIDS ? (terrainGridOffsetZ + terrainGridDepth / 2) : (mapTotalDepth / 2);
+const negativeZExtent = SHOW_ASSET_GRIDS ? (Math.abs(unitGridOffsetZ) + unitGridDepth / 2) : (mapTotalDepth / 2);
+let totalContentVisualDepth = mapTotalDepth; // Default to map depth
+
+if (SHOW_ASSET_GRIDS) {
+    maxGridWidth = Math.max(maxGridWidth, buildingsPerRow * buildingSpacing, resourcesPerRow * resourceSpacing, unitsPerRow * unitSpacing, terrainsPerRow * terrainSpacing);
+    const assetPositiveZExtent = terrainGridOffsetZ + terrainGridDepth / 2;
+    const assetNegativeZExtent = Math.abs(unitGridOffsetZ) + unitGridDepth / 2;
+    totalContentVisualDepth = Math.max(totalContentVisualDepth, assetPositiveZExtent + assetNegativeZExtent);
+    // If showing asset grids, ensure camera Z considers them if they are further out.
+    // This logic might need refinement based on how asset grids are positioned relative to the map.
+}
 
 
-// Simple ground plane for context
-const groundSize = Math.max(buildingsPerRow * buildingSpacing, resourcesPerRow * resourceSpacing, unitsPerRow * unitSpacing, totalContentDepth) * 1.2;
+// Adjust camera to view all grids or the map
+const cameraY = Math.max(30, totalContentVisualDepth * 0.5, maxGridWidth * 0.5) + 20; // Increased height slightly
+// If asset grids are shown and are behind the map, camera Z needs to account for that.
+// For now, let's assume map is primary focus or asset grids are far if shown.
+const cameraZ = Math.max(mapTotalDepth / 2 * 1.5, SHOW_ASSET_GRIDS ? positiveZExtent * 1.2 : mapTotalDepth / 2 * 1.5);
+
+camera.position.set(0, cameraY, cameraZ);
+// Target the approximate center of the entire layout.
+// Center Z is between the front of units and back of terrains if asset grids are shown,
+// otherwise, it's the center of the map.
+const targetZ = SHOW_ASSET_GRIDS ? (positiveZExtent - negativeZExtent) / 2 : 0; // Map is centered at 0,0,0
+controls.target.set(0, 0, targetZ);
+controls.maxDistance = Math.max(150, totalContentVisualDepth * 1.8, maxGridWidth * 1.8); // Increased max distance
+
+
+// Simple ground plane for context (can be removed if map covers everything)
+const groundSize = Math.max(maxGridWidth, totalContentVisualDepth) * 1.5;
 const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
 const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, side: THREE.DoubleSide }); // ForestGreen
 const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
-groundPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-groundPlane.position.y = -0.5; // Lower the ground plane significantly
+groundPlane.rotation.x = -Math.PI / 2;
+groundPlane.position.y = -0.05; // Position ground slightly below items that are at y=0
+groundPlane.receiveShadow = true; // Ground should receive shadows
 scene.add(groundPlane);
 
 
@@ -241,18 +377,24 @@ window.addEventListener(
 function animate() {
     requestAnimationFrame(animate);
 
-    controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+    controls.update(); 
 
-    // No individual rotation for now, focus on viewing all
-    // scene.traverse(child => {
-    //     if (child.isGroup && child.name !== '') { // Rotate top-level building groups
-    //         // child.rotation.y += 0.001;
-    //     }
-    // });
+    // Optional: Rotate all items slowly for better viewing
+    if (SHOW_ASSET_GRIDS) { // Only rotate if asset grids are shown
+        scene.traverse(child => {
+            if (child.isGroup && (allBuildingCreators[child.name] || allResourceCreators[child.name] || allUnitCreators[child.name] || allTerrainCreators[child.name])) {
+                 child.rotation.y += 0.002;
+            }
+        });
+    }
 
     renderer.render(scene, camera);
 }
 
 animate();
 
-console.log('Three.js scene initialized with OrbitControls.');
+console.log('Three.js scene initialized with a game map and optional asset grids.');
+if (SHOW_ASSET_GRIDS) {
+    console.log(`Terrains (Grid): ${Object.keys(allTerrainCreators).length}, Buildings: ${Object.keys(allBuildingCreators).length}, Resources: ${Object.keys(allResourceCreators).length}, Units: ${Object.keys(allUnitCreators).length}`);
+}
+console.log(`Map Dimensions: ${MAP_WIDTH}x${MAP_HEIGHT}`);

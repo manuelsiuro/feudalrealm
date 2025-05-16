@@ -10,72 +10,96 @@ function createMesh(geometry, color, name = '') {
 }
 
 // Color definitions (can be shared from a common utils.js later)
-const COLORS = {
-    LIGHT_BROWN: 0xCD853F,
-    BEIGE: 0xF5F5DC,
-    LIGHT_GREY: 0xD3D3D3,
-    PEACH: 0xFFDAB9, // Skin tone
-    TAN: 0xD2B48C,    // Skin tone
-    DARK_GREY: 0xA9A9A9,
-    GREEN: 0x008000,
-    DARK_GREEN: 0x006400,
-    YELLOW: 0xFFFF00,
-    LIGHT_BLUE: 0xADD8E6,
-    WHITE: 0xFFFFFF,
-    OFF_WHITE: 0xFAF0E6,
-    MAROON: 0x800000, // For Butcher apron
-    BLACK: 0x000000,
-    MEDIUM_BROWN: 0x8B4513, // For tool handles
-    DARK_METALLIC_GREY: 0x696969, // For tool heads
-    GREY: 0x808080, // For tool heads
-    // Player Faction Colors (examples)
+// Export COLORS so it can be imported by other modules
+export const COLORS = {
+    LIGHT_BROWN: 0xCD853F, // For general use, some serf bodies, tool handles
+    BEIGE: 0xF5F5DC,       // For general use, some serf bodies
+    LIGHT_GREY: 0xD3D3D3,   // For general use, some serf bodies
+    PEACH: 0xFFDAB9,       // Skin tone
+    TAN: 0xD2B48C,         // Alternative skin tone
+    DARK_GREY: 0xA9A9A9,     // For tools, stone, some attire
+    GREEN: 0x008000,       // For Forester items/accents
+    DARK_GREEN: 0x006400,    // For Forester items/accents
+    YELLOW: 0xFFFF00,       // For Miner helmet, Goldsmith items
+    LIGHT_BLUE: 0xADD8E6,    // For Fisherman accents
+    WHITE: 0xFFFFFF,       // For Miller/Baker attire
+    OFF_WHITE: 0xFAF0E6,    // For Miller/Baker attire
+    MAROON: 0x800000,      // For Butcher apron
+    BLACK: 0x000000,       // For Smelter worker, Blacksmith apron
+    MEDIUM_BROWN: 0x8B4513,  // For tool handles, wooden items (bucket, shield)
+    DARK_METALLIC_GREY: 0x696969, // For tool heads, armor elements
+    GREY: 0x808080,        // For tool heads, stone
+    RED: 0xFF0000,         // For Butcher apron (alternative), player color
+    BLUE: 0x0000FF,        // Player color
+    // Player Faction Colors (examples, can be passed dynamically)
     PLAYER_BLUE: 0x0000FF,
     PLAYER_RED: 0xFF0000,
     PLAYER_GREEN: 0x00FF00,
-    PLAYER_YELLOW: 0xFFFF00,
+    PLAYER_YELLOW: 0xFFFF00, // Also used for Miner helmet
+    PLAYER_FACTION_DEFAULT: 0x4682B4, // Steel Blue as a default if not specified
 };
 
-const BASE_SERF_BODY_COLOR = COLORS.BEIGE;
-const BASE_SERF_HEAD_COLOR = COLORS.PEACH;
+const BASE_SERF_BODY_COLOR = COLORS.BEIGE; // Neutral clothing
+const BASE_SERF_HEAD_COLOR = COLORS.PEACH; // Skin tone
 
 // --- Base Serf Model ---
 function createBaseSerf(bodyColor = BASE_SERF_BODY_COLOR, headColor = BASE_SERF_HEAD_COLOR) {
     const serfGroup = new THREE.Group();
-    const bodyHeight = 0.75; // Increased for better raycasting
-    const bodyRadius = 0.2;  // Increased for better raycasting
-    const headRadius = 0.12; // Slightly increase head too
+    // Dimensions from units.md: medium-height. Let's define standard sizes.
+    const bodyHeight = 0.6; 
+    const bodyRadius = 0.18; 
+    const headRadius = 0.1;  
 
-    // Body (upright, medium-height, slightly rounded cuboid or simple cylinder)
-    const bodyGeom = new THREE.CylinderGeometry(bodyRadius, bodyRadius * 0.9, bodyHeight, 8);
+    // Body: Upright, medium-height, slightly rounded cuboid or a simple cylinder.
+    // Using a cylinder as it's simpler and often looks better than a blocky cuboid for characters.
+    const bodyGeom = new THREE.CylinderGeometry(bodyRadius, bodyRadius, bodyHeight, 8);
     const bodyMesh = createMesh(bodyGeom, bodyColor, 'SerfBody');
+    // Position body so its base is at y=0 for the serfGroup
+    bodyMesh.position.y = bodyHeight / 2;
     serfGroup.add(bodyMesh);
 
-    // Head (sphere or slightly rounded cube)
+    // Head: Sphere or a slightly rounded cube, placed on top of the body.
     const headGeom = new THREE.SphereGeometry(headRadius, 8, 6);
     const headMesh = createMesh(headGeom, headColor, 'SerfHead');
-    headMesh.position.y = bodyHeight / 2 + headRadius * 0.8; 
+    // Position head on top of the body
+    headMesh.position.y = bodyHeight + headRadius * 0.9; // Place it just on top
     serfGroup.add(headMesh);
     
-    serfGroup.position.y = bodyHeight / 2; 
+    // The serfGroup's origin will be at the base of the feet.
     return serfGroup;
 }
 
 // --- Serf Profession Creation Functions ---
-// These will call createBaseSerf and add distinguishing features.
 
 export function createTransporter() {
     const serf = createBaseSerf();
     serf.name = 'Transporter';
+    // No unique attire or tool, but could carry a generic resource.
+    // This will be handled by game logic (attaching resource model to serf).
     return serf;
 }
 
 export function createBuilder() {
     const serf = createBaseSerf();
     serf.name = 'Builder';
+    
+    // Attire (Optional): A slightly darker brown or grey cuboid "apron"
+    const apronWidth = 0.25;
+    const apronHeight = 0.2;
+    const apronDepth = 0.02;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
+    const apronMesh = createMesh(apronGeom, COLORS.DARK_GREY, 'Apron');
+    // Position apron on the front of the body
+    // Body's base is at y=0, center is at bodyHeight/2. Apron center y = bodyHeight/2 - apronHeight/4 approx.
+    apronMesh.position.set(0, (0.6/2) - apronHeight/3, 0.18/2 + apronDepth/2); // bodyRadius + apronDepth/2
+    serf.getObjectByName('SerfBody').add(apronMesh);
+
+
     const hammer = Resources.createHammer();
-    hammer.scale.set(0.5, 0.5, 0.5);
-    hammer.position.set(0.15, 0.2, 0);
-    hammer.rotation.z = -Math.PI / 4;
+    hammer.scale.set(0.45, 0.45, 0.45);
+    // Position hammer in a "carrying" pose
+    hammer.position.set(0.12, 0.3, 0.1); 
+    hammer.rotation.set(Math.PI / 6, -Math.PI / 4, Math.PI / 3);
     serf.add(hammer);
     return serf;
 }
@@ -84,21 +108,22 @@ export function createWoodcutter() {
     const serf = createBaseSerf();
     serf.name = 'Woodcutter';
     const axe = Resources.createAxe();
-    axe.scale.set(0.5, 0.5, 0.5);
-    axe.position.set(0.15, 0.2, 0.05);
-    axe.rotation.z = -Math.PI / 3;
-    axe.rotation.y = Math.PI / 2;
+    axe.scale.set(0.45, 0.45, 0.45);
+    axe.position.set(0.12, 0.3, 0.1);
+    axe.rotation.set(Math.PI / 2, Math.PI / 6, -Math.PI / 4);
     serf.add(axe);
     return serf;
 }
 
 export function createForester() {
-    const serf = createBaseSerf(COLORS.DARK_GREEN); // Attire color
+    // Attire (Optional): A dark green band or patch. Let's use a green body.
+    const serf = createBaseSerf(COLORS.DARK_GREEN); 
     serf.name = 'Forester';
+    
     // Item: Carries a small green cone (sapling)
-    const saplingGeom = new THREE.ConeGeometry(0.05, 0.15, 6);
+    const saplingGeom = new THREE.ConeGeometry(0.04, 0.12, 6);
     const saplingMesh = createMesh(saplingGeom, COLORS.GREEN, 'Sapling');
-    saplingMesh.position.set(0.15, 0.15, 0);
+    saplingMesh.position.set(0.1, 0.25, 0.05); // Held in "hand"
     saplingMesh.rotation.x = Math.PI / 6;
     serf.add(saplingMesh);
     return serf;
@@ -108,9 +133,9 @@ export function createStonemason() {
     const serf = createBaseSerf();
     serf.name = 'Stonemason';
     const pickaxe = Resources.createPickaxe();
-    pickaxe.scale.set(0.45, 0.45, 0.45);
-    pickaxe.position.set(0.15, 0.2, 0);
-    pickaxe.rotation.z = -Math.PI / 3;
+    pickaxe.scale.set(0.40, 0.40, 0.40);
+    pickaxe.position.set(0.12, 0.3, 0.05);
+    pickaxe.rotation.set(Math.PI / 2, Math.PI / 3, -Math.PI / 3);
     serf.add(pickaxe);
     return serf;
 }
@@ -119,22 +144,35 @@ export function createMiner() {
     const serf = createBaseSerf();
     serf.name = 'Miner';
     const pickaxe = Resources.createPickaxe();
-    pickaxe.scale.set(0.45, 0.45, 0.45);
-    pickaxe.position.set(0.15, 0.2, 0.02);
-    pickaxe.rotation.z = -Math.PI / 3;
+    pickaxe.scale.set(0.40, 0.40, 0.40);
+    pickaxe.position.set(0.12, 0.3, 0.05);
+    pickaxe.rotation.set(Math.PI / 2, Math.PI / 3, -Math.PI / 3);
     serf.add(pickaxe);
 
-    // Attire: Small helmet
-    const helmetGeom = new THREE.SphereGeometry(0.12, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2); // Hemisphere
-    const helmetMesh = createMesh(helmetGeom, COLORS.YELLOW, 'Helmet');
-    // Position on top of head (head is child of serf, serf is group)
-    const head = serf.children.find(c => c.name === 'SerfHead');
+    // Attire: Small, dark grey or yellow hemisphere or very short cylinder on top of the head (helmet).
+    const helmetRadius = 0.1; // Head radius
+    const helmetHeight = 0.05; // Short cylinder
+    // Using a short cylinder for the helmet base
+    const helmetBaseGeom = new THREE.CylinderGeometry(helmetRadius * 0.9, helmetRadius * 0.8, helmetHeight, 8);
+    const helmetBaseMesh = createMesh(helmetBaseGeom, COLORS.YELLOW, 'HelmetBase');
+    
+    // Optional: Small lamp on helmet (tiny cylinder)
+    const lampRadius = 0.02;
+    const lampLength = 0.04;
+    const lampGeom = new THREE.CylinderGeometry(lampRadius, lampRadius, lampLength, 6);
+    const lampMesh = createMesh(lampGeom, COLORS.DARK_GREY, 'HelmetLamp');
+    lampMesh.position.set(0, helmetHeight / 2, helmetRadius * 0.8); // Front of helmet
+    lampMesh.rotation.x = Math.PI / 2.5;
+    helmetBaseMesh.add(lampMesh);
+
+    const head = serf.getObjectByName('SerfHead');
     if (head) {
-        helmetMesh.position.y = head.position.y + 0.05;
-    } else { // Fallback if head not found directly
-        helmetMesh.position.y = 0.3 + 0.05;
+        helmetBaseMesh.position.copy(head.position);
+        helmetBaseMesh.position.y += helmetRadius * 0.3 + helmetHeight / 2; // Adjust to sit on top
+    } else { 
+        helmetBaseMesh.position.y = 0.6 + 0.1 * 0.9 + helmetRadius * 0.3 + helmetHeight / 2; // Fallback based on createBaseSerf
     }
-    serf.add(helmetMesh); // Add to serf group, not head, to avoid double transform issues if head moves
+    serf.add(helmetBaseMesh); 
     return serf;
 }
 
@@ -142,45 +180,57 @@ export function createFarmer() {
     const serf = createBaseSerf();
     serf.name = 'Farmer';
     const scythe = Resources.createScythe();
-    scythe.scale.set(0.5, 0.5, 0.5);
-    scythe.position.set(0.15, 0.15, 0);
-    scythe.rotation.z = -Math.PI / 2.5;
+    scythe.scale.set(0.45, 0.45, 0.45);
+    scythe.position.set(0.12, 0.25, 0); 
+    scythe.rotation.set(0, -Math.PI / 4, -Math.PI / 2.5);
     serf.add(scythe);
 
-    // Optional: Wide-brimmed hat
-    const hatRadius = 0.18;
-    const hatHeight = 0.05;
-    const hatGeom = new THREE.CylinderGeometry(hatRadius, hatRadius, hatHeight, 12);
-    const hatMesh = createMesh(hatGeom, COLORS.MEDIUM_BROWN, 'FarmerHat');
-    const head = serf.children.find(c => c.name === 'SerfHead');
+    // Optional: Wide-brimmed hat (flat, wide brown cylinder or very shallow cone on the head).
+    const hatOuterRadius = 0.15;
+    const hatInnerRadius = 0.08; // For the crown part
+    const hatHeight = 0.03; // Brim thickness
+    const crownHeight = 0.06;
+
+    const brimGeom = new THREE.CylinderGeometry(hatOuterRadius, hatOuterRadius, hatHeight, 12);
+    const brimMesh = createMesh(brimGeom, COLORS.MEDIUM_BROWN, 'FarmerHatBrim');
+    
+    const crownGeom = new THREE.CylinderGeometry(hatInnerRadius, hatInnerRadius * 0.9, crownHeight, 12);
+    const crownMesh = createMesh(crownGeom, COLORS.MEDIUM_BROWN, 'FarmerHatCrown');
+    crownMesh.position.y = hatHeight/2 + crownHeight/2;
+    brimMesh.add(crownMesh);
+
+    const head = serf.getObjectByName('SerfHead');
     if (head) {
-        hatMesh.position.y = head.position.y + 0.08;
+        brimMesh.position.copy(head.position);
+        brimMesh.position.y += 0.1 * 0.8 + hatHeight/2; // Adjust to sit on head
     } else {
-         hatMesh.position.y = 0.3 + 0.08;
+         brimMesh.position.y = 0.6 + 0.1*0.9 + 0.1 * 0.8 + hatHeight/2; // Fallback
     }
-    serf.add(hatMesh);
+    serf.add(brimMesh);
     return serf;
 }
 
 export function createFisherman() {
-    const serf = createBaseSerf(COLORS.LIGHT_BLUE); // Attire color
+    // Attire (Optional): A light blue band or patch. Let's use a light blue body.
+    const serf = createBaseSerf(COLORS.LIGHT_BLUE); 
     serf.name = 'Fisherman';
     const rod = Resources.createFishingRod();
-    rod.scale.set(0.4, 0.4, 0.4);
-    rod.position.set(0.1, 0.1, 0.1);
-    rod.rotation.z = -Math.PI / 2;
-    rod.rotation.x = Math.PI / 4;
+    rod.scale.set(0.45, 0.45, 0.45);
+    rod.position.set(0.1, 0.2, 0.15); 
+    rod.rotation.set(Math.PI / 3, -Math.PI/3, -Math.PI / 2.2);
     serf.add(rod);
     return serf;
 }
 
 export function createMiller() {
-    const serf = createBaseSerf(COLORS.OFF_WHITE); // Flour dust
+    // Attire: Body colored white or off-white (flour dust).
+    const serf = createBaseSerf(COLORS.OFF_WHITE); 
     serf.name = 'Miller';
+    
     // Optional: Sack of Flour
     const flourSack = Resources.createFlourSack();
-    flourSack.scale.set(0.3, 0.3, 0.3);
-    flourSack.position.set(0.15, 0.05, 0);
+    flourSack.scale.set(0.25, 0.25, 0.25);
+    flourSack.position.set(0.12, 0.1, 0); // Carried
     serf.add(flourSack);
     return serf;
 }
@@ -188,125 +238,239 @@ export function createMiller() {
 export function createBaker() {
     const serf = createBaseSerf();
     serf.name = 'Baker';
-    // Attire: White chef's hat
-    const hatHeight = 0.15;
-    const hatRadius = 0.08;
-    const hatGeom = new THREE.CylinderGeometry(hatRadius, hatRadius * 0.7, hatHeight, 12);
-    const hatMesh = createMesh(hatGeom, COLORS.WHITE, 'ChefsHat');
-    const head = serf.children.find(c => c.name === 'SerfHead');
-     if (head) {
-        hatMesh.position.y = head.position.y + hatHeight/2 + 0.02;
-    } else {
-         hatMesh.position.y = 0.3 + hatHeight/2 + 0.02;
-    }
-    serf.add(hatMesh);
 
-    // White apron (flat cuboid)
-    const apronGeom = new THREE.BoxGeometry(0.25, 0.3, 0.01);
+    // Attire: A white, tall, cylindrical "chef's hat" on the head.
+    const hatBaseRadius = 0.07;
+    const hatTopRadius = 0.09; // Slightly wider at top
+    const hatHeight = 0.12;
+    const chefHatGeom = new THREE.CylinderGeometry(hatBaseRadius, hatTopRadius, hatHeight, 12);
+    const chefHatMesh = createMesh(chefHatGeom, COLORS.WHITE, 'ChefsHat');
+    
+    // Add a sphere on top for the puffy part
+    const puffRadius = hatTopRadius * 1.1;
+    const puffGeom = new THREE.SphereGeometry(puffRadius, 10, 8);
+    const puffMesh = createMesh(puffGeom, COLORS.WHITE, 'ChefsHatPuff');
+    puffMesh.position.y = hatHeight / 2 - puffRadius * 0.2; // Position puff to merge with cylinder top
+    chefHatMesh.add(puffMesh);
+
+    const head = serf.getObjectByName('SerfHead');
+    if (head) {
+        chefHatMesh.position.copy(head.position);
+        chefHatMesh.position.y += 0.1 * 0.8 + hatHeight / 2; // Adjust to sit on head
+    } else {
+         chefHatMesh.position.y = 0.6 + 0.1*0.9 + 0.1 * 0.8 + hatHeight / 2; // Fallback
+    }
+    serf.add(chefHatMesh);
+
+    // White apron (flat cuboid on front of body)
+    const apronWidth = 0.25;
+    const apronHeight = 0.25; // Slightly longer
+    const apronDepth = 0.01;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
     const apronMesh = createMesh(apronGeom, COLORS.WHITE, 'Apron');
-    apronMesh.position.set(0, -0.05, 0.08); // Front of body
-    serf.add(apronMesh);
+    apronMesh.position.set(0, (0.6/2) - apronHeight/2.5, 0.18/2 + apronDepth/2);
+    serf.getObjectByName('SerfBody').add(apronMesh);
+    
+    // Optional: Bread Loaf
+    // const bread = Resources.createBreadLoaf();
+    // bread.scale.set(0.3, 0.3, 0.3);
+    // bread.position.set(-0.1, 0.15, 0.05);
+    // serf.add(bread);
     return serf;
 }
 
 export function createPigFarmer() {
     const serf = createBaseSerf();
-    serf.name = 'Pig Farmer';
-    // Item: Small wooden bucket
-    const bucketRadius = 0.06;
-    const bucketHeight = 0.08;
-    const bucketGeom = new THREE.CylinderGeometry(bucketRadius, bucketRadius * 0.8, bucketHeight, 8);
+    serf.name = 'PigFarmer';
+    
+    // Item: Carries a small wooden bucket
+    const bucketRadiusTop = 0.05;
+    const bucketRadiusBottom = 0.04;
+    const bucketHeight = 0.07;
+    const bucketGeom = new THREE.CylinderGeometry(bucketRadiusTop, bucketRadiusBottom, bucketHeight, 8);
     const bucketMesh = createMesh(bucketGeom, COLORS.MEDIUM_BROWN, 'Bucket');
-    bucketMesh.position.set(0.15, 0.05, 0);
+    bucketMesh.position.set(0.12, 0.1, 0); // Held in "hand"
+    
+    // Tiny arched handle (simple thin torus segment or bent cylinder)
+    // For simplicity, a small cylinder across the top
+    const handleGeom = new THREE.CylinderGeometry(0.005, 0.005, bucketRadiusTop*2.2, 6);
+    const handleMesh = createMesh(handleGeom, COLORS.DARK_GREY, 'BucketHandle');
+    handleMesh.rotation.z = Math.PI / 2;
+    handleMesh.position.y = bucketHeight/2 - 0.005;
+    bucketMesh.add(handleMesh);
     serf.add(bucketMesh);
+
+    // Attire (Optional): Muddy brown patches (small flat cuboids) on the lower part of the body.
+    const patchGeom = new THREE.BoxGeometry(0.05, 0.08, 0.01);
+    const patchMaterial = new THREE.MeshStandardMaterial({color: COLORS.MEDIUM_BROWN});
+    const patch1 = new THREE.Mesh(patchGeom, patchMaterial);
+    patch1.position.set(0.05, 0.1, 0.18/2 + 0.005); // On leg area
+    patch1.rotation.y = Math.PI/6;
+    serf.getObjectByName('SerfBody').add(patch1);
+    const patch2 = new THREE.Mesh(patchGeom, patchMaterial);
+    patch2.position.set(-0.06, 0.15, 0.18/2 + 0.005);
+    patch2.rotation.y = -Math.PI/8;
+    serf.getObjectByName('SerfBody').add(patch2);
+
     return serf;
 }
 
 export function createButcher() {
     const serf = createBaseSerf();
     serf.name = 'Butcher';
-    // Attire: Dark red/maroon apron
-    const apronGeom = new THREE.BoxGeometry(0.25, 0.3, 0.01);
+
+    // Attire: A dark red or maroon apron
+    const apronWidth = 0.26;
+    const apronHeight = 0.28;
+    const apronDepth = 0.015;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
     const apronMesh = createMesh(apronGeom, COLORS.MAROON, 'Apron');
-    apronMesh.position.set(0, -0.05, 0.08);
-    serf.add(apronMesh);
-    // Optional: Cleaver
-    // const cleaver = Resources.createTool('cleaver'); // Assuming a generic tool creator
-    // serf.add(cleaver);
+    apronMesh.position.set(0, (0.6/2) - apronHeight/2.5, 0.18/2 + apronDepth/2);
+    serf.getObjectByName('SerfBody').add(apronMesh);
+
+    // Tool (Optional): Carries a cleaver
+    // Cleaver: small grey flat cuboid blade with a short brown handle
+    const cleaverGroup = new THREE.Group();
+    const bladeLength = 0.1;
+    const bladeHeight = 0.05;
+    const bladeThick = 0.008;
+    const cleaverBladeGeom = new THREE.BoxGeometry(bladeLength, bladeHeight, bladeThick);
+    const cleaverBladeMesh = createMesh(cleaverBladeGeom, COLORS.GREY, 'CleaverBlade');
+    cleaverGroup.add(cleaverBladeMesh);
+
+    const cleaverHandleLength = 0.07;
+    const cleaverHandleRadius = 0.01;
+    const cleaverHandleGeom = new THREE.CylinderGeometry(cleaverHandleRadius, cleaverHandleRadius, cleaverHandleLength, 6);
+    const cleaverHandleMesh = createMesh(cleaverHandleGeom, COLORS.MEDIUM_BROWN, 'CleaverHandle');
+    cleaverHandleMesh.position.x = -bladeLength/2 - cleaverHandleLength/2 + 0.01; // Attach to end of blade
+    cleaverHandleMesh.rotation.z = Math.PI/2; // Align with blade
+    cleaverBladeMesh.add(cleaverHandleMesh);
+    
+    cleaverGroup.scale.set(1.3,1.3,1.3);
+    cleaverGroup.position.set(0.1, 0.25, 0.05);
+    cleaverGroup.rotation.set(0, -Math.PI/3, Math.PI/2.5);
+    serf.add(cleaverGroup);
+
     return serf;
 }
 
 export function createSawmillWorker() {
     const serf = createBaseSerf();
     serf.name = 'SawmillWorker';
-    // Optional: Carrying Planks
+
+    // Attire: Body might have a darker brown apron.
+    const apronWidth = 0.25;
+    const apronHeight = 0.25;
+    const apronDepth = 0.015;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
+    const apronMesh = createMesh(apronGeom, COLORS.MEDIUM_BROWN, 'Apron');
+    apronMesh.position.set(0, (0.6/2) - apronHeight/2.5, 0.18/2 + apronDepth/2);
+    serf.getObjectByName('SerfBody').add(apronMesh);
+    
+    // Item (Optional): Often seen carrying Planks
     const plank = Resources.createPlank();
-    plank.scale.set(0.4, 0.4, 0.4);
-    plank.position.set(0.1, 0.1, -0.1);
-    plank.rotation.y = Math.PI / 6;
+    plank.scale.set(0.35, 0.35, 0.35);
+    plank.position.set(0.1, 0.15, -0.05); // Carried on shoulder/back
+    plank.rotation.set(Math.PI/6, Math.PI/3, -Math.PI/5);
     serf.add(plank);
     return serf;
 }
 
 export function createSmelterWorker() {
-    const serf = createBaseSerf(COLORS.DARK_GREY); // Soot color
+    // Attire: Body colored dark grey or black (soot).
+    const serf = createBaseSerf(COLORS.DARK_GREY); 
     serf.name = 'SmelterWorker';
-    // Optional: Thick dark grey apron
-    const apronGeom = new THREE.BoxGeometry(0.26, 0.32, 0.02);
-    const apronMesh = createMesh(apronGeom, COLORS.DARK_METALLIC_GREY, 'Apron');
-    apronMesh.position.set(0, -0.05, 0.08);
-    serf.add(apronMesh);
+
+    // A thick, dark grey apron.
+    const apronWidth = 0.27;
+    const apronHeight = 0.3;
+    const apronDepth = 0.02;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
+    const apronMesh = createMesh(apronGeom, COLORS.BLACK, 'Apron'); // Darker apron
+    apronMesh.position.set(0, (0.6/2) - apronHeight/2.5, 0.18/2 + apronDepth/2);
+    serf.getObjectByName('SerfBody').add(apronMesh);
+
+    // Tool (Optional): Carries a long poker (thin dark grey cylinder).
+    const pokerLength = 0.5;
+    const pokerRadius = 0.01;
+    const pokerGeom = new THREE.CylinderGeometry(pokerRadius, pokerRadius, pokerLength, 6);
+    const pokerMesh = createMesh(pokerGeom, COLORS.DARK_METALLIC_GREY, 'Poker');
+    pokerMesh.position.set(0.08, 0.2, 0.05);
+    pokerMesh.rotation.set(Math.PI/2.2, Math.PI/5, -Math.PI/3);
+    serf.add(pokerMesh);
     return serf;
 }
 
 export function createGoldsmith() {
     const serf = createBaseSerf();
     serf.name = 'Goldsmith';
-    // Item: Magnifying glass (yellow sphere + cylinder handle)
-    const lensRadius = 0.05;
-    const handleLength = 0.08;
-    const lensGeom = new THREE.SphereGeometry(lensRadius, 8, 6);
-    const lensMesh = createMesh(lensGeom, COLORS.YELLOW, 'MagnifyingLens');
-    lensMesh.position.set(0.1, 0.25, 0.1);
-    
-    const handleGeom = new THREE.CylinderGeometry(0.01, 0.01, handleLength, 6);
-    const handleMesh = createMesh(handleGeom, COLORS.YELLOW, 'MagnifyingHandle');
-    handleMesh.position.x = -lensRadius - handleLength/2 + 0.01;
-    handleMesh.rotation.z = Math.PI / 2;
-    lensMesh.add(handleMesh);
-    serf.add(lensMesh);
+
+    // Attire: A small, yellow magnifying glass shape held near the face or a yellow patch on the chest.
+    // Let's do a yellow patch.
+    const patchGeom = new THREE.BoxGeometry(0.06, 0.06, 0.01);
+    const patchMesh = createMesh(patchGeom, COLORS.YELLOW, 'ChestPatch');
+    patchMesh.position.set(0.05, 0.6/2 + 0.05, 0.18/2 + 0.005); // Upper chest
+    serf.getObjectByName('SerfBody').add(patchMesh);
+
+    // Item (Optional): May be seen carrying a Gold Bar
+    const goldBar = Resources.createGoldBar();
+    goldBar.scale.set(0.3, 0.3, 0.3);
+    goldBar.position.set(0.1, 0.15, 0);
+    serf.add(goldBar);
     return serf;
 }
 
 export function createToolmaker() {
     const serf = createBaseSerf();
     serf.name = 'Toolmaker';
-    // Attire: Grey/dark brown leather-like apron
-    const apronGeom = new THREE.BoxGeometry(0.25, 0.3, 0.01);
-    const apronMesh = createMesh(apronGeom, COLORS.MEDIUM_BROWN, 'Apron'); // Changed from DARK_BROWN
-    apronMesh.position.set(0, -0.05, 0.08);
-    serf.add(apronMesh);
-    // Item: Generic toolbox (small brown cuboid)
-    const toolboxGeom = new THREE.BoxGeometry(0.15, 0.1, 0.08);
+
+    // Attire: A grey or dark brown leather-like apron.
+    const apronWidth = 0.25;
+    const apronHeight = 0.28;
+    const apronDepth = 0.015;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
+    const apronMesh = createMesh(apronGeom, COLORS.MEDIUM_BROWN, 'Apron'); // Leather color
+    apronMesh.position.set(0, (0.6/2) - apronHeight/2.5, 0.18/2 + apronDepth/2);
+    serf.getObjectByName('SerfBody').add(apronMesh);
+
+    // Item: Carries a variety of tools or a generic "toolbox" (small brown cuboid).
+    const toolboxWidth = 0.12;
+    const toolboxHeight = 0.08;
+    const toolboxDepth = 0.06;
+    const toolboxGeom = new THREE.BoxGeometry(toolboxWidth, toolboxHeight, toolboxDepth);
     const toolboxMesh = createMesh(toolboxGeom, COLORS.MEDIUM_BROWN, 'Toolbox');
-    toolboxMesh.position.set(0.15, 0.05, 0);
+    toolboxMesh.position.set(0.1, 0.1, 0); // Held in "hand"
+    
+    // Tiny handle for toolbox
+    const handleGeom = new THREE.CylinderGeometry(0.008, 0.008, toolboxWidth * 0.7, 4);
+    const handleMesh = createMesh(handleGeom, COLORS.DARK_GREY, 'ToolboxHandle');
+    handleMesh.rotation.z = Math.PI/2;
+    handleMesh.position.y = toolboxHeight/2;
+    toolboxMesh.add(handleMesh);
     serf.add(toolboxMesh);
     return serf;
 }
 
 export function createBlacksmith() {
-    const serf = createBaseSerf(COLORS.DARK_GREY); // Slightly bulkier/darker
+    // Attire: Body might be slightly bulkier (represented by a slightly wider cylinder/cuboid).
+    // For simplicity, use standard body but with dark apron.
+    const serf = createBaseSerf(COLORS.DARK_GREY); // Body color implies soot/work
     serf.name = 'Blacksmith';
-    // Attire: Very dark grey/black apron
-    const apronGeom = new THREE.BoxGeometry(0.28, 0.33, 0.02); // Slightly larger apron
+
+    // A very dark grey or black apron.
+    const apronWidth = 0.28; // Slightly wider
+    const apronHeight = 0.3;
+    const apronDepth = 0.02;
+    const apronGeom = new THREE.BoxGeometry(apronWidth, apronHeight, apronDepth);
     const apronMesh = createMesh(apronGeom, COLORS.BLACK, 'Apron');
-    apronMesh.position.set(0, -0.05, 0.08);
-    serf.add(apronMesh);
-    // Tool: Hammer
+    apronMesh.position.set(0, (0.6/2) - apronHeight/2.5, 0.18/2 + apronDepth/2);
+    serf.getObjectByName('SerfBody').add(apronMesh);
+
+    // Tool: Carries a Hammer (larger than builder's hammer).
     const hammer = Resources.createHammer();
-    hammer.scale.set(0.6, 0.6, 0.6); // Larger hammer
-    hammer.position.set(0.15, 0.2, 0);
-    hammer.rotation.z = -Math.PI / 4;
+    hammer.scale.set(0.55, 0.55, 0.55); // Larger
+    hammer.position.set(0.13, 0.3, 0.1);
+    hammer.rotation.set(Math.PI / 6, -Math.PI / 4, Math.PI / 3);
     serf.add(hammer);
     return serf;
 }
@@ -314,64 +478,125 @@ export function createBlacksmith() {
 export function createGeologist() {
     const serf = createBaseSerf();
     serf.name = 'Geologist';
-    // Attire: Wide-brimmed hat
-    const hatRadius = 0.18;
-    const hatHeight = 0.05;
-    const hatGeom = new THREE.CylinderGeometry(hatRadius, hatRadius, hatHeight, 12);
-    const hatMesh = createMesh(hatGeom, COLORS.MEDIUM_BROWN, 'GeologistHat');
-     const head = serf.children.find(c => c.name === 'SerfHead');
+
+    // Attire: Wears a wide-brimmed hat (flat brown cylinder).
+    const hatOuterRadius = 0.16;
+    const hatInnerRadius = 0.08; 
+    const hatHeight = 0.03; 
+    const crownHeight = 0.05;
+
+    const brimGeom = new THREE.CylinderGeometry(hatOuterRadius, hatOuterRadius, hatHeight, 10);
+    const brimMesh = createMesh(brimGeom, COLORS.MEDIUM_BROWN, 'GeologistHatBrim');
+    
+    const crownGeom = new THREE.CylinderGeometry(hatInnerRadius, hatInnerRadius * 0.95, crownHeight, 10);
+    const crownMesh = createMesh(crownGeom, COLORS.MEDIUM_BROWN, 'GeologistHatCrown');
+    crownMesh.position.y = hatHeight/2 + crownHeight/2;
+    brimMesh.add(crownMesh);
+
+    const head = serf.getObjectByName('SerfHead');
     if (head) {
-        hatMesh.position.y = head.position.y + 0.08;
+        brimMesh.position.copy(head.position);
+        brimMesh.position.y += 0.1 * 0.8 + hatHeight/2; 
     } else {
-         hatMesh.position.y = 0.3 + 0.08;
+         brimMesh.position.y = 0.6 + 0.1*0.9 + 0.1 * 0.8 + hatHeight/2; 
     }
-    serf.add(hatMesh);
-    // Item: Map scroll
-    const scrollRadius = 0.03;
-    const scrollLength = 0.15;
+    serf.add(brimMesh);
+
+    // Item: Carries a map scroll (small rolled-up beige cylinder).
+    const scrollRadius = 0.025;
+    const scrollLength = 0.12;
     const scrollGeom = new THREE.CylinderGeometry(scrollRadius, scrollRadius, scrollLength, 8);
     const scrollMesh = createMesh(scrollGeom, COLORS.BEIGE, 'MapScroll');
-    scrollMesh.position.set(0.15, 0.1, 0);
-    scrollMesh.rotation.z = Math.PI / 3;
+    scrollMesh.position.set(0.1, 0.15, 0); // Held in "hand"
+    scrollMesh.rotation.z = Math.PI / 6; // Slightly angled
     serf.add(scrollMesh);
     return serf;
 }
 
 // --- Military Unit Creation Functions ---
-export function createKnight(playerColor = COLORS.PLAYER_BLUE) {
-    const knightGroup = createBaseSerf(playerColor, COLORS.DARK_METALLIC_GREY); // Armored body, helmeted head
+export function createKnight(playerColor = COLORS.PLAYER_FACTION_DEFAULT) {
+    // Body: Player's chosen faction color. Head: metallic grey sphere/rounded cube (helmet).
+    const knightGroup = createBaseSerf(playerColor, COLORS.DARK_METALLIC_GREY); 
     knightGroup.name = 'Knight';
+    
+    // Make body slightly more robust if desired (e.g. by scaling body mesh)
+    const bodyMesh = knightGroup.getObjectByName('SerfBody');
+    if (bodyMesh) {
+        bodyMesh.scale.x = 1.1;
+        bodyMesh.scale.z = 1.1;
+    }
+    // Helmet can be slightly larger or more distinct too
+    const headMesh = knightGroup.getObjectByName('SerfHead');
+    if (headMesh) {
+        headMesh.scale.set(1.1, 1.1, 1.1);
+        // Optional: Add a crest to the helmet (thin cuboid or cone)
+        const crestGeom = new THREE.BoxGeometry(0.02, 0.1, 0.05); // Thin, tall crest
+        const crestMesh = createMesh(crestGeom, playerColor, 'HelmetCrest');
+        crestMesh.position.y = 0.1 * 1.1 * 0.5; // On top of scaled head
+        headMesh.add(crestMesh);
+    }
+
 
     // Equipment
     const sword = Resources.createSword();
-    sword.scale.set(0.6, 0.6, 0.6);
-    sword.position.set(0.2, 0.1, 0.05); // Approximate holding position
-    sword.rotation.set(Math.PI / 2, Math.PI / 6, 0);
+    // Sword hilt can be player color or brown. Let's try player color for hilt.
+    const swordHilt = sword.getObjectByName('SwordHilt');
+    if (swordHilt) swordHilt.material.color.set(playerColor);
+    const swordCrossguard = sword.getObjectByName('SwordCrossguard');
+    if (swordCrossguard) swordCrossguard.material.color.set(playerColor);
+
+
+    sword.scale.set(0.55, 0.55, 0.55);
+    sword.position.set(0.15, 0.25, 0.05); 
+    sword.rotation.set(Math.PI / 2.2, Math.PI / 7, -Math.PI / 4); // Held ready
     knightGroup.add(sword);
 
     const shield = Resources.createShield();
-    shield.scale.set(0.7, 0.7, 0.7);
-    shield.position.set(-0.15, 0.05, 0.1); // Approximate holding position
-    shield.rotation.y = -Math.PI / 3;
-    
-    // Update shield emblem color if needed (assuming shield body is first child of shield group)
-    if (shield.children.length > 0 && shield.children[0].children.length > 0) {
-        const emblem = shield.children[0].children[0]; // ShieldBody -> ShieldEmblem
-        if (emblem && emblem.material) {
-            emblem.material.color.set(playerColor);
+    // Shield: wooden brown with player faction emblem (simple colored shape).
+    // The emblem is already part of createShield, just need to set its color.
+    const shieldEmblem = shield.getObjectByProperty('name', 'ShieldEmblem'); // More robust search
+     if (shieldEmblem) {
+        shieldEmblem.material.color.set(playerColor);
+    } else { // Fallback if name isn't set exactly as expected
+        const shieldBody = shield.getObjectByName('ShieldBody');
+        if (shieldBody && shieldBody.children.length > 0 && shieldBody.children[0].material) {
+             shieldBody.children[0].material.color.set(playerColor); // Assuming emblem is first child of body
         }
     }
-    knightGroup.add(shield);
 
-    // Optional Rank Indication (e.g., small chevrons - simplified for now)
-    // This could be a small colored box on the shoulder
-    // const rankIndicatorGeom = new THREE.BoxGeometry(0.05, 0.1, 0.02);
-    // const rankIndicatorMesh = createMesh(rankIndicatorGeom, COLORS.WHITE, 'RankIndicator');
-    // rankIndicatorMesh.position.set(0.1, 0.2, 0.1); // Shoulder area
-    // knightGroup.add(rankIndicatorMesh);
+    shield.scale.set(0.6, 0.6, 0.6);
+    shield.position.set(-0.12, 0.2, 0.12); 
+    shield.rotation.set(0, -Math.PI / 3, Math.PI / 12); // Held on arm
+    knightGroup.add(shield);
+    
+    // Rank Indication (Optional): Small chevrons (tiny pyramids or flat triangles)
+    // Example: 1 gold pyramid on shoulder for rank 1
+    // const rankGeom = new THREE.ConeGeometry(0.02, 0.04, 4); // Pyramid shape
+    // const rankMesh = createMesh(rankGeom, COLORS.YELLOW, 'RankChevron');
+    // rankMesh.position.set(0.1, 0.6/2 + 0.15, 0); // Shoulder area
+    // rankMesh.rotation.x = -Math.PI/4;
+    // bodyMesh.add(rankMesh); // Add to body so it moves with it
 
     return knightGroup;
 }
 
-// TODO: Add all other serf professions based on units.md
-// (Woodcutter, Forester, Stonemason, Miner, Farmer, Fisherman, Miller, Baker, Pig Farmer, Butcher, Sawmill Worker, Smelter Worker, Goldsmith, Toolmaker, Blacksmith, Geologist)
+// Ensure all serf professions from units.md are implemented.
+// Transporter - Done
+// Builder - Done
+// Woodcutter - Done
+// Forester - Done
+// Stonemason - Done
+// Miner - Done
+// Farmer - Done
+// Fisherman - Done
+// Miller - Done
+// Baker - Done
+// Pig Farmer - Done
+// Butcher - Done
+// Sawmill Worker - Done
+// Smelter Worker - Done
+// Goldsmith - Done
+// Toolmaker - Done
+// Blacksmith - Done
+// Geologist - Done
+// Knight - Done
