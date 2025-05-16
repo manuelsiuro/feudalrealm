@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import * as Resources from './resources.js'; // For tools
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { TILE_SIZE } from '../core/MapManager.js'; // Import TILE_SIZE
 
 // Helper function to create a mesh
 function createMesh(geometry, color, name = '') {
@@ -600,3 +602,288 @@ export function createKnight(playerColor = COLORS.PLAYER_FACTION_DEFAULT) {
 // Blacksmith - Done
 // Geologist - Done
 // Knight - Done
+
+// Define Serf Action States
+const SERF_ACTION_STATES = {
+    IDLE: 'IDLE',
+    MOVING_TO_TARGET: 'MOVING_TO_TARGET',
+    PERFORMING_TASK: 'PERFORMING_TASK',
+    RETURNING_TO_DROPOFF: 'RETURNING_TO_DROPOFF' // Placeholder for future
+};
+
+export class Unit {
+    constructor(id, x, y, unitType, scene, mapManager) {
+        this.id = id;
+        this.x = x; // Grid X
+        this.y = y; // Grid Y
+        this.unitType = unitType;
+        this.scene = scene;
+        this.model = null;
+        this.mapManager = mapManager; // Store mapManager
+    }
+
+    _loadModel(scene, modelPath = 'src/assets/models/units/serf.glb', scale = 0.03) {
+        const loader = new GLTFLoader();
+        loader.load(modelPath, (gltf) => {
+            this.model = gltf.scene;
+            this.model.scale.set(scale, scale, scale);
+            this.model.name = `${this.unitType}-${this.id}`;
+            this.model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            // Initial position based on grid coordinates
+            this.updateModelPosition(); 
+            scene.add(this.model);
+            console.log(`${this.unitType} model loaded and added to scene at grid (${this.x}, ${this.y})`);
+        }, undefined, (error) => {
+            console.error(`Error loading ${this.unitType} model:`, error);
+        });
+    }
+
+    updateModelPosition() {
+        if (this.model && this.mapManager) {
+            this.model.position.set(
+                (this.x - (this.mapManager.width - 1) / 2) * TILE_SIZE,
+                0, // Assuming Y=0 is ground level for serfs
+                (this.y - (this.mapManager.height - 1) / 2) * TILE_SIZE
+            );
+        }
+    }
+
+    getPosition() {
+        return { x: this.x, y: this.y };
+    }
+
+    setPosition(x, y) {
+        this.x = x;
+        this.y = y;
+        this.updateModelPosition();
+    }
+
+    update(deltaTime) {
+        // Base update logic, if any (e.g., animations)
+    }
+}
+
+export class Serf extends Unit {
+    constructor(id, x, y, type, scene, mapManager) {
+        super(id, x, y, 'serf', scene, mapManager); // Pass mapManager to super if it handles it, or store it here
+        this.serfType = type; // 'builder', 'farmer', 'miner', 'idle'
+        this.task = 'idle';
+        this.taskDetails = {};
+        this.inventory = {}; // { wood: 10, stone: 5 }
+
+        this.mapManager = mapManager; // Ensure mapManager is stored on the instance
+        this.state = SERF_ACTION_STATES.IDLE;
+        this.targetNode = null; // Will store the grid cell of the target resource
+        this.taskTimer = 0; // For timing actions like mining
+        this.initialTaskAssignedByManager = false; // For testing task assignment
+
+        // Pathfinding properties (optional, for future use)
+        this.path = null;
+        this.pathIndex = 0;
+
+        // Movement speed (units per second)
+        this.speed = TILE_SIZE * 0.5; // Example: half a tile per second
+
+        this._loadModel(scene);
+        console.log(`Serf ${this.id} created at (${x},${y}), type: ${type}`);
+    }
+
+    // ...existing code for _loadModel, getPosition, setPosition...
+
+    setTask(taskType, details = {}) {
+        this.task = taskType;
+        this.taskDetails = details; // e.g., { resourceType: 'stone' }
+        this.state = SERF_ACTION_STATES.IDLE; // Reset state when a new task is assigned
+        this.targetNode = null;
+        this.taskTimer = 0;
+        this.path = null;
+        this.pathIndex = 0;
+        console.log(`${this.id} (${this.serfType}) assigned task: ${taskType} with details: ${JSON.stringify(details)}`);
+    }
+
+    _findTaskTarget() {
+        if (!this.taskDetails || !this.taskDetails.resourceType) {
+            console.log(`${this.id} cannot find target: resourceType not specified in taskDetails.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            return false;
+        }
+
+        const resourceTypeToFind = this.taskDetails.resourceType;
+        console.log(`${this.id} searching for ${resourceTypeToFind}...`);
+
+        let bestTarget = null;
+        let minDistanceSq = Infinity;
+
+        const serfGridX = this.x; // Assuming this.x, this.y are current grid coords
+        const serfGridY = this.y;
+
+        for (let r = 0; r < this.mapManager.height; r++) {
+            for (let c = 0; c < this.mapManager.width; c++) {
+                const tile = this.mapManager.grid[r][c];
+                if (tile.resource && tile.resource.type === resourceTypeToFind && tile.resource.amount > 0) {
+                    const distSq = (c - serfGridX) * (c - serfGridX) + (r - serfGridY) * (r - serfGridY);
+                    if (distSq < minDistanceSq) {
+                        minDistanceSq = distSq;
+                        bestTarget = tile;
+                    }
+                }
+            }
+        }
+
+        if (bestTarget) {
+            this.targetNode = bestTarget;
+            this.state = SERF_ACTION_STATES.MOVING_TO_TARGET;
+            console.log(`${this.id} found ${resourceTypeToFind} at (${this.targetNode.x}, ${this.targetNode.y}). Amount: ${this.targetNode.resource.amount}`);
+            // Pathfind to the target node's coordinates
+            this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: this.targetNode.x, y: this.targetNode.y });
+            
+            if (this.path && this.path.length > 0) {
+                this.pathIndex = 0; // Start at the beginning of the path
+                this.state = SERF_ACTION_STATES.MOVING_TO_TARGET;
+                console.log(`${this.id} path found. Length: ${this.path.length}. Moving to target.`);
+                return true;
+            } else {
+                console.log(`${this.id} could not find a path to ${resourceTypeToFind} at (${this.targetNode.x}, ${this.targetNode.y}). Going idle.`);
+                this.targetNode = null; // Clear target if no path
+                this.task = 'idle';
+                this.state = SERF_ACTION_STATES.IDLE;
+                return false;
+            }
+        } else {
+            console.log(`${this.id} could not find any available ${resourceTypeToFind}. Going idle.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            return false;
+        }
+    }
+
+    _moveAlongPath(deltaTime) {
+        if (!this.path || this.pathIndex >= this.path.length) {
+            // console.log("Path completed or no path to follow.");
+            return true; // Reached destination or no path
+        }
+
+        const targetWaypoint = this.path[this.pathIndex];
+        const targetWorldX = (targetWaypoint.x - (this.mapManager.width - 1) / 2) * TILE_SIZE;
+        const targetWorldZ = (targetWaypoint.y - (this.mapManager.height - 1) / 2) * TILE_SIZE;
+
+        const directionX = targetWorldX - this.model.position.x;
+        const directionZ = targetWorldZ - this.model.position.z;
+        const distanceToWaypoint = Math.sqrt(directionX * directionX + directionZ * directionZ);
+
+        const moveDistance = this.speed * deltaTime * TILE_SIZE; // speed is in tiles/sec, TILE_SIZE converts to world units
+
+        if (distanceToWaypoint <= moveDistance) {
+            // Arrived at waypoint
+            this.model.position.x = targetWorldX;
+            this.model.position.z = targetWorldZ;
+            this.x = targetWaypoint.x; // Update logical grid position
+            this.y = targetWaypoint.y;
+            this.pathIndex++;
+            // console.log(`${this.id} reached waypoint ${this.pathIndex -1}: (${targetWaypoint.x}, ${targetWaypoint.y})`);
+
+            if (this.pathIndex >= this.path.length) {
+                // console.log(`${this.id} reached final destination in path.`);
+                return true; // Reached final destination
+            }
+        } else {
+            // Move towards waypoint
+            const normDirectionX = directionX / distanceToWaypoint;
+            const normDirectionZ = directionZ / distanceToWaypoint;
+            this.model.position.x += normDirectionX * moveDistance;
+            this.model.position.z += normDirectionZ * moveDistance;
+
+            // Update logical grid position based on model's world position (optional, can be coarse)
+            // For simplicity, we only update logical grid position when a waypoint is reached.
+            // More precise tracking could be done here if needed.
+        }
+        return false; // Still moving
+    }
+
+    update(deltaTime) {
+        super.update(deltaTime); // Base unit update
+
+        if (this.task === 'mine') {
+            switch (this.state) {
+                case SERF_ACTION_STATES.IDLE:
+                    this._findTaskTarget();
+                    break;
+
+                case SERF_ACTION_STATES.MOVING_TO_TARGET:
+                    if (this.targetNode && this.path) {
+                        const arrived = this._moveAlongPath(deltaTime);
+                        if (arrived) {
+                            console.log(`${this.id} arrived at ${this.taskDetails.resourceType} at (${this.targetNode.x}, ${this.targetNode.y}).`);
+                            this.setPosition(this.targetNode.x, this.targetNode.y); // Ensure final position is exact
+                            this.state = SERF_ACTION_STATES.PERFORMING_TASK;
+                            this.taskTimer = 0;
+                            this.path = null; // Clear path once arrived
+                            this.pathIndex = 0;
+                        }
+                    } else {
+                        // No target or no path, should have been handled by _findTaskTarget or become idle
+                        console.log(`${this.id} in MOVING_TO_TARGET but no targetNode or path. Reverting to IDLE.`);
+                        this.state = SERF_ACTION_STATES.IDLE;
+                        this.path = null;
+                        this.pathIndex = 0;
+                    }
+                    break;
+
+                case SERF_ACTION_STATES.PERFORMING_TASK:
+                    if (this.targetNode && this.targetNode.resource && this.targetNode.resource.amount > 0) {
+                        this.taskTimer += deltaTime;
+                        const miningDuration = 2.0; // Time in seconds to mine 1 unit
+
+                        if (this.taskTimer >= miningDuration) {
+                            this.taskTimer -= miningDuration; // Or reset to 0 if precise timing isn't critical
+                            
+                            const minedAmount = 1;
+                            this.targetNode.resource.amount -= minedAmount;
+                            this.inventory[this.taskDetails.resourceType] = (this.inventory[this.taskDetails.resourceType] || 0) + minedAmount;
+                            
+                            console.log(`${this.id} mined ${minedAmount} ${this.taskDetails.resourceType}. Inventory: ${this.inventory[this.taskDetails.resourceType]}. Node remaining: ${this.targetNode.resource.amount}`);
+
+                            if (this.targetNode.resource.amount <= 0) {
+                                console.log(`Resource node ${this.taskDetails.resourceType} at (${this.targetNode.x}, ${this.targetNode.y}) depleted.`);
+                                
+                                // Call MapManager to remove the visual for the depleted node
+                                if (this.mapManager && this.mapManager.removeResourceVisual) {
+                                    this.mapManager.removeResourceVisual(this.targetNode);
+                                }
+                                
+                                this.targetNode.resource = null; // Mark as depleted on map data
+                                this.targetNode = null;
+                                this.state = SERF_ACTION_STATES.IDLE; // Go idle or return to dropoff
+                                // TODO: Implement inventory full check and return to dropoff
+                            }
+                            // TODO: Check inventory capacity: if (this.inventory[this.taskDetails.resourceType] >= MAX_CAPACITY) this.state = SERF_ACTION_STATES.RETURNING_TO_DROPOFF;
+                        }
+                    } else {
+                        console.log(`${this.id} cannot mine, target invalid or depleted.`);
+                        this.state = SERF_ACTION_STATES.IDLE;
+                        this.targetNode = null;
+                        this.taskTimer = 0;
+                    }
+                    break;
+                
+                // case SERF_ACTION_STATES.RETURNING_TO_DROPOFF:
+                // Logic for returning to a stockpile/main building
+                // console.log(`${this.id} returning to dropoff with resources.`);
+                // break;
+            }
+        } else if (this.task === 'idle' && this.state !== SERF_ACTION_STATES.IDLE) {
+            // If task is idle but state is not, reset (e.g. after completing a task)
+             this.state = SERF_ACTION_STATES.IDLE;
+             this.targetNode = null;
+             this.taskTimer = 0;
+        }
+    }
+}
+
+// ... any other existing code like Villager class ...

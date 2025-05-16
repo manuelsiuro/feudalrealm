@@ -120,10 +120,11 @@ const gameElementsGroup = new THREE.Group();
 gameElementsGroup.name = "GameElements";
 scene.add(gameElementsGroup);
 
-const MAP_WIDTH = 30;
-const MAP_HEIGHT = 30;
+const MAP_WIDTH = 15;
+const MAP_HEIGHT = 15;
 const gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
-gameMap.tileMeshes.position.y = -0.25;
+// Donot delete stay commented
+//gameMap.tileMeshes.position.y = -0.25;
 gameElementsGroup.add(gameMap.tileMeshes);
 console.log('GameMap created and added to scene.');
 
@@ -135,9 +136,16 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const clock = new THREE.Clock();
 
-camera.position.set(MAP_WIDTH * TILE_SIZE / 2, Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 0.75, MAP_HEIGHT * TILE_SIZE / 2 + 5);
-controls.target.set(0, 0, 0);
-controls.maxDistance = Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 2;
+// Camera positioning based on map size
+const mapCenterOffset = 0; // Tiles are centered around (0,0,0)
+const cameraX = (MAP_WIDTH * TILE_SIZE) * 0.65; // Positioned to view from a corner/angle
+const cameraY = Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 0.8; // Elevated view
+const cameraZ = (MAP_HEIGHT * TILE_SIZE) * 0.65; // Positioned to view from a corner/angle
+
+camera.position.set(cameraX, cameraY, cameraZ);
+controls.target.set(mapCenterOffset, 0, mapCenterOffset); // Target the center of the map
+controls.maxDistance = Math.max(MAP_WIDTH, MAP_HEIGHT) * TILE_SIZE * 2.5; // Allow zooming out further
+controls.minDistance = TILE_SIZE * 2; // Prevent zooming in too close
 
 if (uiOverlay) {
     uiOverlay.innerHTML = '';
@@ -754,3 +762,73 @@ window.addEventListener('keydown', (event) => {
         resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
     }
 });
+
+class FeudalRealmManager {
+    constructor() {
+        this.serfs = [];
+        this.selectedSerf = null;
+        this.initializeSerfs();
+    }
+
+    initializeSerfs() {
+        // Example: Create a few serfs of different types
+        // Ensure mapManager is ready and grid is populated before placing serfs
+        if (!this.mapManager || !this.mapManager.grid) {
+            console.error("MapManager not ready for serf initialization.");
+            return;
+        }
+
+        // Place serfs at valid starting positions (e.g., near the town center or on empty tiles)
+        // For simplicity, let's assume (10,10), (12,10), (10,12) are valid and empty
+        // In a real game, you'd check tile properties (e.g., isWalkable)
+
+        const serfPositions = [
+            { x: 10, y: 10, type: 'miner' },
+            { x: 12, y: 10, type: 'builder' }, // Will be idle for now
+            { x: 10, y: 12, type: 'farmer' }  // Will be idle for now
+        ];
+
+        serfPositions.forEach((pos, index) => {
+            const serfId = `serf-${index}`;
+            // Ensure the position is within map bounds
+            if (pos.x < 0 || pos.x >= this.mapManager.width || pos.y < 0 || pos.y >= this.mapManager.height) {
+                console.warn(`Serf position (${pos.x}, ${pos.y}) is out of bounds. Skipping.`);
+                return;
+            }
+
+            const serf = new Serf(serfId, pos.x, pos.y, pos.type, this.scene, this.mapManager);
+            this.serfs.push(serf);
+            console.log(`Initialized ${serf.serfType} serf: ${serf.id} at grid (${pos.x}, ${pos.y})`);
+        });
+
+        // Assign a task to the first miner serf for testing
+        if (this.serfs.length > 0 && this.serfs[0].serfType === 'miner') {
+            // Find a stone resource to assign
+            let stoneNode = null;
+            for (let r = 0; r < this.mapManager.height; r++) {
+                for (let c = 0; c < this.mapManager.width; c++) {
+                    const tile = this.mapManager.grid[r][c];
+                    if (tile.resource && tile.resource.type === 'stone' && tile.resource.amount > 0) {
+                        stoneNode = tile;
+                        break;
+                    }
+                }
+                if (stoneNode) break;
+            }
+
+            if (stoneNode) {
+                console.log(`Assigning initial mine task to ${this.serfs[0].id} for stone at (${stoneNode.x}, ${stoneNode.y})`);
+                this.serfs[0].setTask('mine', { resourceType: 'stone' });
+                this.serfs[0].initialTaskAssignedByManager = true; // Mark for testing
+            } else {
+                console.log("No stone found to assign initial task to miner serf.");
+            }
+        }
+    }
+
+    update(deltaTime) {
+        this.serfs.forEach(serf => {
+            serf.update(deltaTime);
+        });
+    }
+}
