@@ -117,25 +117,105 @@ class GameMap {
     }
 
     /**
-     * Basic map generation logic.
-     * This will be expanded significantly in future steps.
-     * For now, it might create a few patches of different terrain.
+     * Generates more structured map features with distinct regions.
      */
     generateMapFeatures() {
-        // Example: Add a small forest
-        for (let i = 0; i < 5; i++) {
-            const randX = Math.floor(Math.random() * this.width);
-            const randY = Math.floor(Math.random() * this.height);
-            this.setTerrain(randX, randY, 'forest');
-        }
-        // Example: Add a small water body
-        const waterX = Math.floor(this.width / 2);
-        const waterY = Math.floor(this.height / 2);
-        this.setTerrain(waterX, waterY, 'water');
-        this.setTerrain(waterX + 1, waterY, 'water');
-        this.setTerrain(waterX, waterY + 1, 'water');
+        console.log("Generating more structured map features...");
 
-        console.log("Basic map features generated.");
+        // Initialize all to grassland (primarily for clarity, as initializeGrid does this)
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                this.setTerrain(x, y, 'grassland');
+            }
+        }
+
+        // Create a mountain range
+        // Attempts to create a somewhat contiguous range, could be horizontal or vertical
+        const mountainRangeLength = Math.floor(this.width * (Math.random() * 0.3 + 0.4)); // 40-70% of width/height
+        const mountainRangeThickness = Math.floor(this.width * (Math.random() * 0.1 + 0.15)); // 15-25% of width/height
+        const isVerticalRange = Math.random() > 0.5;
+        
+        let mountainStartX = Math.floor(Math.random() * (this.width - (isVerticalRange ? mountainRangeThickness : mountainRangeLength)));
+        let mountainStartY = Math.floor(Math.random() * (this.height - (isVerticalRange ? mountainRangeLength : mountainRangeThickness)));
+
+        for (let i = 0; i < (isVerticalRange ? mountainRangeLength : mountainRangeThickness); i++) { // Iterate along thickness
+            for (let j = 0; j < (isVerticalRange ? mountainRangeThickness : mountainRangeLength); j++) { // Iterate along length
+                const currentX = mountainStartX + (isVerticalRange ? j : i);
+                const currentY = mountainStartY + (isVerticalRange ? i : j);
+                if (Math.random() > 0.25) { // 75% chance to be mountain within the defined block
+                    this.setTerrain(currentX, currentY, 'mountain');
+                } else if (Math.random() > 0.5) { // Some bordering tiles might be forest
+                     this.setTerrain(currentX, currentY, 'forest');
+                }
+            }
+        }
+
+        // Create a large forest area
+        const forestSizeRatio = Math.random() * 0.2 + 0.25; // 25-45% of map area for forest
+        const numForestPatches = Math.floor(Math.random() * 3) + 2; // 2-4 patches to form the forest area
+
+        for (let p = 0; p < numForestPatches; p++) {
+            const patchSizeX = Math.floor(this.width * (Math.random() * 0.15 + 0.1)); // 10-25% width
+            const patchSizeY = Math.floor(this.height * (Math.random() * 0.15 + 0.1));
+            const forestStartX = Math.floor(Math.random() * (this.width - patchSizeX));
+            const forestStartY = Math.floor(Math.random() * (this.height - patchSizeY));
+
+            for (let y = forestStartY; y < forestStartY + patchSizeY; y++) {
+                for (let x = forestStartX; x < forestStartX + patchSizeX; x++) {
+                    const tile = this.getTile(x, y);
+                    if (tile && tile.terrainType !== 'mountain' && tile.terrainType !== 'water' && Math.random() > 0.15) {
+                        this.setTerrain(x, y, 'forest');
+                    }
+                }
+            }
+        }
+
+        // Create a desert area
+        const desertSizeRatio = Math.random() * 0.15 + 0.2; // 20-35% of map area
+        const desertPatchSizeX = Math.floor(this.width * (Math.random() * 0.2 + 0.2)); // 20-40% width
+        const desertPatchSizeY = Math.floor(this.height * (Math.random() * 0.2 + 0.2));
+        let desertStartX, desertStartY;
+        let attempts = 0;
+        do { // Try to place desert not directly on a dense forest/mountain area
+            desertStartX = Math.floor(Math.random() * (this.width - desertPatchSizeX));
+            desertStartY = Math.floor(Math.random() * (this.height - desertPatchSizeY));
+            attempts++;
+        } while (this.getTile(desertStartX + desertPatchSizeX / 2, desertStartY + desertPatchSizeY / 2)?.terrainType === 'mountain' && attempts < 10);
+
+        for (let y = desertStartY; y < desertStartY + desertPatchSizeY; y++) {
+            for (let x = desertStartX; x < desertStartX + desertPatchSizeX; x++) {
+                const tile = this.getTile(x, y);
+                if (tile && tile.terrainType === 'grassland' && Math.random() > 0.2) {
+                    this.setTerrain(x, y, 'desert');
+                } else if (tile && tile.terrainType === 'forest' && Math.random() > 0.8) { // Rarely turn edge of forest to desert
+                    this.setTerrain(x, y, 'desert');
+                }
+            }
+        }
+
+        // Add some water bodies (lakes/rivers)
+        const numWaterBodies = Math.floor((this.width * this.height) / (Math.random() * 50 + 50)) + 1; // e.g., 1-3 for 10x10
+        for (let i = 0; i < numWaterBodies; i++) {
+            const waterStartX = Math.floor(Math.random() * this.width);
+            const waterStartY = Math.floor(Math.random() * this.height);
+            const waterSizeBase = Math.floor(Math.random() * 2) + 1; // 1 to 2 base size
+            const isRiverLike = Math.random() > 0.5;
+            const waterLength = isRiverLike ? Math.floor(Math.random() * (this.height/3)) + 2 : waterSizeBase;
+            const waterWidth = isRiverLike ? waterSizeBase : Math.floor(Math.random() * 2) + waterSizeBase;
+
+
+            for (let wy = waterStartY; wy < waterStartY + waterLength; wy++) {
+                for (let wx = waterStartX; wx < waterStartX + waterWidth; wx++) {
+                    if (Math.random() > 0.3) { // 70% chance to be water in the patch
+                        const tile = this.getTile(wx, wy);
+                        if (tile && tile.terrainType !== 'mountain') { // Avoid placing directly on mountains
+                            this.setTerrain(wx, wy, 'water');
+                        }
+                    }
+                }
+            }
+        }
+        console.log("More structured map features generated using the new algorithm.");
     }
 }
 

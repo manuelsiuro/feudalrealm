@@ -55,9 +55,9 @@ export function createGrassland(size = { width: 10, depth: 10 }) {
     group.name = 'Grassland';
 
     const groundGeom = new THREE.PlaneGeometry(size.width, size.depth, 10, 10);
-    const groundMesh = createMesh(groundGeom, TERRAIN_COLORS.LAWN_GREEN, 'GroundPlane');
-    groundMesh.rotation.x = -Math.PI / 2;
-    group.add(groundMesh);
+    //const groundMesh = createMesh(groundGeom, TERRAIN_COLORS.LAWN_GREEN, 'GroundPlane');
+    //groundMesh.rotation.x = -Math.PI / 2;
+    //group.add(groundMesh);
 
     // Gentle Hills (optional example)
     const numHills = Math.floor(Math.random() * 3) + 1; // 1 to 3 hills
@@ -82,9 +82,9 @@ export function createForest(size = { width: 10, depth: 10 }, density = 0.5) {
     group.name = 'Forest';
 
     const groundGeom = new THREE.PlaneGeometry(size.width, size.depth);
-    const groundMesh = createMesh(groundGeom, TERRAIN_COLORS.DARK_GREEN_FOREST_GROUND, 'GroundPlane');
-    groundMesh.rotation.x = -Math.PI / 2;
-    group.add(groundMesh);
+    //const groundMesh = createMesh(groundGeom, TERRAIN_COLORS.DARK_GREEN_FOREST_GROUND, 'GroundPlane');
+    //groundMesh.rotation.x = -Math.PI / 2;
+    //group.add(groundMesh);
 
     const treeArea = size.width * size.depth;
     const numTrees = Math.floor(treeArea * density * 0.1); // Adjust density factor
@@ -130,31 +130,42 @@ export function createMountain(size = { width: 5, depth: 5, height: 4 }) {
     // Main peak
     const peakGeom = new THREE.ConeGeometry(size.width / 2, size.height, 12);
     const peakMesh = createMesh(peakGeom, TERRAIN_COLORS.GREY_MOUNTAIN, 'MountainPeak');
-    peakMesh.position.y = size.height / 2;
+    peakMesh.position.y = size.height / 2; // Center of the peak cone is size.height/2 above its base. Base is at y=0 for the group.
     group.add(peakMesh);
 
     // Optional snow cap
     if (size.height > 3) {
         const snowCapHeight = size.height * 0.3;
-        const snowCapRadius = (size.width / 2) * (1 - (snowCapHeight / size.height) * 0.8); // Tapered
+        const snowCapRadius = (size.width / 8) * (1 - (snowCapHeight / size.height) * 0.4); // Tapered
         const snowCapGeom = new THREE.ConeGeometry(snowCapRadius, snowCapHeight, 8);
         const snowCapMesh = createMesh(snowCapGeom, TERRAIN_COLORS.WHITE_SNOW, 'SnowCap');
-        snowCapMesh.position.y = size.height - snowCapHeight / 2;
-        peakMesh.add(snowCapMesh); // Add to peak so it's positioned relative to peak top
+
+        // Corrected positioning for the snow cap:
+        // The peak's tip is at peakMesh's local y = size.height / 2.
+        // We will position the snow cap's *center* at the peak's tip.
+        // This means the snow cap will slightly sink into the peak, which is a common visual for caps.
+        snowCapMesh.position.y = size.height / 2;
+        
+        // The original calculation, which should place the snow cap's base on the peak's tip, was:
+        // snowCapMesh.position.y = (size.height / 2) + (snowCapHeight / 2);
+        // If this resulted in floating, the issue might be elsewhere, but this change directly addresses lowering the cap.
+
+        peakMesh.add(snowCapMesh); // Add to peak so it's positioned relative to peak top (actually peak center)
     }
 
     // Boulders (optional example)
     const numBoulders = Math.floor(Math.random() * 5) + 2;
     for (let i = 0; i < numBoulders; i++) {
         const boulderSize = Math.random() * 0.5 + 0.2;
-        const boulderGeom = new THREE.BoxGeometry(boulderSize, boulderSize, boulderSize);
+        // Using BoxGeometry for boulders as in the original snippet
+        const boulderGeom = new THREE.BoxGeometry(boulderSize, boulderSize, boulderSize); 
         const boulderMesh = createMesh(boulderGeom, TERRAIN_COLORS.DARK_GREY_BOULDER, `Boulder_${i}`);
         boulderMesh.position.set(
             (Math.random() - 0.5) * size.width * 0.6,
-            boulderSize / 2,
+            boulderSize / 2, // Base of boulder at y=0 of the group
             (Math.random() - 0.5) * size.depth * 0.6
         );
-        boulderMesh.rotation.set(Math.random(), Math.random(), Math.random());
+        boulderMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         group.add(boulderMesh);
     }
     return group;
