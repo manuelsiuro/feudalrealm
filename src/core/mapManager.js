@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as Terrains from '../entities/terrains.js'; // Import detailed terrain generators
 import * as Resources from '../entities/resources.js'; // Import resource generators
 import { findPathAStar } from '../utils/pathfinding.js'; // Import A* pathfinding
+import { TILE_SIZE, TERRAIN_TYPES, TERRAIN_COLORS } from '../config/mapConstants.js';
 
 // Helper function to create a mesh (can be moved to a shared utils.js later)
 function createMesh(geometry, color, name = '') {
@@ -10,24 +11,6 @@ function createMesh(geometry, color, name = '') {
     mesh.name = name;
     return mesh;
 }
-
-export const TILE_SIZE = 5; // Increased TILE_SIZE for better visual scale with detailed models
-
-export const TERRAIN_TYPES = {
-    GRASSLAND: 'grassland',
-    FOREST: 'forest',
-    MOUNTAIN: 'mountain',
-    WATER: 'water',
-    DESERT: 'desert',
-};
-
-export const TERRAIN_COLORS = {
-    [TERRAIN_TYPES.GRASSLAND]: 0x32CD32, // LimeGreen
-    [TERRAIN_TYPES.FOREST]: 0x228B22,    // ForestGreen
-    [TERRAIN_TYPES.MOUNTAIN]: 0x808080,   // Grey
-    [TERRAIN_TYPES.WATER]: 0x1E90FF,     // DodgerBlue
-    [TERRAIN_TYPES.DESERT]: 0xF4A460,    // SandyBrown
-};
 
 // Mapping from MapManager's TERRAIN_TYPES to entities/terrains.js generator keys
 const TERRAIN_GENERATOR_MAP = {

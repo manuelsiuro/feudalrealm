@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RESOURCE_TYPES } from '../core/resourceManager.js'; // Added import
+import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // Updated import
 // import { SERF_PROFESSIONS } from '../core/serfManager.js'; // Removed to break circular dependency
 
 // Helper function to create a mesh with a specific geometry and color

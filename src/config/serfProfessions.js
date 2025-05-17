@@ -1,0 +1,21 @@
+// src/config/serfProfessions.js
+export const SERF_PROFESSIONS = {
+    TRANSPORTER: 'Transporter',
+    BUILDER: 'Builder',
+    WOODCUTTER: 'Woodcutter',
+    FORESTER: 'Forester',
+    STONEMASON: 'Stonemason',
+    MINER: 'Miner',
+    FARMER: 'Farmer',
+    FISHERMAN: 'Fisherman',
+    MILLER: 'Miller',
+    BAKER: 'Baker',
+    PIG_FARMER: 'Pig Farmer',
+    BUTCHER: 'Butcher',
+    SAWMILL_WORKER: 'Sawmill Worker',
+    SMELTER_WORKER: 'Smelter Worker',
+    GOLDSMITH: 'Goldsmith',
+    TOOLMAKER: 'Toolmaker',
+    BLACKSMITH: 'Blacksmith',
+    GEOLOGIST: 'Geologist',
+};

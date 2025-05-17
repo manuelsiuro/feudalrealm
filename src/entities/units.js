@@ -1,32 +1,12 @@
 import * as THREE from 'three';
 import * as Resources from './resources.js'; // For tools
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { TILE_SIZE } from '../core/MapManager.js'; // Import TILE_SIZE
+import { TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path for TILE_SIZE
 import resourceManager from '../core/resourceManager.js'; // Import resourceManager
-
-export const SERF_ACTION_STATES = { // Added export keyword
-    IDLE: 'IDLE',
-    MOVING_TO_TARGET: 'MOVING_TO_TARGET', // Generic movement to a point/static target
-    PERFORMING_TASK: 'PERFORMING_TASK', // Generic task at a location (e.g., old mining)
-    RETURNING_TO_DROPOFF: 'RETURNING_TO_DROPOFF', // Returning to global dropoff
-    WORKING_AT_BUILDING: 'WORKING_AT_BUILDING', // For serfs whose work is *inside* or directly tied to building without map interaction (e.g. blacksmith)
-
-    // New states for Transporters
-    MOVING_TO_PICKUP_LOCATION: 'MOVING_TO_PICKUP_LOCATION',
-    PICKING_UP_RESOURCE: 'PICKING_UP_RESOURCE',
-    MOVING_TO_RESOURCE_DROPOFF: 'MOVING_TO_RESOURCE_DROPOFF', // Note: Renamed from MOVING_TO_DROPOFF_LOCATION for clarity
-    DROPPING_OFF_RESOURCE: 'DROPPING_OFF_RESOURCE',
-
-    // New states for resource gatherers (e.g., Woodcutter)
-    SEARCHING_FOR_RESOURCE_ON_MAP: 'SEARCHING_FOR_RESOURCE_ON_MAP',
-    MOVING_TO_RESOURCE_NODE: 'MOVING_TO_RESOURCE_NODE', // Moving to a tree, stone deposit etc.
-    GATHERING_RESOURCE_FROM_NODE: 'GATHERING_RESOURCE_FROM_NODE', // Actively gathering from the map node
-    MOVING_TO_DEPOSIT_BUILDING: 'MOVING_TO_DEPOSIT_BUILDING', // Returning to their assigned building (e.g., Woodcutter's Hut)
-    DEPOSITING_RESOURCE_IN_BUILDING: 'DEPOSITING_RESOURCE_IN_BUILDING', // Depositing into local building inventory
-};
-
-const MAX_SERF_INVENTORY_CAPACITY = 10; // Max units of a resource a serf can carry
-const DEFAULT_DROPOFF_POINT = { x: 15, y: 15 }; // Example fixed drop-off point
+import { RESOURCE_TYPES } from '../config/resourceTypes.js';
+import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
+import { COLORS } from '../config/colors.js'; // Updated import
+import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT } from '../config/unitConstants.js';
 
 // Helper function to create a mesh
 function createMesh(geometry, color, name = '') {
@@ -35,36 +15,6 @@ function createMesh(geometry, color, name = '') {
     mesh.name = name;
     return mesh;
 }
-
-// Color definitions (can be shared from a common utils.js later)
-// Export COLORS so it can be imported by other modules
-export const COLORS = {
-    LIGHT_BROWN: 0xCD853F, // For general use, some serf bodies, tool handles
-    BEIGE: 0xF5F5DC,       // For general use, some serf bodies
-    LIGHT_GREY: 0xD3D3D3,   // For general use, some serf bodies
-    PEACH: 0xFFDAB9,       // Skin tone
-    TAN: 0xD2B48C,         // Alternative skin tone
-    DARK_GREY: 0xA9A9A9,     // For tools, stone, some attire
-    GREEN: 0x008000,       // For Forester items/accents
-    DARK_GREEN: 0x006400,    // For Forester items/accents
-    YELLOW: 0xFFFF00,       // For Miner helmet, Goldsmith items
-    LIGHT_BLUE: 0xADD8E6,    // For Fisherman accents
-    WHITE: 0xFFFFFF,       // For Miller/Baker attire
-    OFF_WHITE: 0xFAF0E6,    // For Miller/Baker attire
-    MAROON: 0x800000,      // For Butcher apron
-    BLACK: 0x000000,       // For Smelter worker, Blacksmith apron
-    MEDIUM_BROWN: 0x8B4513,  // For tool handles, wooden items (bucket, shield)
-    DARK_METALLIC_GREY: 0x696969, // For tool heads, armor elements
-    GREY: 0x808080,        // For tool heads, stone
-    RED: 0xFF0000,         // For Butcher apron (alternative), player color
-    BLUE: 0x0000FF,        // Player color
-    // Player Faction Colors (examples, can be passed dynamically)
-    PLAYER_BLUE: 0x0000FF,
-    PLAYER_RED: 0xFF0000,
-    PLAYER_GREEN: 0x00FF00,
-    PLAYER_YELLOW: 0xFFFF00, // Also used for Miner helmet
-    PLAYER_FACTION_DEFAULT: 0x4682B4, // Steel Blue as a default if not specified
-};
 
 const BASE_SERF_BODY_COLOR = COLORS.BEIGE; // Neutral clothing
 const BASE_SERF_HEAD_COLOR = COLORS.PEACH; // Skin tone
@@ -709,7 +659,7 @@ export class Unit {
 }
 
 export class Serf extends Unit {
-    constructor(id, x, y, type, scene, mapManager) {
+    constructor(id, x, y, type, scene, mapManager, parentGroup) { // Added parentGroup
         super(id, x, y, 'serf', scene, mapManager); // this.model is initially null from Unit constructor
         this.serfType = type;
         this.task = 'idle';
@@ -727,6 +677,7 @@ export class Serf extends Unit {
         this.speed = 0.75; 
         this.maxInventoryCapacity = MAX_SERF_INVENTORY_CAPACITY;
         this.dropOffPoint = DEFAULT_DROPOFF_POINT;
+        this.parentGroup = parentGroup; // Store parentGroup
 
         let modelCreator;
         const serfTypeLower = this.serfType ? String(this.serfType).toLowerCase() : 'idle';
@@ -788,15 +739,25 @@ export class Serf extends Unit {
 
         this.updateModelPosition(); // updateModelPosition has its own check for this.model
 
-        if (this.scene) {
+        // Add model to the provided parentGroup instead of directly to the scene
+        if (this.parentGroup) {
+            if (this.model) {
+                this.parentGroup.add(this.model);
+                // Add a userData marker to the model for easier identification during raycasting
+                this.model.userData.serfInstance = this; 
+            } else {
+                console.error(`Serf ${this.id} (${this.serfType}): parentGroup provided, but model is unexpectedly null/undefined before adding to group.`);
+            }
+        } else if (this.scene) { // Fallback to scene if parentGroup not provided (should not happen with SerfManager update)
+            console.warn(`Serf ${this.id} (${this.serfType}): parentGroup not provided. Adding model directly to scene as a fallback.`);
             if (this.model) {
                  this.scene.add(this.model);
+                 this.model.userData.serfInstance = this; 
             } else {
-                // This case should ideally not be reached if fallback model is created
-                console.error(`Serf ${this.id} (${this.serfType}): Scene provided, but model is unexpectedly null/undefined before adding to scene.`);
+                console.error(`Serf ${this.id} (${this.serfType}): Scene provided (fallback), but model is unexpectedly null/undefined before adding to scene.`);
             }
         } else {
-            console.warn(`Serf ${this.id} (${this.serfType}): Scene object not provided during construction. Model will not be added to scene initially.`);
+            console.warn(`Serf ${this.id} (${this.serfType}): Neither parentGroup nor scene object provided during construction. Model will not be added to any group/scene initially.`);
         }
 
         console.log(`Serf ${this.id} created at (${x},${y}), type: ${type}. Model assigned: ${!!this.model}. Model name: ${this.model ? this.model.name : 'N/A'}`);

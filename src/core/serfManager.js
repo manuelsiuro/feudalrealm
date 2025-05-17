@@ -2,70 +2,31 @@
 import * as THREE from 'three';
 // Import SERF_MODEL_CREATORS directly from units.js
 import * as Units from '../entities/units.js'; 
-import { SERF_ACTION_STATES } from '../entities/units.js'; // Import SERF_ACTION_STATES directly
+import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
 import * as ResourceModels from '../entities/resources.js'; // Import all resource model creators
-import resourceManager, { RESOURCE_TYPES } from './resourceManager.js'; // For tool/food checks
-import { TERRAIN_TYPES, TILE_SIZE } from './MapManager.js'; 
+import resourceManager from './resourceManager.js'; // For tool/food checks
+import { RESOURCE_TYPES } from '../config/resourceTypes.js';
+import { TERRAIN_TYPES, TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path
 import { findPathAStar } from '../utils/pathfinding.js'; 
+import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; // Updated import
 // import { createCastle } from '../entities/buildings.js'; // Removed to break potential circular dependency
 
-export const SERF_PROFESSIONS = {
-    TRANSPORTER: 'Transporter',
-    BUILDER: 'Builder',
-    WOODCUTTER: 'Woodcutter',
-    FORESTER: 'Forester',
-    STONEMASON: 'Stonemason',
-    MINER: 'Miner',
-    FARMER: 'Farmer',
-    FISHERMAN: 'Fisherman',
-    MILLER: 'Miller',
-    BAKER: 'Baker',
-    PIG_FARMER: 'Pig Farmer', // Note: Key in SERF_MODEL_CREATORS is 'PigFarmer'
-    BUTCHER: 'Butcher',
-    SAWMILL_WORKER: 'Sawmill Worker', // Note: Key in SERF_MODEL_CREATORS is 'SawmillWorker'
-    SMELTER_WORKER: 'Smelter Worker', // Note: Key in SERF_MODEL_CREATORS is 'SmelterWorker'
-    GOLDSMITH: 'Goldsmith',
-    TOOLMAKER: 'Toolmaker',
-    BLACKSMITH: 'Blacksmith',
-    GEOLOGIST: 'Geologist',
-    // KNIGHT is a military unit, handled separately
-};
-
-// Mapping professions to their 3D model creation functions from units.js
-// This local SERF_MODEL_CREATORS can be removed if we directly use the one from Units.js
-// const SERF_MODEL_CREATORS = {
-//     [SERF_PROFESSIONS.TRANSPORTER]: Units.createTransporter,
-//     [SERF_PROFESSIONS.BUILDER]: Units.createBuilder,
-//     [SERF_PROFESSIONS.WOODCUTTER]: Units.createWoodcutter,
-//     [SERF_PROFESSIONS.FORESTER]: Units.createForester, 
-//     [SERF_PROFESSIONS.STONEMASON]: Units.createStonemason,
-//     [SERF_PROFESSIONS.MINER]: Units.createMiner,
-//     [SERF_PROFESSIONS.FARMER]: Units.createFarmer,
-//     [SERF_PROFESSIONS.FISHERMAN]: Units.createFisherman,
-//     [SERF_PROFESSIONS.MILLER]: Units.createMiller,
-//     [SERF_PROFESSIONS.BAKER]: Units.createBaker,
-//     [SERF_PROFESSIONS.PIG_FARMER]: Units.createPigFarmer,
-//     [SERF_PROFESSIONS.BUTCHER]: Units.createButcher,
-//     [SERF_PROFESSIONS.SAWMILL_WORKER]: Units.createSawmillWorker,
-//     [SERF_PROFESSIONS.SMELTER_WORKER]: Units.createSmelterWorker,
-//     [SERF_PROFESSIONS.GOLDSMITH]: Units.createGoldsmith,
-//     [SERF_PROFESSIONS.TOOLMAKER]: Units.createToolmaker,
-//     [SERF_PROFESSIONS.BLACKSMITH]: Units.createBlacksmith,
-//     [SERF_PROFESSIONS.GEOLOGIST]: Units.createGeologist,
-// };
-
 class SerfManager {
-    constructor(scene, gameMap, constructionManager) { // Added constructionManager
-        this.scene = scene;
+    constructor(scene, gameMap, constructionManager, gameElementsGroup) { // Added gameElementsGroup
+        this.scene = scene; // Still needed for Serf visual creation if Serf adds itself
         this.gameMap = gameMap;
-        this.constructionManager = constructionManager; // Store constructionManager
+        this.constructionManager = constructionManager;
+        this.gameElementsGroup = gameElementsGroup; // Store gameElementsGroup
         this.serfs = [];
-        this.maxSerfs = 50; // Example limit
+        this.maxSerfs = 50;
         this.serfIdCounter = 0;
-        // No serfVisualsGroup needed if Serf constructor handles adding to scene directly
-        // this.serfVisualsGroup = new THREE.Group();
-        // this.serfVisualsGroup.name = "SerfVisuals";
-        // this.scene.add(this.serfVisualsGroup);
+
+        // Serf models will be added to this group by the Serf class itself if it takes gameElementsGroup
+        // Or, SerfManager can add them here after creation.
+        // For now, let's assume Serf class will handle adding its model to a passed group.
+        this.serfVisualsGroup = new THREE.Group();
+        this.serfVisualsGroup.name = "SerfVisuals";
+        this.gameElementsGroup.add(this.serfVisualsGroup); // Add the dedicated serf group to the main game elements group
 
         this.spawnInitialSerfs();
     }
@@ -145,8 +106,9 @@ class SerfManager {
         this.serfIdCounter++;
         const serfId = `serf-${this.serfIdCounter}`;
         
-        // Serf constructor expects: id, gridX, gridY, type, scene, mapManager
-        const newSerf = new Units.Serf(serfId, gridX, gridY, type, this.scene, this.gameMap);
+        // Pass gameElementsGroup (or serfVisualsGroup) to Serf constructor
+        // Assuming Serf constructor is updated to accept it and add its model to it.
+        const newSerf = new Units.Serf(serfId, gridX, gridY, type, this.scene, this.gameMap, this.serfVisualsGroup);
 
         if (newSerf && newSerf.model) {
             this.serfs.push(newSerf);
