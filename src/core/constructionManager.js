@@ -1,5 +1,4 @@
 // src/core/constructionManager.js
-// src/core/constructionManager.js
 import * as THREE from 'three';
 import resourceManager, { RESOURCE_TYPES } from './resourceManager.js';
 import * as Buildings from '../entities/buildings.js'; // To get building creation functions
@@ -21,8 +20,8 @@ export const BUILDING_DATA = {
         jobSlots: 1, // Number of serfs this building can employ
         jobProfession: SERF_PROFESSIONS.WOODCUTTER, 
         requiredTool: RESOURCE_TYPES.TOOLS_AXE,
-        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], // Added for testing
-        foodConsumptionRate: 1, // 1 unit per interval
+        consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], 
+        foodConsumptionRate: 0.1, // 0.1 unit per worker per foodCheckIntervalMs
         foodCheckIntervalMs: 15000, // Check/consume food every 15 seconds (example)
     },
     FORESTERS_HUT: { 
@@ -43,8 +42,8 @@ export const BUILDING_DATA = {
         // jobProfession: SERF_PROFESSIONS.MINER, 
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], // Types of food
-        foodConsumptionRate: 0.1, // e.g., 0.1 units per some interval while working
-        foodCheckIntervalMs: 10000, // Check/consume food every 10 seconds
+        foodConsumptionRate: 0.1, 
+        foodCheckIntervalMs: 10000, 
     },
     FISHERMANS_HUT: { 
         name: "Fisherman's Hut", 
@@ -458,6 +457,11 @@ class ConstructionManager {
                 if (building.info.jobSlots) {
                     building.workers = []; // Array to store IDs of serfs working here
                     building.jobSlotsAvailable = building.info.jobSlots;
+                    // Initialize food consumption properties
+                    if (building.info.consumesFood && building.info.consumesFood.length > 0 && building.info.foodConsumptionRate > 0) {
+                        building.lastFoodCheckTime = now;
+                        building.isHaltedByNoFood = false;
+                    }
                 }
 
                 this.placedBuildings.push(building); // Move to completed list
@@ -466,18 +470,70 @@ class ConstructionManager {
             }
         }
 
-        // Handle production for completed buildings
+        // Handle production and food consumption for completed buildings
         for (const building of this.placedBuildings) {
-            if (building.isConstructed && 
-                building.info.producesResource && 
+            if (!building.isConstructed) continue;
+
+            const now = Date.now(); // Ensure 'now' is current for each building check
+
+            // 1. Food Consumption Logic
+            if (building.info.consumesFood && building.info.consumesFood.length > 0 &&
+                building.info.foodConsumptionRate > 0 &&
+                building.info.foodCheckIntervalMs > 0 &&
+                building.workers && building.workers.length > 0) {
+
+                if (building.lastFoodCheckTime === undefined) { // Should have been set at construction
+                    building.lastFoodCheckTime = now;
+                    building.isHaltedByNoFood = false;
+                }
+
+                if (now >= building.lastFoodCheckTime + building.info.foodCheckIntervalMs) {
+                    const foodNeededThisInterval = building.info.foodConsumptionRate * building.workers.length;
+                    let foodSatisfied = 0;
+                    let consumedFoodDetails = [];
+
+                    for (const foodType of building.info.consumesFood) {
+                        if (foodSatisfied >= foodNeededThisInterval) break; // Already satisfied
+
+                        const availableAmount = resourceManager.getResourceCount(foodType);
+                        const amountToConsumeFromThisType = Math.min(availableAmount, foodNeededThisInterval - foodSatisfied);
+
+                        if (amountToConsumeFromThisType > 0) {
+                            if (resourceManager.removeResource(foodType, amountToConsumeFromThisType)) {
+                                foodSatisfied += amountToConsumeFromThisType;
+                                consumedFoodDetails.push(`${amountToConsumeFromThisType.toFixed(2)} ${foodType}`);
+                            }
+                        }
+                    }
+
+                    if (foodSatisfied >= foodNeededThisInterval) {
+                        if (building.isHaltedByNoFood) { // If it was halted, log resumption
+                            console.log(`${building.info.name} at (${building.x}, ${building.z}) RESUMED production. Food available.`);
+                        }
+                        building.isHaltedByNoFood = false;
+                        if (consumedFoodDetails.length > 0) {
+                             console.log(`${building.info.name} at (${building.x}, ${building.z}) consumed ${consumedFoodDetails.join(', ')} for ${building.workers.length} workers.`);
+                        }
+                    } else {
+                        if (!building.isHaltedByNoFood) { // Log only when it newly halts
+                           console.warn(`${building.info.name} at (${building.x}, ${building.z}) HALTED. Insufficient food. Needed ${foodNeededThisInterval.toFixed(2)}, Got ${foodSatisfied.toFixed(2)}. Tried: ${building.info.consumesFood.join(', ')}.`);
+                        }
+                        building.isHaltedByNoFood = true;
+                    }
+                    building.lastFoodCheckTime = now;
+                }
+            }
+
+            // 2. Production Logic (handles halting due to no food)
+            if (building.info.producesResource && 
                 building.info.productionIntervalMs && 
-                building.lastProductionTime &&
-                building.workers && building.workers.length > 0) { // Production only if workers are present
+                building.lastProductionTime !== undefined && // Ensure it's initialized
+                building.workers && building.workers.length > 0 &&
+                !building.isHaltedByNoFood) { // Check if halted by no food
                 
-                // console.log(`Checking production for ${building.info.name}: now=${now}, lastProd=${building.lastProductionTime}, interval=${building.info.productionIntervalMs}`);
                 if (now >= building.lastProductionTime + building.info.productionIntervalMs) {
-                    console.log(`Production condition met for ${building.info.name}. Now: ${now}, LastProd+Interval: ${building.lastProductionTime + building.info.productionIntervalMs}`);
-                    resourceManager.addResource(building.info.producesResource, 1); // Produce 1 unit
+                    // TODO: Add check for input materials if building.info.inputMaterials is defined
+                    resourceManager.addResource(building.info.producesResource, 1); // Produce 1 unit for now
                     building.lastProductionTime = now; // Reset timer
                     console.log(`${building.info.name} at (${building.x}, ${building.z}) produced 1 ${building.info.producesResource} (Workers: ${building.workers.length}).`);
                 }

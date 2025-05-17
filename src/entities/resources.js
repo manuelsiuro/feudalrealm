@@ -133,6 +133,208 @@ export function createFertileLandMarker(options = {}) {
     return markerMesh;
 }
 
+// --- Tool Creation Functions ---
+
+// Helper for tool handles
+function createToolHandle(length = 0.4, radius = 0.02, color = 0x8B4513 /* SaddleBrown */) {
+    const handleGeom = new THREE.CylinderGeometry(radius, radius, length, 6);
+    const handleMesh = new THREE.Mesh(handleGeom, new THREE.MeshStandardMaterial({ color }));
+    handleMesh.position.y = length / 2;
+    return handleMesh;
+}
+
+// Helper for metallic tool heads
+function createMetallicHead(geometry, color = 0xA9A9A9 /* DarkGray */) {
+    return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color, metalness: 0.7, roughness: 0.4 }));
+}
+
+export function createAxe() {
+    const group = new THREE.Group();
+    const handle = createToolHandle(0.5, 0.025);
+    
+    const headGeom = new THREE.BoxGeometry(0.04, 0.12, 0.08); // x: thickness, y: length along handle, z: width of blade edge
+    const headMesh = createMetallicHead(headGeom);
+    headMesh.position.y = 0.5; // Position at the top of the handle
+    headMesh.position.x = 0.02; // Offset to one side
+    headMesh.rotation.z = Math.PI / 5; // Angled blade
+    
+    group.add(handle);
+    handle.add(headMesh); // Add head to handle for easier rotation as a unit
+    group.name = "Axe";
+    return group;
+}
+
+export function createPickaxe() {
+    const group = new THREE.Group();
+    const handle = createToolHandle(0.6, 0.025);
+
+    const headLength = 0.25;
+    const headThickness = 0.03;
+    // Create two pointed ends for the pickaxe head
+    const point1Geom = new THREE.ConeGeometry(headThickness, headLength / 2, 4);
+    const point1Mesh = createMetallicHead(point1Geom);
+    point1Mesh.rotation.z = Math.PI / 2;
+    point1Mesh.position.x = headLength / 4;
+    
+    const point2Geom = new THREE.ConeGeometry(headThickness, headLength / 2, 4);
+    const point2Mesh = createMetallicHead(point2Geom);
+    point2Mesh.rotation.z = -Math.PI / 2;
+    point2Mesh.position.x = -headLength / 4;
+
+    const headGroup = new THREE.Group();
+    headGroup.add(point1Mesh);
+    headGroup.add(point2Mesh);
+    headGroup.position.y = 0.6; // Top of the handle
+    
+    group.add(handle);
+    handle.add(headGroup);
+    group.name = "Pickaxe";
+    return group;
+}
+
+export function createHammer() {
+    const group = new THREE.Group();
+    const handle = createToolHandle(0.4, 0.03);
+
+    const headGeom = new THREE.BoxGeometry(0.1, 0.05, 0.05); // length, height, width
+    const headMesh = createMetallicHead(headGeom);
+    headMesh.position.y = 0.4; // Top of handle
+    
+    group.add(handle);
+    handle.add(headMesh);
+    group.name = "Hammer";
+    return group;
+}
+
+export function createScythe() {
+    const group = new THREE.Group();
+    const handle = createToolHandle(0.7, 0.02);
+    handle.rotation.x = Math.PI / 10; // Slight angle for scythe handle
+
+    const bladeLength = 0.35;
+    const bladeWidth = 0.05;
+    const bladeGeom = new THREE.BoxGeometry(bladeWidth, 0.01, bladeLength); // Flat blade
+    const bladeMesh = createMetallicHead(bladeGeom, 0xC0C0C0 /* Silver */);
+    bladeMesh.position.set(bladeWidth/2, 0.65, bladeLength/2 - 0.02);
+    bladeMesh.rotation.y = -Math.PI / 3; // Angled blade
+    
+    group.add(handle);
+    handle.add(bladeMesh);
+    group.name = "Scythe";
+    return group;
+}
+
+export function createFishingRod() {
+    const group = new THREE.Group();
+    const rodLength = 0.8;
+    const rodRadius = 0.01;
+    const rodGeom = new THREE.CylinderGeometry(rodRadius, rodRadius * 0.7, rodLength, 6);
+    const rodMesh = new THREE.Mesh(rodGeom, new THREE.MeshStandardMaterial({ color: 0x8B4513 })); // Brown
+    rodMesh.position.y = rodLength / 2;
+    group.add(rodMesh);
+    group.name = "FishingRod";
+    // Line and hook could be added later if needed
+    return group;
+}
+
+export function createFlourSack() {
+    const group = new THREE.Group();
+    const sackGeom = new THREE.SphereGeometry(0.15, 8, 6); // Approximate shape
+    // Deform for a more "sack-like" appearance
+    const posAttr = sackGeom.getAttribute('position');
+    for (let i = 0; i < posAttr.count; i++) {
+        const y = posAttr.getY(i);
+        if (y > 0.1) posAttr.setY(i, y * 0.8); // Pinch top
+        posAttr.setX(i, posAttr.getX(i) * (1 + (Math.random()-0.5)*0.1));
+        posAttr.setZ(i, posAttr.getZ(i) * (1 + (Math.random()-0.5)*0.1));
+    }
+    sackGeom.computeVertexNormals();
+    const sackMesh = new THREE.Mesh(sackGeom, new THREE.MeshStandardMaterial({ color: 0xF5DEB3 /* Wheat */ }));
+    sackMesh.scale.y = 1.2; // Make it taller
+    sackMesh.position.y = 0.15 * 1.2 / 2;
+    group.add(sackMesh);
+    group.name = "FlourSack";
+    return group;
+}
+
+export function createPlank() {
+    const group = new THREE.Group();
+    const plankGeom = new THREE.BoxGeometry(0.1, 0.03, 0.6); // width, thickness, length
+    const plankMesh = new THREE.Mesh(plankGeom, DEFAULT_TRUNK_MATERIAL); // Use trunk material
+    plankMesh.position.y = 0.015;
+    group.add(plankMesh);
+    group.name = "Plank";
+    return group;
+}
+
+export function createGoldBar() {
+    const group = new THREE.Group();
+    // Trapezoidal prism shape for a gold bar
+    const shape = new THREE.Shape();
+    const w1 = 0.08, h = 0.04, w2 = 0.06; // bottom width, height, top width
+    shape.moveTo(-w1/2, -h/2);
+    shape.lineTo(w1/2, -h/2);
+    shape.lineTo(w2/2, h/2);
+    shape.lineTo(-w2/2, h/2);
+    shape.closePath();
+    const extrudeSettings = { depth: 0.03, bevelEnabled: false };
+    const barGeom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const barMesh = new THREE.Mesh(barGeom, GOLD_SPECK_MATERIAL); // Use gold material
+    barMesh.rotation.x = -Math.PI/2; // Lay flat
+    barMesh.position.y = 0.015; // Depth/2
+    group.add(barMesh);
+    group.name = "GoldBar";
+    return group;
+}
+
+export function createSword() {
+    const group = new THREE.Group();
+    const handle = createToolHandle(0.15, 0.015, 0x5C4033 /* Dark Brown */);
+    handle.name = "SwordHilt";
+
+    const crossguardWidth = 0.08;
+    const crossguardGeom = new THREE.BoxGeometry(crossguardWidth, 0.02, 0.02);
+    const crossguardMesh = createMetallicHead(crossguardGeom);
+    crossguardMesh.position.y = 0.15; // Top of handle
+    crossguardMesh.name = "SwordCrossguard";
+    handle.add(crossguardMesh);
+
+    const bladeLength = 0.5;
+    const bladeWidth = 0.04;
+    const bladeGeom = new THREE.BoxGeometry(bladeWidth, bladeLength, 0.01); // Flat blade
+    const bladeMesh = createMetallicHead(bladeGeom, 0xD3D3D3 /* LightGray */);
+    bladeMesh.position.y = 0.15 + bladeLength / 2;
+    bladeMesh.name = "SwordBlade";
+    handle.add(bladeMesh);
+    
+    group.add(handle);
+    group.name = "Sword";
+    return group;
+}
+
+export function createShield() {
+    const group = new THREE.Group();
+    const shieldRadius = 0.25;
+    const shieldThickness = 0.03;
+    // Slightly curved shield body
+    const shieldGeom = new THREE.SphereGeometry(shieldRadius * 2, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.3);
+    const shieldBody = new THREE.Mesh(shieldGeom, DEFAULT_TRUNK_MATERIAL); // Wooden shield
+    shieldBody.scale.z = 0.2; // Flatten the sphere segment
+    shieldBody.rotation.x = Math.PI/2;
+    shieldBody.name = "ShieldBody";
+    
+    // Emblem (simple circle)
+    const emblemGeom = new THREE.CircleGeometry(shieldRadius * 0.4, 8);
+    const emblemMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000, side: THREE.DoubleSide }); // Red emblem
+    const emblemMesh = new THREE.Mesh(emblemGeom, emblemMaterial);
+    emblemMesh.position.z = shieldThickness * 0.5 + 0.001; // On the front surface
+    emblemMesh.name = "ShieldEmblem";
+
+    shieldBody.add(emblemMesh);
+    group.add(shieldBody);
+    group.name = "Shield";
+    return group;
+}
 
 export const RESOURCE_GENERATORS = {
     wood: createTree,

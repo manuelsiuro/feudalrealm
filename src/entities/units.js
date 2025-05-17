@@ -2,6 +2,18 @@ import * as THREE from 'three';
 import * as Resources from './resources.js'; // For tools
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TILE_SIZE } from '../core/MapManager.js'; // Import TILE_SIZE
+import resourceManager from '../core/resourceManager.js'; // Import resourceManager
+
+export const SERF_ACTION_STATES = { // Added export keyword
+    IDLE: 'IDLE',
+    MOVING_TO_TARGET: 'MOVING_TO_TARGET',
+    PERFORMING_TASK: 'PERFORMING_TASK',
+    RETURNING_TO_DROPOFF: 'RETURNING_TO_DROPOFF',
+    WORKING_AT_BUILDING: 'WORKING_AT_BUILDING' // Added new state
+};
+
+const MAX_SERF_INVENTORY_CAPACITY = 10; // Max units of a resource a serf can carry
+const DEFAULT_DROPOFF_POINT = { x: 15, y: 15 }; // Example fixed drop-off point
 
 // Helper function to create a mesh
 function createMesh(geometry, color, name = '') {
@@ -603,12 +615,27 @@ export function createKnight(playerColor = COLORS.PLAYER_FACTION_DEFAULT) {
 // Geologist - Done
 // Knight - Done
 
-// Define Serf Action States
-const SERF_ACTION_STATES = {
-    IDLE: 'IDLE',
-    MOVING_TO_TARGET: 'MOVING_TO_TARGET',
-    PERFORMING_TASK: 'PERFORMING_TASK',
-    RETURNING_TO_DROPOFF: 'RETURNING_TO_DROPOFF' // Placeholder for future
+// Add this export after all create... functions and before the Unit class
+export const SERF_MODEL_CREATORS = {
+  "Transporter": createTransporter,
+  "Builder": createBuilder,
+  "Woodcutter": createWoodcutter,
+  "Forester": createForester,
+  "Stonemason": createStonemason,
+  "Miner": createMiner,
+  "Farmer": createFarmer,
+  "Fisherman": createFisherman,
+  "Miller": createMiller,
+  "Baker": createBaker,
+  "PigFarmer": createPigFarmer, // Ensure key matches case used in Serf constructor or make constructor robust
+  "Butcher": createButcher,
+  "SawmillWorker": createSawmillWorker, // Ensure key matches case
+  "SmelterWorker": createSmelterWorker, // Ensure key matches case
+  "Goldsmith": createGoldsmith,
+  "Toolmaker": createToolmaker,
+  "Blacksmith": createBlacksmith,
+  "Geologist": createGeologist,
+  "Knight": createKnight // Included for completeness, serfManager can filter if needed
 };
 
 export class Unit {
@@ -670,30 +697,97 @@ export class Unit {
 
 export class Serf extends Unit {
     constructor(id, x, y, type, scene, mapManager) {
-        super(id, x, y, 'serf', scene, mapManager); // Pass mapManager to super if it handles it, or store it here
-        this.serfType = type; // 'builder', 'farmer', 'miner', 'idle'
+        super(id, x, y, 'serf', scene, mapManager); // this.model is initially null from Unit constructor
+        this.serfType = type;
         this.task = 'idle';
         this.taskDetails = {};
-        this.inventory = {}; // { wood: 10, stone: 5 }
+        this.inventory = {};
 
-        this.mapManager = mapManager; // Ensure mapManager is stored on the instance
+        this.mapManager = mapManager;
         this.state = SERF_ACTION_STATES.IDLE;
-        this.targetNode = null; // Will store the grid cell of the target resource
-        this.taskTimer = 0; // For timing actions like mining
-        this.initialTaskAssignedByManager = false; // For testing task assignment
+        this.targetNode = null;
+        this.taskTimer = 0;
+        this.initialTaskAssignedByManager = false;
 
-        // Pathfinding properties (optional, for future use)
         this.path = null;
         this.pathIndex = 0;
+        this.speed = 0.75; 
+        this.maxInventoryCapacity = MAX_SERF_INVENTORY_CAPACITY;
+        this.dropOffPoint = DEFAULT_DROPOFF_POINT;
 
-        // Movement speed (units per second)
-        this.speed = TILE_SIZE * 0.5; // Example: half a tile per second
+        let modelCreator;
+        const serfTypeLower = this.serfType ? String(this.serfType).toLowerCase() : 'idle';
 
-        this._loadModel(scene);
-        console.log(`Serf ${this.id} created at (${x},${y}), type: ${type}`);
+        switch (serfTypeLower) {
+            case 'transporter': modelCreator = createTransporter; break;
+            case 'builder': modelCreator = createBuilder; break;
+            case 'woodcutter': modelCreator = createWoodcutter; break;
+            case 'forester': modelCreator = createForester; break;
+            case 'stonemason': modelCreator = createStonemason; break;
+            case 'miner': modelCreator = createMiner; break;
+            case 'farmer': modelCreator = createFarmer; break;
+            case 'fisherman': modelCreator = createFisherman; break;
+            case 'miller': modelCreator = createMiller; break;
+            case 'baker': modelCreator = createBaker; break;
+            case 'pigfarmer': modelCreator = createPigFarmer; break; // Corrected case if needed
+            case 'butcher': modelCreator = createButcher; break;
+            case 'sawmillworker': modelCreator = createSawmillWorker; break; // Corrected case
+            case 'smelterworker': modelCreator = createSmelterWorker; break; // Corrected case
+            case 'goldsmith': modelCreator = createGoldsmith; break;
+            case 'toolmaker': modelCreator = createToolmaker; break;
+            case 'blacksmith': modelCreator = createBlacksmith; break;
+            case 'geologist': modelCreator = createGeologist; break;
+            case 'idle': // Explicitly handle 'idle' type
+            default:
+                if (serfTypeLower !== 'idle') { // Log warning only if it's an unrecognized type
+                    console.warn(`Serf ${this.id}: Unrecognized serfType "${this.serfType}", defaulting to createBaseSerf.`);
+                }
+                modelCreator = createBaseSerf;
+                break;
+        }
+
+        if (typeof modelCreator !== 'function') {
+            console.error(`CRITICAL: Serf ${this.id} (${this.serfType}): modelCreator is not a function! serfTypeLower: ${serfTypeLower}. Attempting to use createBaseSerf as fallback.`);
+            modelCreator = createBaseSerf; 
+        }
+
+        try {
+            this.model = modelCreator(); 
+        } catch (e) {
+            console.error(`CRITICAL: Serf ${this.id} (${this.serfType}): Error during model creation by ${modelCreator.name || 'unknown_creator'}:`, e);
+            this.model = null; // Ensure model is null if creation threw error
+        }
+
+        if (!this.model) {
+            console.error(`CRITICAL: Serf ${this.id} (${this.serfType}): this.model is NULL or UNDEFINED after creation attempt by ${modelCreator.name || 'unknown_creator'}! Creating a fallback THREE.Group.`);
+            this.model = new THREE.Group(); 
+            this.model.name = `serf-${this.id}-${this.serfType}-FALLBACK_MODEL`;
+            console.log(`Serf ${this.id} (${this.serfType}): Created a fallback THREE.Group for the model.`);
+        } else {
+            this.model.name = `serf-${this.id}-${this.serfType}`;
+            this.model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+        }
+
+        this.updateModelPosition(); // updateModelPosition has its own check for this.model
+
+        if (this.scene) {
+            if (this.model) {
+                 this.scene.add(this.model);
+            } else {
+                // This case should ideally not be reached if fallback model is created
+                console.error(`Serf ${this.id} (${this.serfType}): Scene provided, but model is unexpectedly null/undefined before adding to scene.`);
+            }
+        } else {
+            console.warn(`Serf ${this.id} (${this.serfType}): Scene object not provided during construction. Model will not be added to scene initially.`);
+        }
+
+        console.log(`Serf ${this.id} created at (${x},${y}), type: ${type}. Model assigned: ${!!this.model}. Model name: ${this.model ? this.model.name : 'N/A'}`);
     }
-
-    // ...existing code for _loadModel, getPosition, setPosition...
 
     setTask(taskType, details = {}) {
         this.task = taskType;
@@ -704,6 +798,11 @@ export class Serf extends Unit {
         this.path = null;
         this.pathIndex = 0;
         console.log(`${this.id} (${this.serfType}) assigned task: ${taskType} with details: ${JSON.stringify(details)}`);
+    }
+
+    setDropOffPoint(point) {
+        this.dropOffPoint = point;
+        console.log(`Serf ${this.id} drop-off point set to: ${JSON.stringify(this.dropOffPoint)}`);
     }
 
     _findTaskTarget() {
@@ -764,6 +863,14 @@ export class Serf extends Unit {
     }
 
     _moveAlongPath(deltaTime) {
+        if (!this.model) {
+            console.error(`Serf ${this.id} (${this.serfType}): ABORTING MOVEMENT - this.model is null in _moveAlongPath. State: ${this.state}, Task: ${this.task}`);
+            this.state = SERF_ACTION_STATES.IDLE; 
+            this.path = null;
+            this.task = 'idle'; 
+            return true; // Indicate movement "completed" (aborted)
+        }
+
         if (!this.path || this.pathIndex >= this.path.length) {
             // console.log("Path completed or no path to follow.");
             return true; // Reached destination or no path
@@ -777,7 +884,7 @@ export class Serf extends Unit {
         const directionZ = targetWorldZ - this.model.position.z;
         const distanceToWaypoint = Math.sqrt(directionX * directionX + directionZ * directionZ);
 
-        const moveDistance = this.speed * deltaTime * TILE_SIZE; // speed is in tiles/sec, TILE_SIZE converts to world units
+        const moveDistance = this.speed * TILE_SIZE * deltaTime; // Corrected: speed is tiles/sec
 
         if (distanceToWaypoint <= moveDistance) {
             // Arrived at waypoint
@@ -806,84 +913,189 @@ export class Serf extends Unit {
         return false; // Still moving
     }
 
+    _initiateReturnToDropOff() {
+        console.log(`${this.id} inventory full or task complete. Returning to drop-off: ${JSON.stringify(this.dropOffPoint)}.`);
+        this.state = SERF_ACTION_STATES.RETURNING_TO_DROPOFF;
+        this.path = this.mapManager.findPath({ x: this.x, y: this.y }, this.dropOffPoint);
+        this.pathIndex = 0;
+        if (!this.path) {
+            console.error(`${this.id} cannot find path to drop-off point! Going idle.`);
+            this.state = SERF_ACTION_STATES.IDLE;
+        } else {
+            console.log(`${this.id} path found to drop-off. Length: ${this.path.length}.`);
+        }
+    }
+
     update(deltaTime) {
         super.update(deltaTime); // Base unit update
 
-        if (this.task === 'mine') {
-            switch (this.state) {
-                case SERF_ACTION_STATES.IDLE:
+        switch (this.state) {
+            case SERF_ACTION_STATES.IDLE:
+                if (this.task === 'mine') {
                     this._findTaskTarget();
-                    break;
-
-                case SERF_ACTION_STATES.MOVING_TO_TARGET:
-                    if (this.targetNode && this.path) {
-                        const arrived = this._moveAlongPath(deltaTime);
-                        if (arrived) {
-                            console.log(`${this.id} arrived at ${this.taskDetails.resourceType} at (${this.targetNode.x}, ${this.targetNode.y}).`);
-                            this.setPosition(this.targetNode.x, this.targetNode.y); // Ensure final position is exact
-                            this.state = SERF_ACTION_STATES.PERFORMING_TASK;
-                            this.taskTimer = 0;
-                            this.path = null; // Clear path once arrived
+                } else if (this.task === 'work_at_building' && this.taskDetails.buildingId) {
+                    // If tasked to work at a building, find path to it.
+                    const building = this.scene.getObjectByProperty('uuid', this.taskDetails.buildingId); // Corrected: use this.scene directly
+                    if (building) {
+                        const targetGridX = Math.round(building.position.x / TILE_SIZE + (this.mapManager.width - 1) / 2);
+                        const targetGridY = Math.round(building.position.z / TILE_SIZE + (this.mapManager.height - 1) / 2);
+                        this.targetNode = { x: targetGridX, y: targetGridY }; // Simplified target node for building
+                        this.path = this.mapManager.findPath({ x: this.x, y: this.y }, this.targetNode);
+                        if (this.path && this.path.length > 0) {
                             this.pathIndex = 0;
+                            this.state = SERF_ACTION_STATES.MOVING_TO_TARGET;
+                            console.log(`${this.id} path found to building ${this.taskDetails.buildingName}. Moving.`);
+                        } else {
+                            console.warn(`${this.id} could not find path to building ${this.taskDetails.buildingName}. Going idle.`);
+                            this.task = 'idle'; // Revert to idle if no path
                         }
                     } else {
-                        // No target or no path, should have been handled by _findTaskTarget or become idle
-                        console.log(`${this.id} in MOVING_TO_TARGET but no targetNode or path. Reverting to IDLE.`);
-                        this.state = SERF_ACTION_STATES.IDLE;
+                        console.error(`${this.id} assigned to work at non-existent building ID ${this.taskDetails.buildingId}. Going idle.`);
+                        this.task = 'idle';
+                    }
+                } else if (this.task === 'idle' && Object.keys(this.inventory).length > 0) {
+                    this._initiateReturnToDropOff();
+                }
+                break;
+
+            case SERF_ACTION_STATES.MOVING_TO_TARGET:
+                if (this.targetNode && this.path) {
+                    const arrived = this._moveAlongPath(deltaTime);
+                    if (arrived) {
+                        this.setPosition(this.targetNode.x, this.targetNode.y);
                         this.path = null;
                         this.pathIndex = 0;
-                    }
-                    break;
 
-                case SERF_ACTION_STATES.PERFORMING_TASK:
-                    if (this.targetNode && this.targetNode.resource && this.targetNode.resource.amount > 0) {
-                        this.taskTimer += deltaTime;
-                        const miningDuration = 2.0; // Time in seconds to mine 1 unit
-
-                        if (this.taskTimer >= miningDuration) {
-                            this.taskTimer -= miningDuration; // Or reset to 0 if precise timing isn't critical
-                            
-                            const minedAmount = 1;
-                            this.targetNode.resource.amount -= minedAmount;
-                            this.inventory[this.taskDetails.resourceType] = (this.inventory[this.taskDetails.resourceType] || 0) + minedAmount;
-                            
-                            console.log(`${this.id} mined ${minedAmount} ${this.taskDetails.resourceType}. Inventory: ${this.inventory[this.taskDetails.resourceType]}. Node remaining: ${this.targetNode.resource.amount}`);
-
-                            if (this.targetNode.resource.amount <= 0) {
-                                console.log(`Resource node ${this.taskDetails.resourceType} at (${this.targetNode.x}, ${this.targetNode.y}) depleted.`);
-                                
-                                // Call MapManager to remove the visual for the depleted node
-                                if (this.mapManager && this.mapManager.removeResourceVisual) {
-                                    this.mapManager.removeResourceVisual(this.targetNode);
-                                }
-                                
-                                this.targetNode.resource = null; // Mark as depleted on map data
-                                this.targetNode = null;
-                                this.state = SERF_ACTION_STATES.IDLE; // Go idle or return to dropoff
-                                // TODO: Implement inventory full check and return to dropoff
-                            }
-                            // TODO: Check inventory capacity: if (this.inventory[this.taskDetails.resourceType] >= MAX_CAPACITY) this.state = SERF_ACTION_STATES.RETURNING_TO_DROPOFF;
+                        if (this.task === 'mine') {
+                            console.log(`${this.id} arrived at ${this.taskDetails.resourceType} at (${this.targetNode.x}, ${this.targetNode.y}).`);
+                            this.state = SERF_ACTION_STATES.PERFORMING_TASK;
+                            this.taskTimer = 0;
+                        } else if (this.task === 'work_at_building') {
+                            console.log(`${this.id} arrived at building ${this.taskDetails.buildingName} at (${this.targetNode.x}, ${this.targetNode.y}).`);
+                            this.state = SERF_ACTION_STATES.WORKING_AT_BUILDING;
+                            // Serf remains at building, actual work/production handled by ConstructionManager
+                        } else {
+                            // Default behavior if task is not specifically handled after arrival
+                            this.state = SERF_ACTION_STATES.IDLE;
                         }
-                    } else {
-                        console.log(`${this.id} cannot mine, target invalid or depleted.`);
-                        this.state = SERF_ACTION_STATES.IDLE;
-                        this.targetNode = null;
-                        this.taskTimer = 0;
+                        this.targetNode = null; // Clear target node after arrival and state change
                     }
-                    break;
-                
-                // case SERF_ACTION_STATES.RETURNING_TO_DROPOFF:
-                // Logic for returning to a stockpile/main building
-                // console.log(`${this.id} returning to dropoff with resources.`);
-                // break;
-            }
-        } else if (this.task === 'idle' && this.state !== SERF_ACTION_STATES.IDLE) {
-            // If task is idle but state is not, reset (e.g. after completing a task)
-             this.state = SERF_ACTION_STATES.IDLE;
-             this.targetNode = null;
-             this.taskTimer = 0;
+                } else {
+                    console.log(`${this.id} in MOVING_TO_TARGET but no targetNode or path. Reverting to IDLE.`);
+                    this.state = SERF_ACTION_STATES.IDLE;
+                    this.path = null;
+                    this.pathIndex = 0;
+                }
+                break;
+
+            case SERF_ACTION_STATES.PERFORMING_TASK: // This state is now primarily for resource gathering like mining
+                if (this.task === 'mine' && this.targetNode && this.targetNode.resource && this.targetNode.resource.amount > 0) {
+                    this.taskTimer += deltaTime;
+                    const miningDuration = 2.0; // Time in seconds to mine 1 unit
+
+                    if (this.taskTimer >= miningDuration) {
+                        this.taskTimer -= miningDuration;
+                        
+                        const minedAmount = 1;
+                        const resourceType = this.taskDetails.resourceType;
+                        
+                        this.targetNode.resource.amount -= minedAmount;
+                        this.inventory[resourceType] = (this.inventory[resourceType] || 0) + minedAmount;
+                        console.log(`${this.id} mined ${minedAmount} ${resourceType}. Inv: ${this.inventory[resourceType]}. Node rem: ${this.targetNode.resource.amount}`);
+
+                        if (this.inventory[resourceType] >= this.maxInventoryCapacity) {
+                            console.log(`${this.id} inventory full for ${resourceType}.`);
+                            this._initiateReturnToDropOff();
+                            break; 
+                        }
+
+                        if (this.targetNode.resource.amount <= 0) {
+                            console.log(`Resource ${resourceType} at (${this.targetNode.x}, ${this.targetNode.y}) depleted.`);
+                            if (this.mapManager && this.mapManager.removeResourceVisual) {
+                                this.mapManager.removeResourceVisual(this.targetNode);
+                            }
+                            this.targetNode.resource = null; 
+                            this.targetNode = null;
+
+                            if (Object.keys(this.inventory).length > 0) {
+                                this._initiateReturnToDropOff();
+                            } else {
+                                this.state = SERF_ACTION_STATES.IDLE; 
+                            }
+                        }
+                    }
+                } else if (this.task === 'mine') { // If mining but target is gone or invalid
+                    console.log(`${this.id} in PERFORMING_TASK (mine) but targetNode or resource is invalid. Reverting to IDLE.`);
+                    this.state = SERF_ACTION_STATES.IDLE;
+                    this.targetNode = null;
+                }
+                break;
+
+            case SERF_ACTION_STATES.WORKING_AT_BUILDING:
+                // Serf is at the building. ConstructionManager handles production/food based on serf.job.
+                // Serf remains in this state until job is removed or building is destroyed.
+                // No specific per-frame action needed here from the serf itself.
+                // If serf.job becomes null (e.g., unassigned by SerfManager), it should go IDLE.
+                if (!this.job) { // Check if job is still valid
+                    console.log(`${this.id} no longer has a job at building. Reverting to IDLE.`);
+                    this.state = SERF_ACTION_STATES.IDLE;
+                    this.task = 'idle';
+                    this.taskDetails = {};
+                }
+                break;
+
+            case SERF_ACTION_STATES.RETURNING_TO_DROPOFF:
+                if (this.path) {
+                    const arrivedAtDropOff = this._moveAlongPath(deltaTime);
+                    if (arrivedAtDropOff) {
+                        console.log(`${this.id} arrived at drop-off point ${JSON.stringify(this.dropOffPoint)}.`);
+                        this.setPosition(this.dropOffPoint.x, this.dropOffPoint.y);
+
+                        // Deposit resources
+                        let depositedSomething = false;
+                        for (const resourceType in this.inventory) {
+                            if (this.inventory.hasOwnProperty(resourceType)) {
+                                const amount = this.inventory[resourceType];
+                                if (amount > 0) {
+                                    console.log(`${this.id} depositing ${amount} of ${resourceType}.`);
+                                    resourceManager.addResource(resourceType, amount);
+                                    depositedSomething = true;
+                                }
+                            }
+                        }
+                        
+                        this.inventory = {}; // Clear inventory
+
+                        this.path = null;
+                        this.pathIndex = 0;
+                        
+                        // After dropping off, decide what to do next.
+                        // If the original task was 'mine' and it was interrupted by full inventory, try to resume.
+                        if (this.task === 'mine' && this.taskDetails && this.taskDetails.resourceType) {
+                             console.log(`${this.id} dropped off resources, attempting to find more ${this.taskDetails.resourceType}.`);
+                             this.state = SERF_ACTION_STATES.IDLE; // Will trigger _findTaskTarget for 'mine'
+                        } else {
+                            // If no specific task to return to, or task was completed (e.g. resource depleted)
+                            console.log(`${this.id} deposited resources and is now IDLE.`);
+                            this.task = 'idle'; // Set task to idle if not resuming a specific one
+                            this.state = SERF_ACTION_STATES.IDLE;
+                        }
+                         // resourceManager.addResource already calls _emitChange, so UI should update.
+                    }
+                } else {
+                    console.error(`${this.id} is in RETURNING_TO_DROPOFF state but has no path. Setting to IDLE.`);
+                    this.state = SERF_ACTION_STATES.IDLE;
+                    // If inventory has items, try to re-initiate return, otherwise it's stuck.
+                    if (Object.keys(this.inventory).length > 0) {
+                        this._initiateReturnToDropOff(); // Try again
+                    }
+                }
+                break;
+            
+            default:
+                console.warn(`${this.id} is in an unknown state: ${this.state}`);
+                this.state = SERF_ACTION_STATES.IDLE;
+                break;
         }
     }
 }
-
-// ... any other existing code like Villager class ...
