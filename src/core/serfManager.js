@@ -6,8 +6,8 @@ import { SERF_ACTION_STATES } from '../entities/units.js'; // Import SERF_ACTION
 import * as ResourceModels from '../entities/resources.js'; // Import all resource model creators
 import resourceManager, { RESOURCE_TYPES } from './resourceManager.js'; // For tool/food checks
 import { TERRAIN_TYPES, TILE_SIZE } from './MapManager.js'; 
-import { findPathAStar } from '../utils/pathfinding.js'; // Import A*
-import { createCastle } from '../entities/buildings.js'; // Added import for createCastle
+import { findPathAStar } from '../utils/pathfinding.js'; 
+// import { createCastle } from '../entities/buildings.js'; // Removed to break potential circular dependency
 
 export const SERF_PROFESSIONS = {
     TRANSPORTER: 'Transporter',
@@ -122,64 +122,138 @@ class SerfManager {
         }
     }
 
-    update(deltaTime) { // Removed placedBuildings as it's not used in this simplified version
+    update(deltaTime) { 
         this.serfs.forEach(serf => {
-            if (serf.update) { // Ensure serf has an update method
+            if (serf.update) { 
                 serf.update(deltaTime);
             }
         });
-        this.tryAssignSerfsToJobs(); // Call job assignment logic periodically
+        this.assignJobsAndTasks(); // Combined logic
     }
 
-    tryAssignSerfsToJobs() {
+    assignJobsAndTasks() {
         if (!this.constructionManager) return;
 
-        const idleSerfs = this.serfs.filter(serf => serf.state === SERF_ACTION_STATES.IDLE && !serf.job); // Use direct import
-        if (idleSerfs.length === 0) return;
+        const idleSerfs = this.serfs.filter(serf => serf.state === SERF_ACTION_STATES.IDLE && !serf.job);
+        const idleTransporters = this.serfs.filter(serf => 
+            serf.serfType === SERF_PROFESSIONS.TRANSPORTER && 
+            serf.state === SERF_ACTION_STATES.IDLE &&
+            !serf.taskDetails && // Not already on a transport task
+            Object.keys(serf.inventory).reduce((sum, key) => sum + serf.inventory[key], 0) === 0
+        );
 
+        // Prioritize assigning specific jobs first
+        if (idleSerfs.length > 0) {
+            this.tryAssignSerfsToProfessionJobs(idleSerfs);
+        }
+
+        // Then assign transport tasks to available transporters
+        if (idleTransporters.length > 0) {
+            this.tryAssignTransportTasksToIdleTransporters(idleTransporters);
+        }
+    }
+
+    tryAssignSerfsToProfessionJobs(idleSerfs) {
         for (const building of this.constructionManager.placedBuildings) {
-            if (building.isConstructed && building.info.jobSlots > 0 && building.workers.length < building.info.jobSlots) {
-                const requiredProfession = building.info.jobProfession;
-                const requiredTool = building.info.requiredTool;
+            if (!building.isConstructed || !building.info.jobSlots || building.workers.length >= building.info.jobSlots) {
+                continue;
+            }
 
-                for (let i = idleSerfs.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
-                    const serf = idleSerfs[i];
-                    if (serf.serfType === requiredProfession) {
-                        // Check for tool availability
-                        let hasRequiredTool = !requiredTool; // If no tool is required, proceed
-                        if (requiredTool) {
-                            if (resourceManager.getResourceCount(requiredTool) > 0) {
-                                if (resourceManager.removeResource(requiredTool, 1)) {
-                                    hasRequiredTool = true;
-                                    serf.hasTool = true; // Mark serf as having the tool
-                                    console.log(`Serf ${serf.id} acquired ${requiredTool} for ${building.info.name}.`);
-                                } else {
-                                    console.warn(`Failed to remove ${requiredTool} from resourceManager for Serf ${serf.id}, though count was > 0.`);
-                                }
+            const requiredProfession = building.info.jobProfession;
+            if (!requiredProfession) continue; // Skip buildings that don't define a profession (e.g. Castle)
+
+            const requiredTool = building.info.requiredTool;
+
+            for (let i = idleSerfs.length - 1; i >= 0; i--) {
+                const serf = idleSerfs[i];
+                if (serf.serfType === requiredProfession) {
+                    let hasRequiredTool = !requiredTool;
+                    if (requiredTool) {
+                        if (resourceManager.getResourceCount(requiredTool) > 0) {
+                            if (resourceManager.removeResource(requiredTool, 1)) {
+                                hasRequiredTool = true;
+                                serf.hasTool = true;
+                                console.log(`Serf ${serf.id} acquired ${requiredTool} for ${building.info.name}.`);
                             } else {
-                                // console.log(`Tool ${requiredTool} not available for ${building.info.name}.`);
+                                console.warn(`Failed to remove ${requiredTool} from RM for Serf ${serf.id}.`);
                             }
                         }
+                    }
 
-                        if (hasRequiredTool) {
-                            // Assign serf to building
-                            building.workers.push(serf.id);
-                            serf.job = building; // Assign building to serf's job property
-                            // Convert building world coords (snappedX, snappedZ) to grid coords for dropoff
-                            const buildingGridX = Math.round(building.x / TILE_SIZE + (this.gameMap.width - 1) / 2);
-                            const buildingGridZ = Math.round(building.z / TILE_SIZE + (this.gameMap.height - 1) / 2);
-                            serf.setDropOffPoint({ x: buildingGridX, y: buildingGridZ });
-                            serf.setTask('work_at_building', { buildingId: building.model.uuid, buildingName: building.info.name });
+                    if (hasRequiredTool) {
+                        building.workers.push(serf.id);
+                        serf.job = building; 
+                        // buildingModel.userData.buildingInstance is the new way to access building data
+                        const taskDetails = {
+                            buildingId: building.model.userData.buildingInstance.model.uuid, // Corrected path to uuid
+                            buildingName: building.info.name,
+                        };
 
-                            console.log(`Serf ${serf.id} (${serf.serfType}) assigned to ${building.info.name} at grid (${buildingGridX}, ${buildingGridZ}). Workers: ${building.workers.length}/${building.info.jobSlots}`);
-                            
-                            idleSerfs.splice(i, 1); // Remove serf from idleSerfs list
-
-                            if (building.workers.length >= building.info.jobSlots) break; // Building is full
+                        // If the building is a Woodcutter's Hut, assign gather_resource_for_building
+                        if (building.type === 'WOODCUTTERS_HUT' && building.info.producesResource) {
+                            taskDetails.resourceType = building.info.producesResource; // e.g. WOOD
+                            serf.setTask('gather_resource_for_building', taskDetails);
+                            console.log(`Serf ${serf.id} (${serf.serfType}) assigned to GATHER from ${building.info.name}.`);
                         }
+                        // For other professions that work directly at the building (not gathering from map)
+                        // This part might need refinement based on specific professions that don't gather from the map
+                        // but still have a primary building they are associated with.
+                        // For now, the `gather_resource_for_building` is specific to Woodcutters.
+                        // Other professions might get a generic 'work_at_building' or more specific tasks later.
+                        // If not a woodcutter, they might just become active at the building without a specific sub-task yet
+                        // or we assume their `work_at_building` task is set if they are not woodcutters.
+                        // For now, let's ensure non-woodcutters also get a task if they are assigned to a building.
+                        // This maintains the previous logic for general work_at_building tasks.
+                        else {
+                             serf.setTask('work_at_building', taskDetails);
+                             console.log(`Serf ${serf.id} (${serf.serfType}) assigned to WORK AT ${building.info.name}.`);
+                        }
+                        
+                        idleSerfs.splice(i, 1);
+                        if (building.workers.length >= building.info.jobSlots) break;
                     }
                 }
-                if (idleSerfs.length === 0) return; // No more idle serfs to assign
+            }
+            if (idleSerfs.length === 0) return;
+        }
+    }
+
+    tryAssignTransportTasksToIdleTransporters(idleTransporters) {
+        let castle = this.constructionManager.placedBuildings.find(b => b.isConstructed && b.type === 'CASTLE');
+        if (!castle) {
+            // console.log("No Castle found for transport tasks.");
+            return;
+        }
+        // Access buildingInstance from building.model.userData.buildingInstance
+        const castleInstance = castle.model.userData.buildingInstance;
+
+        for (const building of this.constructionManager.placedBuildings) {
+            const buildingInstance = building.model.userData.buildingInstance;
+            if (!buildingInstance || !buildingInstance.isConstructed || buildingInstance.model.uuid === castleInstance.model.uuid || !buildingInstance.inventory || typeof buildingInstance.getStock !== 'function') {
+                continue;
+            }
+
+            for (const resourceType in buildingInstance.inventory) {
+                const availableAmount = buildingInstance.getStock(resourceType);
+                if (availableAmount > 0) {
+                    if (idleTransporters.length > 0) {
+                        const transporter = idleTransporters.pop();
+                        const amountToTransport = Math.min(availableAmount, transporter.maxInventoryCapacity);
+
+                        if (amountToTransport > 0) {
+                            transporter.setTask('transport_resource', {
+                                sourceBuildingId: buildingInstance.model.uuid, // Corrected path
+                                sourceBuildingName: buildingInstance.info.name,
+                                resourceType: resourceType,
+                                amountToTransport: amountToTransport,
+                                destinationBuildingId: castleInstance.model.uuid, // Corrected path
+                                destinationBuildingName: castleInstance.info.name
+                            });
+                            console.log(`SerfManager: Transporter ${transporter.id} assigned to transport ${amountToTransport} ${resourceType} from ${buildingInstance.info.name} to ${castleInstance.info.name}.`);
+                        }
+                        if (idleTransporters.length === 0) return;
+                    }
+                }
             }
         }
     }

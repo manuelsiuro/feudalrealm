@@ -5,6 +5,13 @@ import * as Buildings from '../entities/buildings.js'; // To get building creati
 import { TILE_SIZE } from './MapManager.js'; // Changed casing: Import TILE_SIZE
 import { SERF_PROFESSIONS } from './serfManager.js'; // Ensure this import is present
 
+// ---- START DEBUG LOG ----
+console.log("[ConstructionManager] Initializing BUILDING_DATA. Inspecting Buildings module:", Buildings);
+console.log("[ConstructionManager] Buildings.createCastle:", Buildings.createCastle);
+console.log("[ConstructionManager] Buildings.createWoodcuttersHut:", Buildings.createWoodcuttersHut);
+console.log("[ConstructionManager] Buildings.createTransportersHut:", Buildings.createTransportersHut);
+// ---- END DEBUG LOG ----
+
 // Define building costs and metadata
 // This would ideally come from a more structured game data system later
 export const BUILDING_DATA = {
@@ -31,6 +38,14 @@ export const BUILDING_DATA = {
         tier: 1,
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.FORESTER, // No tool specified for Forester in game.md
+    },
+    TRANSPORTER_HUT: {
+        name: "Transporter's Hut",
+        cost: { [RESOURCE_TYPES.WOOD]: 5 },
+        creator: Buildings.createTransportersHut,
+        tier: 1,
+        jobSlots: 5,
+        jobProfession: SERF_PROFESSIONS.TRANSPORTER
     },
     QUARRY: { 
         name: 'Quarry', 
@@ -399,9 +414,54 @@ class ConstructionManager {
             info: buildingInfo,
             constructionEndTime: Date.now() + constructionTime,
             isConstructed: false,
-            x: snappedX,
-            z: snappedZ,
+            inventory: {}, // Initialize local inventory
+            maxStock: buildingInfo.maxStock || 100, // Default maxStock if not defined in BUILDING_DATA
+            workers: [], // To store assigned worker serf IDs
+
+            // Method to add resources to this building's local inventory
+            addResource: function(resourceType, amount) {
+                if (!this.isConstructed) {
+                    console.warn("Building not constructed yet, cannot add resources.");
+                    return 0;
+                }
+                const currentAmount = this.inventory[resourceType] || 0;
+                const availableSpace = this.maxStock - currentAmount;
+                const amountToAdd = Math.min(amount, availableSpace);
+
+                if (amountToAdd > 0) {
+                    this.inventory[resourceType] = currentAmount + amountToAdd;
+                    console.log(`${this.info.name} added ${amountToAdd} of ${resourceType}. New stock: ${this.inventory[resourceType]}`);
+                }
+                return amountToAdd;
+            },
+
+            // Method to pick up resources from this building's local inventory
+            pickupResource: function(resourceType, amountRequested) {
+                if (!this.isConstructed) {
+                    console.warn("Building not constructed yet, cannot pick up resources.");
+                    return 0;
+                }
+                const currentAmount = this.inventory[resourceType] || 0;
+                const amountToPickup = Math.min(amountRequested, currentAmount);
+
+                if (amountToPickup > 0) {
+                    this.inventory[resourceType] = currentAmount - amountToPickup;
+                    console.log(`${this.info.name} picked up ${amountToPickup} of ${resourceType}. Remaining stock: ${this.inventory[resourceType]}`);
+                }
+                return amountToPickup;
+            },
+
+            // Method to get current stock of a resource
+            getStock: function(resourceType) {
+                return this.inventory[resourceType] || 0;
+            }
         };
+
+        // Store a reference to this data object in the model's userData
+        buildingModel.userData.buildingInstance = newBuildingData;
+        buildingModel.userData.uuid = buildingModel.uuid; // Also store uuid for easier access if needed
+
+        // Add building to tracking
         this.buildingsUnderConstruction.push(newBuildingData);
         
         console.log(`${buildingInfo.name} construction started. Will finish in ${constructionTime / 1000}s.`);

@@ -419,13 +419,13 @@ if (uiOverlay) {
     testButtonContainer.style.zIndex = '50'; // Ensure it's above map, below panels if they overlap
 
     const addCheatButton = document.createElement('md-filled-button');
-    addCheatButton.textContent = '+1000 All';
+    addCheatButton.textContent = '+50 All';
     addCheatButton.style.borderRadius = '4px';
     addCheatButton.addEventListener('click', () => {
-        console.log('UI: "+1000 All" button clicked.');
+        console.log('UI: "+50 All" button clicked.');
         Object.values(RESOURCE_TYPES).forEach(type => {
             if (typeof type === 'string') {
-                 resourceManager.addResource(type, 1000);
+                 resourceManager.addResource(type, 50);
             }
         });
     });
@@ -628,6 +628,9 @@ function displaySelectedBuildingInfo(buildingModel) {
         console.warn("Could not find data for selected building model:", buildingModel);
         return;
     }
+    // Access the buildingInstance for inventory
+    const buildingInstance = buildingModel.userData.buildingInstance; 
+
     const buildingInfo = placedBuildingData.info;
     const buildingName = buildingInfo.name || "Unknown Building";
     const workers = placedBuildingData.workers ? placedBuildingData.workers.length : 0;
@@ -648,6 +651,25 @@ function displaySelectedBuildingInfo(buildingModel) {
     if (buildingInfo.produces) {
         contentHTML += `<p style="margin: 4px 0;">Produces: ${buildingInfo.produces.map(p => p.resource.replace(/_/g, ' ')).join(', ')}</p>`;
     }
+
+    // Display local inventory
+    if (buildingInstance && buildingInstance.inventory) {
+        contentHTML += `<h5 style="margin-top: 10px; margin-bottom: 5px; color: rgba(255,255,255,0.9);">Local Stock:</h5>`;
+        let stockEmpty = true;
+        for (const resourceType in buildingInstance.inventory) {
+            if (buildingInstance.inventory[resourceType] > 0) {
+                stockEmpty = false;
+                const currentStock = buildingInstance.inventory[resourceType];
+                const maxStock = buildingInstance.maxStock[resourceType] || buildingInstance.maxStock.default || 0; // Handle default or specific max stock
+                contentHTML += `<p style="margin: 2px 0; font-size: 0.9em;">- ${resourceType.replace(/_/g, ' ')}: ${currentStock} / ${maxStock}</p>`;
+            }
+        }
+        if (stockEmpty) {
+            contentHTML += `<p style="margin: 2px 0; font-size: 0.9em; font-style: italic;">Empty</p>`;
+        }
+    }
+
+
     if (placedBuildingData.isProducing && placedBuildingData.currentProduction) {
         contentHTML += `<p style="margin: 4px 0;">Current Task: Producing ${placedBuildingData.currentProduction.resource.replace(/_/g, ' ')}</p>`;
     }

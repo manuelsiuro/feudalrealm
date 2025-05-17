@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RESOURCE_TYPES } from '../core/resourceManager.js'; // Added import
-import { SERF_PROFESSIONS } from '../core/serfManager.js'; // Added import
+// import { SERF_PROFESSIONS } from '../core/serfManager.js'; // Removed to break circular dependency
 
 // Helper function to create a mesh with a specific geometry and color
 function createMesh(geometry, color, name = '') {
@@ -944,6 +944,50 @@ export function createBuildersHut() {
     return hutGroup;
 }
 
+export function createTransportersHut() {
+    const hutGroup = new THREE.Group();
+    hutGroup.name = "Transporter's Hut";
+    const baseUnit = 0.4; 
+    const hutWidth = baseUnit * 1.5;
+    const hutHeight = baseUnit * 1;
+    const hutDepth = baseUnit * 1.2;
+    const hutGeometry = new THREE.BoxGeometry(hutWidth, hutHeight, hutDepth);
+    const hutMesh = createMesh(hutGeometry, COLORS.BEIGE, 'Hut');
+    hutMesh.position.y = hutHeight / 2; // Adjusted
+    hutGroup.add(hutMesh);
+    const plankWidth = baseUnit * 0.8;
+    const plankHeight = baseUnit * 0.1;
+    const plankDepth = baseUnit * 0.4;
+    const plankGeometry = new THREE.BoxGeometry(plankWidth, plankHeight, plankDepth);
+    for (let i = 0; i < 3; i++) {
+        const plank = createMesh(plankGeometry, COLORS.LIGHT_BROWN, `Plank_${i}`);
+        plank.position.set(
+            hutWidth / 2 + plankWidth / 2 + 0.1,
+            plankHeight / 2 + i * (plankHeight + 0.01), // Adjusted
+            0
+        );
+        hutGroup.add(plank);
+    }
+    const stoneSize = baseUnit * 0.25;
+    const stoneGeometry = new THREE.BoxGeometry(stoneSize, stoneSize, stoneSize);
+    const stone1 = createMesh(stoneGeometry, COLORS.STONE_GREY, 'Stone1'); 
+    stone1.position.set(
+        hutWidth / 2 + stoneSize / 2 + 0.1,
+        (plankHeight * 3 + 0.02) + stoneSize / 2 + 0.05, // Adjusted
+        plankDepth / 2 - stoneSize /2
+    );
+    hutGroup.add(stone1);
+    const stone2 = createMesh(stoneGeometry, COLORS.STONE_GREY, 'Stone2'); 
+    stone2.position.set(
+        hutWidth / 2 + stoneSize / 2 + 0.1 + stoneSize * 0.5,
+        (plankHeight * 3 + 0.02) + stoneSize / 2 + 0.05, // Adjusted
+        plankDepth / 2 - stoneSize * 1.5
+    );
+    stone2.rotation.y = Math.PI / 7;
+    hutGroup.add(stone2);
+    return hutGroup;
+}
+
 export function createHarbor() {
     const harborGroup = new THREE.Group();
     harborGroup.name = 'Harbor';
@@ -985,7 +1029,7 @@ export const BUILDING_INFO = {
         key: 'WOODCUTTERS_HUT', 
         cost: { WOOD: 10 }, 
         jobSlots: 1, 
-        jobProfession: SERF_PROFESSIONS.WOODCUTTER,
+        jobProfession: 'WOODCUTTER',
         produces: [{ resource: RESOURCE_TYPES.WOOD, quantity: 1, interval: 10000 }], // 1 wood every 10s
         requiredTool: RESOURCE_TYPES.TOOLS_AXE,
         gridSize: { width: 2, height: 2 }, 
@@ -996,7 +1040,7 @@ export const BUILDING_INFO = {
         key: 'FORESTERS_HUT', 
         cost: { WOOD: 15 }, 
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.FORESTER,
+        jobProfession: 'FORESTER',
         // Foresters don't "produce" a resource from nothing, they plant trees (map change)
         // This might be handled differently, e.g., a task completion rather than resource production.
         // For now, let's say they slowly "produce" saplings if needed, or this is handled by their task logic.
@@ -1010,7 +1054,7 @@ export const BUILDING_INFO = {
         key: 'QUARRY',
         cost: { WOOD: 25 }, 
         jobSlots: 2, 
-        jobProfession: SERF_PROFESSIONS.STONEMASON, 
+        jobProfession: 'STONEMASON', 
         produces: [{ resource: RESOURCE_TYPES.STONE, quantity: 1, interval: 12000 }],
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE, 
         gridSize: { width: 2, height: 2 },
@@ -1021,7 +1065,7 @@ export const BUILDING_INFO = {
         key: 'FISHERMANS_HUT',
         cost: { WOOD: 15 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.FISHERMAN,
+        jobProfession: 'FISHERMAN',
         produces: [{ resource: RESOURCE_TYPES.FISH, quantity: 1, interval: 18000 }],
         requiredTool: RESOURCE_TYPES.TOOLS_FISHING_ROD,
         gridSize: { width: 1, height: 3 }, // Thin and long for pier
@@ -1032,7 +1076,7 @@ export const BUILDING_INFO = {
         key: 'FARM',
         cost: { WOOD: 30, STONE: 10 },
         jobSlots: 2,
-        jobProfession: SERF_PROFESSIONS.FARMER,
+        jobProfession: 'FARMER',
         produces: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 2, interval: 25000 }], // More quantity, longer interval
         requiredTool: RESOURCE_TYPES.TOOLS_SCYTHE,
         gridSize: { width: 3, height: 3 }, // Represents farmhouse + some field space
@@ -1043,7 +1087,7 @@ export const BUILDING_INFO = {
         key: 'GEOLOGISTS_HUT',
         cost: { WOOD: 20, STONE: 5 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.GEOLOGIST,
+        jobProfession: 'GEOLOGIST',
         // Geologists find new resource spots, don't produce directly
         gridSize: { width: 1, height: 1 },
         color: COLORS.DARK_BROWN,
@@ -1053,7 +1097,7 @@ export const BUILDING_INFO = {
         key: 'IRON_MINE',
         cost: { WOOD: 40, STONE: 20 },
         jobSlots: 3,
-        jobProfession: SERF_PROFESSIONS.MINER,
+        jobProfession: 'MINER',
         produces: [{ resource: RESOURCE_TYPES.IRON_ORE, quantity: 1, interval: 20000 }],
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         gridSize: { width: 2, height: 1 }, // Entrance against mountain
@@ -1065,7 +1109,7 @@ export const BUILDING_INFO = {
         key: 'COAL_MINE',
         cost: { WOOD: 35, STONE: 15 },
         jobSlots: 3,
-        jobProfession: SERF_PROFESSIONS.MINER,
+        jobProfession: 'MINER',
         produces: [{ resource: RESOURCE_TYPES.COAL_ORE, quantity: 1, interval: 18000 }],
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         gridSize: { width: 2, height: 1 },
@@ -1077,7 +1121,7 @@ export const BUILDING_INFO = {
         key: 'GOLD_MINE',
         cost: { WOOD: 50, STONE: 25 }, // Example cost
         jobSlots: 3,
-        jobProfession: SERF_PROFESSIONS.MINER,
+        jobProfession: 'MINER',
         produces: [{ resource: RESOURCE_TYPES.GOLD_ORE, quantity: 1, interval: 30000 }], // Example production
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         gridSize: { width: 2, height: 1 },
@@ -1089,7 +1133,7 @@ export const BUILDING_INFO = {
         key: 'STONE_MINE',
         cost: { WOOD: 30, STONE: 10 }, // Example cost
         jobSlots: 3,
-        jobProfession: SERF_PROFESSIONS.MINER,
+        jobProfession: 'MINER',
         produces: [{ resource: RESOURCE_TYPES.STONE, quantity: 2, interval: 15000 }], // Example production
         requiredTool: RESOURCE_TYPES.TOOLS_PICKAXE,
         gridSize: { width: 2, height: 1 },
@@ -1101,7 +1145,7 @@ export const BUILDING_INFO = {
         key: 'SAWMILL',
         cost: { WOOD: 25, STONE: 5 },
         jobSlots: 2,
-        jobProfession: SERF_PROFESSIONS.SAWMILL_WORKER,
+        jobProfession: 'SAWMILL_WORKER',
         consumes: [{ resource: RESOURCE_TYPES.WOOD, quantity: 1 }],
         produces: [{ resource: RESOURCE_TYPES.PLANKS, quantity: 2, interval: 15000 }], // 2 planks from 1 wood
         gridSize: { width: 3, height: 2 },
@@ -1112,7 +1156,7 @@ export const BUILDING_INFO = {
         key: 'WINDMILL',
         cost: { WOOD: 30, STONE: 20 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.MILLER,
+        jobProfession: 'MILLER',
         consumes: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 2 }],
         produces: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1, interval: 18000 }], // 1 flour from 2 grain
         gridSize: { width: 2, height: 2 },
@@ -1123,7 +1167,7 @@ export const BUILDING_INFO = {
         key: 'BAKERY',
         cost: { WOOD: 20, STONE: 15, [RESOURCE_TYPES.COAL_ORE]: 5 }, // Requires coal
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.BAKER,
+        jobProfession: 'BAKER',
         consumes: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1 }, { resource: RESOURCE_TYPES.COAL_ORE, quantity: 1 }],
         produces: [{ resource: RESOURCE_TYPES.BREAD, quantity: 3, interval: 20000 }], // 3 bread from 1 flour
         gridSize: { width: 2, height: 2 },
@@ -1134,7 +1178,7 @@ export const BUILDING_INFO = {
         key: 'PIG_FARM',
         cost: { WOOD: 40, [RESOURCE_TYPES.GRAIN]: 10 }, // Initial grain to start
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.PIG_FARMER,
+        jobProfession: 'PIG_FARMER',
         consumes: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 1 }], // Consumes grain to feed pigs
         produces: [{ resource: RESOURCE_TYPES.PIG, quantity: 1, interval: 35000 }], // Produces a pig
         gridSize: { width: 3, height: 2 },
@@ -1145,7 +1189,7 @@ export const BUILDING_INFO = {
         key: 'SLAUGHTERHOUSE',
         cost: { WOOD: 25, STONE: 10 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.BUTCHER,
+        jobProfession: 'BUTCHER',
         consumes: [{ resource: RESOURCE_TYPES.PIG, quantity: 1 }],
         produces: [{ resource: RESOURCE_TYPES.MEAT, quantity: 2, interval: 12000 }], // 2 meat from 1 pig
         gridSize: { width: 2, height: 2 },
@@ -1156,7 +1200,7 @@ export const BUILDING_INFO = {
         key: 'IRON_SMELTER',
         cost: { STONE: 50, WOOD: 20 },
         jobSlots: 2,
-        jobProfession: SERF_PROFESSIONS.SMELTER_WORKER,
+        jobProfession: 'SMELTER_WORKER',
         consumes: [{ resource: RESOURCE_TYPES.IRON_ORE, quantity: 2 }, { resource: RESOURCE_TYPES.COAL_ORE, quantity: 1 }],
         produces: [{ resource: RESOURCE_TYPES.IRON_BAR, quantity: 1, interval: 22000 }],
         // requiredTool: SERF_PROFESSIONS.SMELTER_WORKER.tool, // Smelter worker might have a tool
@@ -1168,7 +1212,7 @@ export const BUILDING_INFO = {
         key: 'TOOLMAKERS_WORKSHOP',
         cost: { WOOD: 25, STONE: 15 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.TOOLMAKER,
+        jobProfession: 'TOOLMAKER',
         // Consumes based on tool being made, handled by specific UI action later
         // Produces various tools
         gridSize: { width: 2, height: 2 },
@@ -1179,7 +1223,7 @@ export const BUILDING_INFO = {
         key: 'GOLDSMITHS_MINT',
         cost: { STONE: 40, WOOD: 10 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.GOLDSMITH,
+        jobProfession: 'GOLDSMITH',
         consumes: [
             { resource: RESOURCE_TYPES.GOLD_ORE, quantity: 1 },
             { resource: RESOURCE_TYPES.COAL_ORE, quantity: 1 } // Fuel
@@ -1193,7 +1237,7 @@ export const BUILDING_INFO = {
         key: 'BLACKSMITH_ARMORY',
         cost: { STONE: 35, WOOD: 20 },
         jobSlots: 1,
-        jobProfession: SERF_PROFESSIONS.BLACKSMITH,
+        jobProfession: 'BLACKSMITH',
         // Consumes based on item being made (e.g., iron bars for swords)
         // Produces swords, shields
         gridSize: { width: 3, height: 2 },
@@ -1224,7 +1268,7 @@ export const BUILDING_INFO = {
         cost: { STONE: 100, WOOD: 50, [RESOURCE_TYPES.IRON_BAR]: 10 }, // Added Iron Bars to cost
         jobSlots: 5, // For training/housing soldiers/knights
         // jobProfession: SERF_PROFESSIONS.KNIGHT, // Or a trainer profession
-        canTrain: [SERF_PROFESSIONS.KNIGHT], // Example: Can train Knights
+        canTrain: ['KNIGHT'], // Example: Can train Knights
         territoryIncrease: 10, // Example value for significant territory expansion
         gridSize: { width: 4, height: 3 }, // Matches visual description (large footprint)
         color: COLORS.DARK_GREY,
@@ -1263,8 +1307,18 @@ export const BUILDING_INFO = {
         key: 'BUILDERS_HUT',
         cost: { WOOD: 5 },
         jobSlots: 3, // Can support multiple builders
-        jobProfession: SERF_PROFESSIONS.BUILDER,
+        jobProfession: 'BUILDER',
         // Builders don't produce resources, they consume them for construction tasks
+        gridSize: { width: 1, height: 1 },
+        color: COLORS.BROWN,
+    },
+    TRANSPORTER_HUT: {
+        name: "Transporter's Hut",
+        key: 'TRANSPORTER_HUT',
+        cost: { WOOD: 5 },
+        jobSlots: 5, // Can support multiple builders
+        jobProfession: 'TRANSPORTER',
+        // Transporter don't produce resources, they consume them for transport tasks
         gridSize: { width: 1, height: 1 },
         color: COLORS.BROWN,
     },
@@ -1318,3 +1372,31 @@ export const BUILDING_CREATORS = {
     BUILDERS_HUT: createBuildersHut,
     HARBOR: createHarbor,
 };
+
+// ---- START DEBUG LOG ----
+console.log("[Buildings.js] Module loaded. Exported functions:");
+console.log("createCastle:", typeof createCastle);
+console.log("createWoodcuttersHut:", typeof createWoodcuttersHut);
+console.log("createForestersHut:", typeof createForestersHut);
+console.log("createQuarry:", typeof createQuarry);
+console.log("createFishermansHut:", typeof createFishermansHut);
+console.log("createFarm:", typeof createFarm);
+console.log("createGeologistsHut:", typeof createGeologistsHut);
+console.log("createMine:", typeof createMine);
+console.log("createSawmill:", typeof createSawmill);
+console.log("createWindmill:", typeof createWindmill);
+console.log("createBakery:", typeof createBakery);
+console.log("createPigFarm:", typeof createPigFarm);
+console.log("createSlaughterhouse:", typeof createSlaughterhouse);
+console.log("createIronSmelter:", typeof createIronSmelter);
+console.log("createToolmakersWorkshop:", typeof createToolmakersWorkshop);
+console.log("createGoldsmithsMint:", typeof createGoldsmithsMint);
+console.log("createBlacksmithArmory:", typeof createBlacksmithArmory);
+console.log("createGuardHut:", typeof createGuardHut);
+console.log("createWatchtower:", typeof createWatchtower);
+console.log("createBarracksFortress:", typeof createBarracksFortress);
+console.log("createWarehouseStorehouse:", typeof createWarehouseStorehouse);
+console.log("createBuildersHut:", typeof createBuildersHut);
+console.log("createTransportersHut:", typeof createTransportersHut);
+console.log("createHarbor:", typeof createHarbor);
+// ---- END DEBUG LOG ----
