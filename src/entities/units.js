@@ -952,40 +952,81 @@ export class Serf extends Unit {
         switch (this.state) {
             case SERF_ACTION_STATES.IDLE:
                 if (this.task === 'gather_resource_for_building' && this.assignedBuilding) {
-                    // If Woodcutter is at the hut (or idle) and has capacity, search for wood
-                    let currentInventoryAmount = Object.values(this.inventory).reduce((sum, val) => sum + val, 0);
-                    if (currentInventoryAmount < this.maxInventoryCapacity) {
-                        console.log(`${this.id} (${this.serfType}) is IDLE at ${this.assignedBuilding.info.name}, has capacity. Starting SEARCHING_FOR_RESOURCE_ON_MAP for ${this.taskDetails.resourceType}`);
+                    const resourceToDeposit = this.taskDetails.resourceType;
+                    const amountCarrying = this.inventory[resourceToDeposit] || 0;
+                    let totalInventoryAmount = Object.values(this.inventory).reduce((sum, val) => sum + val, 0);
+
+                    if (amountCarrying > 0) {
+                        // Serf has the specific resource to deposit. Prioritize depositing.
+                        console.log(`${this.id} (${this.serfType}) is IDLE, carrying ${amountCarrying} ${resourceToDeposit}. Preparing to move to deposit at ${this.assignedBuilding.info.name}.`);
+                        
+                        // Ensure assignedBuilding and its entry point are valid
+                        if (!this.assignedBuilding.getEntryPointGridPosition) {
+                            console.error(`${this.id} (${this.serfType}) IDLE: assignedBuilding ${this.assignedBuilding.info.name} is missing getEntryPointGridPosition. Staying IDLE.`);
+                            break; 
+                        }
+                        const buildingEntryPoint = this.assignedBuilding.getEntryPointGridPosition();
+                        
+                        this.targetNode = { 
+                            x: buildingEntryPoint.x, 
+                            y: buildingEntryPoint.z, // mapManager uses y for grid's Z
+                            buildingId: this.assignedBuilding.model.uuid, 
+                            type: 'deposit_at_assigned_building' 
+                        };
+                        this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: buildingEntryPoint.x, y: buildingEntryPoint.z });
+                        
+                        if (this.path && this.path.length > 0) {
+                            this.state = SERF_ACTION_STATES.MOVING_TO_DEPOSIT_BUILDING;
+                            this.pathIndex = 0; // Reset pathIndex
+                        } else {
+                            console.error(`${this.id} (${this.serfType}) IDLE: could not find path to deposit building ${this.assignedBuilding.info.name} at (${buildingEntryPoint.x},${buildingEntryPoint.z}) from (${this.x},${this.y}). Staying IDLE.`);
+                            // Serf remains IDLE, will retry next update tick.
+                        }
+                    } else if (totalInventoryAmount < this.maxInventoryCapacity) {
+                        // Serf is empty of the specific resource (or generally empty) and has overall capacity. Search for more.
+                        console.log(`${this.id} (${this.serfType}) is IDLE at ${this.assignedBuilding.info.name}, empty of ${resourceToDeposit} and has capacity. Starting SEARCHING_FOR_RESOURCE_ON_MAP for ${resourceToDeposit}`);
                         this.state = SERF_ACTION_STATES.SEARCHING_FOR_RESOURCE_ON_MAP;
                     } else {
-                        // This case should ideally not happen if deposit logic is correct
-                        console.log(`${this.id} (${this.serfType}) is IDLE but inventory full. Should have deposited. Forcing deposit attempt or re-eval.`);
-                        // Potentially try to deposit again or re-evaluate task
-                        this.state = SERF_ACTION_STATES.MOVING_TO_DEPOSIT_BUILDING; // Try to deposit again
+                        // Serf is IDLE, empty of specific resource, but general inventory is full OR
+                        // serf has other items and no capacity for new ones.
+                        console.log(`${this.id} (${this.serfType}) is IDLE at ${this.assignedBuilding.info.name}. Inventory full or no specific resource to deposit. Waiting.`);
+                        // Stays IDLE, effectively waiting.
                     }
                 } else if (this.task === 'work_at_building' && this.taskDetails.buildingId) {
-                    // ... (existing logic for 'work_at_building' if kept for other professions)
-                    // For Woodcutter, this task type will be replaced by 'gather_resource_for_building'
-                    // This block handles moving to the building if not already there.
-                    const building = this.scene.getObjectByProperty('uuid', this.taskDetails.buildingId);
-                    if (building) {
-                        const targetGridX = Math.round(building.position.x / TILE_SIZE + (this.mapManager.width - 1) / 2);
-                        const targetGridY = Math.round(building.position.z / TILE_SIZE + (this.mapManager.height - 1) / 2);
-                        // Check if already at the building
+                    const buildingModel = this.scene.getObjectByProperty('uuid', this.taskDetails.buildingId); // Renamed to buildingModel for clarity
+                    if (buildingModel) {
+                        let targetGridX, targetGridY; // targetGridY is the map's Z coordinate
+
+                        if (buildingModel.userData && buildingModel.userData.buildingInstance) {
+                            const buildingInstance = buildingModel.userData.buildingInstance;
+                            const entryPointGrid = buildingInstance.getEntryPointGridPosition();
+                            targetGridX = entryPointGrid.x;
+                            targetGridY = entryPointGrid.z; // buildingInstance.getEntryPointGridPosition() returns .z for depth
+                            console.log(`${this.id} (${this.serfType}) target for ${this.taskDetails.buildingName}: entry point (${targetGridX}, ${targetGridY}) from buildingInstance.`);
+                        } else {
+                            // Fallback: use building model origin if instance not found (should not happen for correctly set up buildings)
+                            targetGridX = Math.round(buildingModel.position.x / TILE_SIZE + (this.mapManager.width - 1) / 2);
+                            targetGridY = Math.round(buildingModel.position.z / TILE_SIZE + (this.mapManager.height - 1) / 2);
+                            console.warn(`${this.id} (${this.serfType}) could not get buildingInstance for ${this.taskDetails.buildingName}. Using model origin (${targetGridX}, ${targetGridY}) as target.`);
+                        }
+
+                        // Check if already at the building's entry point
+                        // this.y is the serf's grid Z coordinate
                         if (this.x === targetGridX && this.y === targetGridY) {
-                            console.log(`${this.id} (${this.serfType}) is IDLE and already at ${this.taskDetails.buildingName}. Transitioning to WORKING_AT_BUILDING.`);
+                            console.log(`${this.id} (${this.serfType}) is IDLE and already at ${this.taskDetails.buildingName}'s target/entry point. Transitioning to WORKING_AT_BUILDING.`);
                             this.state = SERF_ACTION_STATES.WORKING_AT_BUILDING;
                             this.taskTimer = 0;
                         } else {
-                            this.targetNode = { x: targetGridX, y: targetGridY, buildingId: this.taskDetails.buildingId };
-                            this.path = this.mapManager.findPath({ x: this.x, y: this.y }, {x: targetGridX, y: targetGridY});
+                            this.targetNode = { x: targetGridX, y: targetGridY, buildingId: this.taskDetails.buildingId, buildingName: this.taskDetails.buildingName };
+                            // Pathfind to targetGridX, targetGridY (where targetGridY is the map's Z coordinate, used as 'y' in findPath)
+                            this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: targetGridX, y: targetGridY });
                             if (this.path && this.path.length > 0) {
                                 this.pathIndex = 0;
-                                this.state = SERF_ACTION_STATES.MOVING_TO_TARGET; // Generic move to building
-                                console.log(`${this.id} (${this.serfType}) path found to building ${this.taskDetails.buildingName}. Moving.`);
+                                this.state = SERF_ACTION_STATES.MOVING_TO_TARGET;
+                                console.log(`${this.id} (${this.serfType}) path found to building ${this.taskDetails.buildingName} entry point (${targetGridX}, ${targetGridY}). Moving.`);
                             } else {
-                                console.warn(`${this.id} (${this.serfType}) could not find path to building ${this.taskDetails.buildingName}. Going idle.`);
-                                this.task = 'idle';
+                                console.warn(`${this.id} (${this.serfType}) could not find path to building ${this.taskDetails.buildingName} entry point (${targetGridX}, ${targetGridY}). Serf at (${this.x},${this.y}). Going idle.`);
+                                this.task = 'idle'; // Go idle if no path
                             }
                         }
                     } else {

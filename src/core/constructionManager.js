@@ -26,7 +26,7 @@ export const BUILDING_DATA = {
         productionIntervalMs: (60 / 5) * 1000, // Interval in ms for 1 unit
         jobSlots: 1, // Number of serfs this building can employ
         jobProfession: SERF_PROFESSIONS.WOODCUTTER, 
-        requiredTool: RESOURCE_TYPES.TOOLS_AXE,
+        requiredTool: RESOURCE_TYPES.TOOLS_AXE, // Reinstated
         consumesFood: [RESOURCE_TYPES.BREAD, RESOURCE_TYPES.FISH], 
         foodConsumptionRate: 0.1, // 0.1 unit per worker per foodCheckIntervalMs
         foodCheckIntervalMs: 15000, // Check/consume food every 15 seconds (example)
@@ -324,6 +324,7 @@ class ConstructionManager {
         this.placedBuildings = []; // To track completed game objects
 
         this._setupPlacementIndicator();
+        // No automatic call to setupInitialStructures here, main.js will call it.
     }
 
     _setupPlacementIndicator() {
@@ -391,11 +392,14 @@ class ConstructionManager {
 
         // 3. Create and place building model
         const buildingModel = buildingInfo.creator();
-        const snappedX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
-        const snappedZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
-        buildingModel.position.set(snappedX, 0, snappedZ); // Assuming building models have origin at their base center
+        const snappedWorldX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
+        const snappedWorldZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
+        buildingModel.position.set(snappedWorldX, 0, snappedWorldZ); 
         
-        // Add to a specific group for buildings in the scene, not directly to scene
+        // Convert centered world coordinates to 0-indexed grid coordinates
+        const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
+        const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
+        
         const buildingsGroup = this.scene.getObjectByName("GameBuildings") || new THREE.Group();
         if (!buildingsGroup.parent) {
             buildingsGroup.name = "GameBuildings";
@@ -403,10 +407,8 @@ class ConstructionManager {
         }
         buildingsGroup.add(buildingModel);
 
-        console.log(`${buildingInfo.name} placed at (${snappedX}, ${snappedZ})`);
+        console.log(`${buildingInfo.name} placed at world (${snappedWorldX}, ${snappedWorldZ}), grid (${placedGridX}, ${placedGridZ})`);
         
-        // TODO: Initiate construction process (Builder serf, timer, etc.)
-        // For now, simulate a simple timer
         const constructionTime = 5000; // 5 seconds (example)
         const newBuildingData = {
             model: buildingModel,
@@ -414,9 +416,15 @@ class ConstructionManager {
             info: buildingInfo,
             constructionEndTime: Date.now() + constructionTime,
             isConstructed: false,
-            inventory: {}, // Initialize local inventory
-            maxStock: buildingInfo.maxStock || 100, // Default maxStock if not defined in BUILDING_DATA
-            workers: [], // To store assigned worker serf IDs
+            inventory: {}, 
+            maxStock: buildingInfo.maxStock || 100, 
+            workers: [], 
+            gridX: placedGridX, // Store 0-indexed grid X
+            gridZ: placedGridZ, // Store 0-indexed grid Z
+
+            getEntryPointGridPosition: function() {
+                return { x: this.gridX, z: this.gridZ };
+            },
 
             // Method to add resources to this building's local inventory
             addResource: function(resourceType, amount) {
@@ -500,6 +508,102 @@ class ConstructionManager {
         });
     }
 
+    // New method to place and instantly construct a building
+    placeAndConstructInitialBuilding(buildingKey, gridX, gridZ) { // gridX, gridZ are 0-indexed map coordinates
+        const buildingInfo = BUILDING_DATA[buildingKey];
+        if (!buildingInfo || !buildingInfo.creator) {
+            console.error(`[InitialSetup] Building type ${buildingKey} not found or no creator function.`);
+            return null;
+        }
+
+        console.log(`[InitialSetup] Placing and constructing ${buildingInfo.name} at grid (${gridX}, ${gridZ})`);
+
+        const buildingModel = buildingInfo.creator();
+        // Convert 0-indexed grid coordinates to centered world coordinates
+        const worldX = (gridX - (this.gameMap.width - 1) / 2) * TILE_SIZE;
+        const worldZ = (gridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE;
+        buildingModel.position.set(worldX, 0, worldZ);
+
+        const buildingsGroup = this.scene.getObjectByName("GameBuildings") || new THREE.Group();
+        if (!buildingsGroup.parent) {
+            buildingsGroup.name = "GameBuildings";
+            this.scene.add(buildingsGroup);
+        }
+        buildingsGroup.add(buildingModel);
+
+        const newBuildingData = {
+            model: buildingModel,
+            type: buildingKey,
+            info: buildingInfo,
+            isConstructed: true, // Instantly constructed
+            constructionEndTime: Date.now(), // No construction time
+            inventory: {},
+            maxStock: buildingInfo.maxStock || 100,
+            workers: [],
+            gridX: gridX, // Store 0-indexed grid X
+            gridZ: gridZ, // Store 0-indexed grid Z
+            getEntryPointGridPosition: function() {
+                return { x: this.gridX, z: this.gridZ };
+            },
+            addResource: function(resourceType, amount) {
+                if (!this.isConstructed) return 0;
+                const currentAmount = this.inventory[resourceType] || 0;
+                const availableSpace = this.maxStock - currentAmount;
+                const amountToAdd = Math.min(amount, availableSpace);
+                if (amountToAdd > 0) {
+                    this.inventory[resourceType] = currentAmount + amountToAdd;
+                }
+                return amountToAdd;
+            },
+            pickupResource: function(resourceType, amountRequested) {
+                if (!this.isConstructed) return 0;
+                const currentAmount = this.inventory[resourceType] || 0;
+                const amountToPickup = Math.min(amountRequested, currentAmount);
+                if (amountToPickup > 0) {
+                    this.inventory[resourceType] = currentAmount - amountToPickup;
+                }
+                return amountToPickup;
+            },
+            getStock: function(resourceType) {
+                return this.inventory[resourceType] || 0;
+            }
+        };
+
+        buildingModel.userData.buildingInstance = newBuildingData;
+        buildingModel.userData.uuid = buildingModel.uuid; 
+        this.placedBuildings.push(newBuildingData);
+        this._setBuildingOpacity(buildingModel, 1.0); // Fully opaque
+
+        console.log(`[InitialSetup] ${buildingInfo.name} successfully placed and constructed at (${worldX}, ${worldZ}).`);
+        return newBuildingData;
+    }
+
+    setupInitialStructures() {
+        console.log("[ConstructionManager] Setting up initial structures...");
+        // Determine placement for Transporter Hut (e.g., near center, offset from Castle if one exists)
+        // For now, let's place it slightly offset from the absolute center.
+        // Assuming Castle is at or very near map center.
+        const mapCenterX = Math.floor(this.gameMap.width / 2);
+        const mapCenterZ = Math.floor(this.gameMap.height / 2);
+
+        // Place Castle first (if it's part of initial setup, assuming it is for drop-off points)
+        // The Castle is usually tier 0 and placed by default logic if not explicitly handled.
+        // Let's ensure a Castle is placed if not already.
+        let castle = this.placedBuildings.find(b => b.type === 'CASTLE');
+        if (!castle) {
+            console.log("[ConstructionManager] No Castle found, placing one initially.");
+            this.placeAndConstructInitialBuilding('CASTLE', mapCenterX, mapCenterZ);
+        } else {
+            console.log("[ConstructionManager] Castle already exists.");
+        }
+        
+        // Place Transporter Hut near the Castle
+        const hutGridX = mapCenterX + 3; // Example offset
+        const hutGridZ = mapCenterZ;
+        this.placeAndConstructInitialBuilding('TRANSPORTER_HUT', hutGridX, hutGridZ);
+        console.log("[ConstructionManager] Initial structures setup complete.");
+    }
+
     update() { 
         const now = Date.now();
         // console.log(`ConstructionManager update tick: ${now}`); // Can be too verbose
@@ -526,7 +630,7 @@ class ConstructionManager {
 
                 this.placedBuildings.push(building); // Move to completed list
                 this.buildingsUnderConstruction.splice(i, 1); // Remove from under construction
-                console.log(`${building.info.name} at (${building.x}, ${building.z}) construction complete!`);
+                console.log(`${building.info.name} at (${building.gridX}, ${building.gridZ}) construction complete!`);
             }
         }
 
@@ -568,15 +672,15 @@ class ConstructionManager {
 
                     if (foodSatisfied >= foodNeededThisInterval) {
                         if (building.isHaltedByNoFood) { // If it was halted, log resumption
-                            console.log(`${building.info.name} at (${building.x}, ${building.z}) RESUMED production. Food available.`);
+                            console.log(`${building.info.name} at (${building.gridX}, ${building.gridZ}) RESUMED production. Food available.`);
                         }
                         building.isHaltedByNoFood = false;
                         if (consumedFoodDetails.length > 0) {
-                             console.log(`${building.info.name} at (${building.x}, ${building.z}) consumed ${consumedFoodDetails.join(', ')} for ${building.workers.length} workers.`);
+                             console.log(`${building.info.name} at (${building.gridX}, ${building.gridZ}) consumed ${consumedFoodDetails.join(', ')} for ${building.workers.length} workers.`);
                         }
                     } else {
                         if (!building.isHaltedByNoFood) { // Log only when it newly halts
-                           console.warn(`${building.info.name} at (${building.x}, ${building.z}) HALTED. Insufficient food. Needed ${foodNeededThisInterval.toFixed(2)}, Got ${foodSatisfied.toFixed(2)}. Tried: ${building.info.consumesFood.join(', ')}.`);
+                           console.warn(`${building.info.name} at (${building.gridX}, ${building.gridZ}) HALTED. Insufficient food. Needed ${foodNeededThisInterval.toFixed(2)}, Got ${foodSatisfied.toFixed(2)}. Tried: ${building.info.consumesFood.join(', ')}.`);
                         }
                         building.isHaltedByNoFood = true;
                     }
@@ -595,7 +699,7 @@ class ConstructionManager {
                     // TODO: Add check for input materials if building.info.inputMaterials is defined
                     resourceManager.addResource(building.info.producesResource, 1); // Produce 1 unit for now
                     building.lastProductionTime = now; // Reset timer
-                    console.log(`${building.info.name} at (${building.x}, ${building.z}) produced 1 ${building.info.producesResource} (Workers: ${building.workers.length}).`);
+                    console.log(`${building.info.name} at (${building.gridX}, ${building.gridZ}) produced 1 ${building.info.producesResource} (Workers: ${building.workers.length}).`);
                 }
             }
         }

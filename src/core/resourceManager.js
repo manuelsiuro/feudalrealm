@@ -43,6 +43,7 @@ class ResourceManager {
         this.stockpiles[RESOURCE_TYPES.WOOD] = 50;
         this.stockpiles[RESOURCE_TYPES.STONE] = 20;
         this.stockpiles[RESOURCE_TYPES.GRAIN] = 10; // For pig farm or early food
+        this.stockpiles[RESOURCE_TYPES.TOOLS_AXE] = 1; // Add one axe for the initial Woodcutter
     }
 
     addResource(type, amount) {

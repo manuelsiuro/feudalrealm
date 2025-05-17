@@ -75,12 +75,65 @@ class SerfManager {
         const centerX = Math.floor(this.gameMap.width / 2);
         const centerZ = Math.floor(this.gameMap.height / 2); // Using Z for the Y-axis in grid
 
-        const serfTypeToSpawn = 'Woodcutter'; // Directly specify Woodcutter
+        // Find the Transporter Hut placed by setupInitialStructures
+        const transporterHut = this.constructionManager.placedBuildings.find(
+            b => b.type === 'TRANSPORTER_HUT' && b.isConstructed
+        );
 
-        console.log(`Spawning a single ${serfTypeToSpawn} at grid center (${centerX}, ${centerZ})`);
+        let spawnX = centerX;
+        let spawnZ = centerZ;
 
-        // Create the Woodcutter serf
-        this.createSerf(serfTypeToSpawn, centerX, centerZ);
+        if (transporterHut) {
+            spawnX = Math.round(transporterHut.model.position.x / TILE_SIZE);
+            spawnZ = Math.round(transporterHut.model.position.z / TILE_SIZE);
+            console.log(`Found Transporter Hut for initial serf spawn at grid (${spawnX}, ${spawnZ})`);
+        } else {
+            console.warn("No Transporter Hut found for initial serf spawn. Spawning at map center.");
+        }
+
+        // Spawn 1 Woodcutter serf
+        // Offset slightly from where transporters might cluster
+        let woodcutterSpawnX = spawnX + 1; 
+        let woodcutterSpawnZ = spawnZ + 1;
+
+        // Ensure spawn position is within map bounds
+        woodcutterSpawnX = Math.max(0, Math.min(woodcutterSpawnX, this.gameMap.width - 1));
+        woodcutterSpawnZ = Math.max(0, Math.min(woodcutterSpawnZ, this.gameMap.height - 1));
+        
+        const woodcutterSerf = this.createSerf(SERF_PROFESSIONS.WOODCUTTER, woodcutterSpawnX, woodcutterSpawnZ);
+        if (woodcutterSerf) {
+            console.log(`Initial Woodcutter serf ${woodcutterSerf.id} spawned at (${woodcutterSpawnX}, ${woodcutterSpawnZ}).`);
+        }
+
+        // Spawn 5 Transporter serfs
+        for (let i = 0; i < 5; i++) {
+            // Offset them slightly so they don't all spawn on the exact same spot
+            const offsetX = i % 2 === 0 ? Math.floor(i / 2) : -Math.floor((i + 1) / 2);
+            const offsetZ = i % 3 === 0 ? 0 : (i % 3 === 1 ? 1 : -1);
+            
+            let finalSpawnX = spawnX + offsetX;
+            let finalSpawnZ = spawnZ + offsetZ;
+
+            // Ensure spawn position is within map bounds
+            finalSpawnX = Math.max(0, Math.min(finalSpawnX, this.gameMap.width - 1));
+            finalSpawnZ = Math.max(0, Math.min(finalSpawnZ, this.gameMap.height - 1));
+            
+            const newSerf = this.createSerf(SERF_PROFESSIONS.TRANSPORTER, finalSpawnX, finalSpawnZ);
+            if (newSerf && transporterHut) {
+                // Optionally, directly assign them to the Transporter Hut if game logic requires
+                // For now, the general job assignment logic should pick them up if the hut has slots.
+                // newSerf.job = transporterHut; // This might be too direct, let assignJobsAndTasks handle it.
+                // transporterHut.workers.push(newSerf.id); // Also potentially too direct.
+                console.log(`Initial Transporter serf ${newSerf.id} spawned near Transporter Hut at (${finalSpawnX}, ${finalSpawnZ}).`);
+            } else if (newSerf) {
+                console.log(`Initial Transporter serf ${newSerf.id} spawned at (${finalSpawnX}, ${finalSpawnZ}) (no hut found).`);
+            }
+        }
+
+        // Remove the old single Woodcutter spawn
+        // const serfTypeToSpawn = 'Woodcutter'; 
+        // console.log(`Spawning a single ${serfTypeToSpawn} at grid center (${centerX}, ${centerZ})`);
+        // this.createSerf(serfTypeToSpawn, centerX, centerZ);
     }
 
     createSerf(type, gridX, gridY) {

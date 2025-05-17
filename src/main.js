@@ -129,6 +129,7 @@ gameElementsGroup.add(gameMap.tileMeshes);
 console.log('GameMap created and added to scene.');
 
 const constructionManager = new ConstructionManager(scene, gameMap);
+constructionManager.setupInitialStructures(); // Initialize Castle and Transporter Hut
 const serfManager = new SerfManager(scene, gameMap, constructionManager); // Pass constructionManager
 // gameElementsGroup.add(serfManager.serfVisualsGroup); // serfManager.serfVisualsGroup is undefined as Serfs add themselves to the scene directly
 
