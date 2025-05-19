@@ -28,6 +28,8 @@ class SerfManager {
         this.serfVisualsGroup.name = "SerfVisuals";
         this.gameElementsGroup.add(this.serfVisualsGroup); // Add the dedicated serf group to the main game elements group
 
+        this.onChangeCallback = null; // Initialize onChangeCallback
+
         this.spawnInitialSerfs();
     }
 
@@ -106,29 +108,20 @@ class SerfManager {
         this.serfIdCounter++;
         const serfId = `serf-${this.serfIdCounter}`;
         
-        // Pass gameElementsGroup (or serfVisualsGroup) to Serf constructor
-        // Assuming Serf constructor is updated to accept it and add its model to it.
         const newSerf = new Units.Serf(serfId, gridX, gridY, type, this.scene, this.gameMap, this.serfVisualsGroup);
 
         if (newSerf && newSerf.model) {
             this.serfs.push(newSerf);
             console.log(`${type} serf ${serfId} created at grid (${gridX}, ${gridY}). Model: ${newSerf.model.name}`);
             
-            // Set a default drop-off point (e.g., their spawn point or a designated central spot)
-            // For simplicity, let's use the map center as the drop-off for now.
             const dropOffGridX = Math.floor(this.gameMap.width / 2);
             const dropOffGridZ = Math.floor(this.gameMap.height / 2);
             newSerf.setDropOffPoint({ x: dropOffGridX, y: dropOffGridZ }); 
-            // console.log(`Serf ${serfId} drop-off point set to: (${dropOffGridX}, ${dropOffGridZ})`);
 
-            // Initial task assignment can be removed or changed if job assignment handles it
-            // if (type === 'Woodcutter') { 
-            //     newSerf.setTask('mine', { resourceType: RESOURCE_TYPES.WOOD });
-            // }
+            newSerf.job = null; 
+            newSerf.hasTool = false; 
 
-            newSerf.job = null; // Initialize job property for the serf
-            newSerf.hasTool = false; // Initialize tool status for the serf
-
+            this._notifyUI(); // Notify UI about the new serf
             return newSerf;
         } else {
             console.error(`Failed to create serf or serf model for type: ${type} at grid (${gridX},${gridY}).`);
@@ -301,6 +294,51 @@ class SerfManager {
         } else {
             console.warn(`Serf ${serfId} not found as a worker in ${building.info.name}.`);
         }
+    }
+
+    getSerfsGroupedByProfession() {
+        const grouped = {};
+        for (const serf of this.serfs) {
+            if (!grouped[serf.serfType]) {
+                grouped[serf.serfType] = [];
+            }
+            grouped[serf.serfType].push({ id: serf.id, serfType: serf.serfType }); // Add more details if needed by UI
+        }
+        return grouped;
+    }
+
+    getSerfById(serfId) {
+        return this.serfs.find(serf => serf.id === serfId);
+    }
+
+    // onChange callback for UIManager to listen to serf changes
+    // This needs to be called whenever serfs are created, or their professions change (if that's possible)
+    _notifyUI() {
+        if (this.onChangeCallback) {
+            this.onChangeCallback();
+        }
+    }
+
+    onChange(callback) {
+        this.onChangeCallback = callback;
+    }
+
+    // If serfs can be removed or change profession, call _notifyUI there as well.
+    // For example, if a serf dies or is removed:
+    removeSerf(serfId) {
+        const index = this.serfs.findIndex(s => s.id === serfId);
+        if (index !== -1) {
+            // Proper cleanup of the serf model from the scene would be needed here
+            if (this.serfs[index].model) {
+                this.serfVisualsGroup.remove(this.serfs[index].model);
+                // Dispose of geometries and materials if necessary
+            }
+            this.serfs.splice(index, 1);
+            console.log(`Serf ${serfId} removed.`);
+            this._notifyUI(); // Notify UI about the change
+            return true;
+        }
+        return false;
     }
 }
 

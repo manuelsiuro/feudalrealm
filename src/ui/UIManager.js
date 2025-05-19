@@ -8,6 +8,8 @@ class UIManager {
         this.serfManager = serfManager; // To get serf data for info panel
 
         this.resourcePanel = null;
+        this.serfListPanel = null; // New panel for serf list
+        this.buildingListPanel = null; // New panel for building list
         this.miniMapPanel = null;
         this.testButtonContainer = null;
         this.constructionPanel = null;
@@ -15,6 +17,7 @@ class UIManager {
         this.selectedUnitInfoPanel = null;
 
         this.buildingButtons = new Map();
+        this.onSerfSelectCallback = null; // Callback for when a serf is selected from the list
 
         if (!this.uiOverlay) {
             console.error("UIManager: ui-overlay element not found. UI will not be initialized.");
@@ -23,6 +26,8 @@ class UIManager {
 
         this.initStyles();
         this.initResourcePanel();
+        this.initSerfListPanel(); // Initialize the new panel
+        this.initBuildingListPanel(); // Initialize building list panel
         this.initMiniMapPanel(); // Placeholder
         this.initTestButtons(); // Cheat buttons
         this.initConstructionPanel();
@@ -37,9 +42,33 @@ class UIManager {
         this.updateResourceUI(this.resourceManager.getAllStockpiles());
         this.updateBuildingButtons();
 
+        // Listen for changes in serf population
+        if (this.serfManager && typeof this.serfManager.onChange === 'function') {
+            this.serfManager.onChange(() => {
+                this.updateSerfListUI();
+            });
+            this.updateSerfListUI(); // Initial update
+        } else {
+            console.warn("UIManager: SerfManager not available or doesn't have onChange method. Serf list will not auto-update.");
+        }
+
+        // Listen for changes in buildings (new listener needed in ConstructionManager)
+        if (this.constructionManager && typeof this.constructionManager.onChange === 'function') {
+            this.constructionManager.onChange(() => {
+                this.updateBuildingListUI();
+            });
+            this.updateBuildingListUI(); // Initial update
+        } else {
+            console.warn("UIManager: ConstructionManager not available or doesn't have onChange method. Building list will not auto-update.");
+        }
+
         // Add resize listener for UI elements that need it
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
         this.onWindowResize(); // Call once to set initial sizes
+    }
+
+    setSerfSelectCallback(callback) {
+        this.onSerfSelectCallback = callback;
     }
 
     initStyles() {
@@ -63,6 +92,11 @@ class UIManager {
                 font-size: 1.3em;
                 padding-bottom: 6px;
                 border-bottom: 1px solid rgba(255,255,255,0.3);
+                cursor: pointer; /* Add for clickable indication */
+            }
+            .panel-content-area { /* New class for collapsible content */
+                /* Styles for the content area if needed, e.g., padding */
+                /* overflow will be handled by the main panel div */
             }
             .building-button-content {
                 display: flex;
@@ -150,6 +184,50 @@ class UIManager {
                 scrollbar-width: thin;
                 scrollbar-color: rgba(255, 255, 255, 0.5) rgba(0, 0, 0, 0.3);
             }
+            .serf-list-panel-subheader {
+                font-size: 1.1em;
+                color: #eee;
+                margin-top: 10px;
+                margin-bottom: 5px;
+                padding-bottom: 3px;
+                border-bottom: 1px solid rgba(255,255,255,0.2);
+            }
+            .serf-list-item {
+                padding: 5px 2px;
+                cursor: pointer;
+                border-radius: 3px;
+                margin-bottom: 2px;
+                list-style-type: none; /* Remove bullets */
+                color: rgba(255,255,255,0.85);
+            }
+            .serf-list-item:hover {
+                background-color: rgba(255,255,255,0.1);
+                color: white;
+            }
+            #serf-list-panel ul, #building-list-panel ul {
+                padding-left: 5px; /* Indent list items slightly */
+                margin-top: 0;
+            }
+            .building-list-panel-subheader {
+                font-size: 1.1em;
+                color: #eee;
+                margin-top: 10px;
+                margin-bottom: 5px;
+                padding-bottom: 3px;
+                border-bottom: 1px solid rgba(255,255,255,0.2);
+            }
+            .building-list-item {
+                padding: 5px 2px;
+                cursor: pointer;
+                border-radius: 3px;
+                margin-bottom: 2px;
+                list-style-type: none; /* Remove bullets */
+                color: rgba(255,255,255,0.85);
+            }
+            .building-list-item:hover {
+                background-color: rgba(255,255,255,0.1);
+                color: white;
+            }
         `;
         const styleElement = document.createElement('style');
         styleElement.id = 'game-ui-styles';
@@ -166,9 +244,84 @@ class UIManager {
         this.resourcePanel.style.top = '10px';
         this.resourcePanel.style.left = '10px';
         this.resourcePanel.style.minWidth = '230px';
-        this.resourcePanel.style.maxHeight = 'calc(100vh - 20px)';
-        this.resourcePanel.style.overflowY = 'auto';
+        this.resourcePanel.style.maxHeight = 'calc(100vh - 20px)'; // Max height for the panel itself
+        this.resourcePanel.style.overflowY = 'auto'; // Scroll for the panel when content overflows
+
+        const resourceTitle = document.createElement('h3');
+        resourceTitle.textContent = 'Resources';
+        resourceTitle.classList.add('themed-panel-title');
+        this.resourcePanel.appendChild(resourceTitle);
+
+        // Create content area
+        this.resourcePanelContent = document.createElement('div');
+        this.resourcePanelContent.classList.add('panel-content-area');
+        this.resourcePanel.appendChild(this.resourcePanelContent);
+
+        resourceTitle.addEventListener('click', () => {
+            const isHidden = this.resourcePanelContent.style.display === 'none';
+            this.resourcePanelContent.style.display = isHidden ? '' : 'none';
+        });
+
         this.uiOverlay.appendChild(this.resourcePanel);
+    }
+
+    initSerfListPanel() {
+        this.serfListPanel = document.createElement('div');
+        this.serfListPanel.id = 'serf-list-panel';
+        this.serfListPanel.classList.add('themed-panel');
+        this.serfListPanel.style.top = '10px';
+        // Position it to the right of the resource panel.
+        // Assuming resourcePanel is ~230px wide + 10px padding + 10px gap = 250px
+        this.serfListPanel.style.left = '250px'; 
+        this.serfListPanel.style.minWidth = '200px';
+        this.serfListPanel.style.maxHeight = 'calc(100vh - 20px)'; // Same height as resource panel
+        this.serfListPanel.style.overflowY = 'auto'; // Scroll for the panel
+
+        const serfListTitle = document.createElement('h3');
+        serfListTitle.textContent = 'Serfs';
+        serfListTitle.classList.add('themed-panel-title');
+        this.serfListPanel.appendChild(serfListTitle);
+
+        // Create content area
+        this.serfListPanelContent = document.createElement('div');
+        this.serfListPanelContent.classList.add('panel-content-area');
+        this.serfListPanel.appendChild(this.serfListPanelContent);
+        
+        serfListTitle.addEventListener('click', () => {
+            const isHidden = this.serfListPanelContent.style.display === 'none';
+            this.serfListPanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiOverlay.appendChild(this.serfListPanel);
+    }
+
+    initBuildingListPanel() {
+        this.buildingListPanel = document.createElement('div');
+        this.buildingListPanel.id = 'building-list-panel';
+        this.buildingListPanel.classList.add('themed-panel');
+        this.buildingListPanel.style.top = '10px';
+        // Position it to the right of the serf list panel.
+        // serfListPanel.left (250px) + serfListPanel.minWidth (200px) + 10px gap = 460px
+        this.buildingListPanel.style.left = '460px'; 
+        this.buildingListPanel.style.minWidth = '220px';
+        this.buildingListPanel.style.maxHeight = 'calc(100vh - 20px)';
+        this.buildingListPanel.style.overflowY = 'auto';
+
+        const buildingListTitle = document.createElement('h3');
+        buildingListTitle.textContent = 'Buildings on Map';
+        buildingListTitle.classList.add('themed-panel-title');
+        this.buildingListPanel.appendChild(buildingListTitle);
+
+        this.buildingListPanelContent = document.createElement('div');
+        this.buildingListPanelContent.classList.add('panel-content-area');
+        this.buildingListPanel.appendChild(this.buildingListPanelContent);
+
+        buildingListTitle.addEventListener('click', () => {
+            const isHidden = this.buildingListPanelContent.style.display === 'none';
+            this.buildingListPanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiOverlay.appendChild(this.buildingListPanel);
     }
 
     initMiniMapPanel() {
@@ -296,13 +449,10 @@ class UIManager {
     }
 
     updateResourceUI(stockpiles) {
-        if (!this.resourcePanel) return;
-        this.resourcePanel.innerHTML = '';
+        if (!this.resourcePanel || !this.resourcePanelContent) return; // Check for content area
+        this.resourcePanelContent.innerHTML = ''; // Clear only the content area
 
-        const resourceTitle = document.createElement('h3');
-        resourceTitle.textContent = 'Resources';
-        resourceTitle.classList.add('themed-panel-title');
-        this.resourcePanel.appendChild(resourceTitle);
+        // Title is already part of this.resourcePanel, no need to re-add here
 
         const table = document.createElement('table');
         table.style.width = '100%';
@@ -327,7 +477,134 @@ class UIManager {
             valueCell.style.padding = '4px 2px';
             valueCell.style.color = 'white';
         }
-        this.resourcePanel.appendChild(table);
+        this.resourcePanelContent.appendChild(table); // Append table to content area
+    }
+
+    updateSerfListUI() {
+        if (!this.serfListPanel || !this.serfListPanelContent || !this.serfManager || typeof this.serfManager.getSerfsGroupedByProfession !== 'function') {
+            if (this.serfListPanelContent && (!this.serfManager || typeof this.serfManager.getSerfsGroupedByProfession !== 'function')) {
+                this.serfListPanelContent.innerHTML = ''; // Clear content area
+                const placeholder = document.createElement('p');
+                placeholder.textContent = 'Serf data unavailable.';
+                placeholder.style.padding = '5px';
+                placeholder.style.fontStyle = 'italic';
+                placeholder.style.color = 'rgba(255,255,255,0.7)';
+                this.serfListPanelContent.appendChild(placeholder);
+            }
+            return;
+        }
+
+        this.serfListPanelContent.innerHTML = ''; // Clear only the content area
+        // Title is already part of this.serfListPanel
+
+        const serfsByProfession = this.serfManager.getSerfsGroupedByProfession();
+
+        if (Object.keys(serfsByProfession).length === 0) {
+            const noSerfsMessage = document.createElement('p');
+            noSerfsMessage.textContent = 'No serfs active.';
+            noSerfsMessage.style.padding = '5px';
+            noSerfsMessage.style.fontStyle = 'italic';
+            noSerfsMessage.style.color = 'rgba(255,255,255,0.7)';
+            this.serfListPanelContent.appendChild(noSerfsMessage); // Append to content area
+            return;
+        }
+
+        for (const profession in serfsByProfession) {
+            const serfs = serfsByProfession[profession];
+            if (serfs.length > 0) {
+                const professionHeader = document.createElement('h5');
+                professionHeader.textContent = profession.replace(/([A-Z])/g, ' $1').trim(); // Add space before caps
+                professionHeader.classList.add('serf-list-panel-subheader');
+                this.serfListPanelContent.appendChild(professionHeader);
+
+                const ul = document.createElement('ul');
+                serfs.forEach(serf => {
+                    const li = document.createElement('li');
+                    li.textContent = `Serf ${serf.id.substring(0, 6)}`; // Display partial ID
+                    li.classList.add('serf-list-item');
+                    li.dataset.serfId = serf.id; // Store full ID
+
+                    li.addEventListener('click', () => {
+                        if (this.onSerfSelectCallback) {
+                            this.onSerfSelectCallback(serf.id);
+                        } else {
+                            console.warn('UIManager: onSerfSelectCallback not set.');
+                        }
+                    });
+                    ul.appendChild(li);
+                });
+                this.serfListPanelContent.appendChild(ul); // Append to content area
+            }
+        }
+    }
+
+    updateBuildingListUI() {
+        if (!this.buildingListPanel || !this.buildingListPanelContent || !this.constructionManager) {
+            if (this.buildingListPanelContent) {
+                this.buildingListPanelContent.innerHTML = '';
+                const placeholder = document.createElement('p');
+                placeholder.textContent = 'Building data unavailable.';
+                placeholder.style.padding = '5px';
+                placeholder.style.fontStyle = 'italic';
+                placeholder.style.color = 'rgba(255,255,255,0.7)';
+                this.buildingListPanelContent.appendChild(placeholder);
+            }
+            return;
+        }
+
+        this.buildingListPanelContent.innerHTML = '';
+        const buildings = this.constructionManager.placedBuildings.concat(this.constructionManager.buildingsUnderConstruction);
+
+        if (buildings.length === 0) {
+            const noBuildingsMessage = document.createElement('p');
+            noBuildingsMessage.textContent = 'No buildings on map.';
+            noBuildingsMessage.style.padding = '5px';
+            noBuildingsMessage.style.fontStyle = 'italic';
+            noBuildingsMessage.style.color = 'rgba(255,255,255,0.7)';
+            this.buildingListPanelContent.appendChild(noBuildingsMessage);
+            return;
+        }
+
+        // Group buildings by type for better display
+        const buildingsByType = buildings.reduce((acc, building) => {
+            const typeName = building.info.name || building.type;
+            if (!acc[typeName]) {
+                acc[typeName] = [];
+            }
+            acc[typeName].push(building);
+            return acc;
+        }, {});
+
+        for (const typeName in buildingsByType) {
+            const buildingGroup = buildingsByType[typeName];
+            if (buildingGroup.length > 0) {
+                const typeHeader = document.createElement('h5');
+                typeHeader.textContent = typeName;
+                typeHeader.classList.add('building-list-panel-subheader');
+                this.buildingListPanelContent.appendChild(typeHeader);
+
+                const ul = document.createElement('ul');
+                buildingGroup.forEach(building => {
+                    const li = document.createElement('li');
+                    let status = building.isConstructed ? 'Completed' : 'Constructing';
+                    li.textContent = `${building.info.name} (ID: ${building.model.uuid.substring(0,6)}) - ${status}`;
+                    li.classList.add('building-list-item');
+                    li.dataset.buildingId = building.model.uuid;
+
+                    li.addEventListener('click', () => {
+                        // Reuse selectAndFocusSerf logic for focusing, adapt for buildings
+                        // This requires a new method in Game.js: selectAndFocusBuilding(buildingId)
+                        if (this.onBuildingSelectCallback) { // A new callback for buildings
+                            this.onBuildingSelectCallback(building.model.uuid);
+                        }
+                        // Also, directly update selection for immediate feedback if Game doesn't handle it fast enough
+                        // Or rely on Game to call displaySelectedBuildingInfo
+                    });
+                    ul.appendChild(li);
+                });
+                this.buildingListPanelContent.appendChild(ul);
+            }
+        }
     }
 
     checkSufficientResources(cost) {

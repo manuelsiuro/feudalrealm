@@ -69,10 +69,17 @@ class Game {
             this.resourceManager,
             this.constructionManager,
             this.serfManager
-            // Removed renderer, build request callback, cheat resources callback
-            // UIManager's buttons will now directly call manager methods or use resourceManager.onChange
         );
-        // this.uiManager.initUI(); // UIManager constructor now handles its initialization
+
+        // Setup callback for when a serf is selected in the UI
+        this.uiManager.setSerfSelectCallback((serfId) => {
+            this.selectAndFocusSerf(serfId);
+        });
+
+        // Setup callback for when a building is selected in the UI (new)
+        this.uiManager.onBuildingSelectCallback = (buildingId) => { // Directly assigning for now
+            this.selectAndFocusBuilding(buildingId);
+        };
 
         // 6. Camera and Controls Setup
         this.setupCameraAndControls();
@@ -267,6 +274,45 @@ class Game {
     //         }
     //     });
     // }
+
+    selectAndFocusSerf(serfId) {
+        const serf = this.serfManager.getSerfById(serfId);
+        if (serf && serf.model) {
+            this.selectedObjects = [serf.model];
+            this.renderer.setSelectedObjects(this.selectedObjects);
+            this.uiManager.displaySelectedUnitInfo(serf.model);
+
+            // Move camera to focus on the serf
+            const serfPosition = serf.model.position;
+            // Maintain current camera distance/zoom, but change target
+            const offset = this.camera.position.clone().sub(this.controls.target);
+            this.controls.target.copy(serfPosition);
+            this.camera.position.copy(serfPosition).add(offset);
+            this.controls.update();
+        } else {
+            console.warn(`Game: Serf with ID ${serfId} not found or has no model.`);
+        }
+    }
+
+    selectAndFocusBuilding(buildingId) {
+        const building = this.constructionManager.placedBuildings.concat(this.constructionManager.buildingsUnderConstruction)
+            .find(b => b.model.uuid === buildingId);
+
+        if (building && building.model) {
+            this.selectedObjects = [building.model];
+            this.renderer.setSelectedObjects(this.selectedObjects);
+            this.uiManager.displaySelectedBuildingInfo(building.model); // UIManager needs to handle this
+
+            // Move camera to focus on the building
+            const buildingPosition = building.model.position;
+            const offset = this.camera.position.clone().sub(this.controls.target);
+            this.controls.target.copy(buildingPosition);
+            this.camera.position.copy(buildingPosition).add(offset);
+            this.controls.update();
+        } else {
+            console.warn(`Game: Building with ID ${buildingId} not found or has no model.`);
+        }
+    }
 
     start() {
         this.animate();

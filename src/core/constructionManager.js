@@ -25,6 +25,8 @@ class ConstructionManager {
         this.buildingsUnderConstruction = []; // To track buildings being built
         this.placedBuildings = []; // To track completed game objects
 
+        this.onChangeCallback = null; // For UIManager to listen to changes
+
         this._setupPlacementIndicator();
         // No automatic call to setupInitialStructures here, main.js will call it.
     }
@@ -179,6 +181,7 @@ class ConstructionManager {
         // Make the building semi-transparent during construction
         this._setBuildingOpacity(buildingModel, 0.5);
 
+        this._notifyUI(); // Notify UI about the new building under construction
 
         this.cancelPlacement();
         return true;
@@ -277,6 +280,7 @@ class ConstructionManager {
         this._setBuildingOpacity(buildingModel, 1.0); // Fully opaque
 
         console.log(`[InitialSetup] ${buildingInfo.name} successfully placed and constructed at (${worldX}, ${worldZ}).`);
+        this._notifyUI(); // Notify UI about the initially placed building
         return newBuildingData;
     }
 
@@ -333,6 +337,7 @@ class ConstructionManager {
                 this.placedBuildings.push(building); // Move to completed list
                 this.buildingsUnderConstruction.splice(i, 1); // Remove from under construction
                 console.log(`${building.info.name} at (${building.gridX}, ${building.gridZ}) construction complete!`);
+                this._notifyUI(); // Notify UI about construction completion
             }
         }
 
@@ -404,6 +409,17 @@ class ConstructionManager {
                     console.log(`${building.info.name} at (${building.gridX}, ${building.gridZ}) produced 1 ${building.info.producesResource} (Workers: ${building.workers.length}).`);
                 }
             }
+        }
+    }
+
+    // Method for UIManager to subscribe to changes
+    onChange(callback) {
+        this.onChangeCallback = callback;
+    }
+
+    _notifyUI() {
+        if (this.onChangeCallback) {
+            this.onChangeCallback();
         }
     }
 }
