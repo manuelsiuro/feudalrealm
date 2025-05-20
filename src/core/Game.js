@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // Game will manage controls instance from Renderer
 
 import { GameMap } from './MapManager.js';
-import { TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path
+import { TILE_SIZE, TERRAIN_COLORS, TERRAIN_TYPES } from '../config/mapConstants.js'; // Corrected import path, Added TERRAIN_COLORS, TERRAIN_TYPES
 import resourceManager from './resourceManager.js';
 import ConstructionManager from './constructionManager.js';
 import SerfManager from './serfManager.js';
@@ -55,6 +55,15 @@ class Game {
         this.renderer.gameElementsGroup.add(this.gameMap.tileMeshes);
         console.log('GameMap created and added to scene via Game.js.');
 
+        // Create and add the ground plane
+        const groundGeometry = new THREE.PlaneGeometry(MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
+        const groundMaterial = new THREE.MeshBasicMaterial({ color: TERRAIN_COLORS[TERRAIN_TYPES.GRASSLAND] });
+        const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+        groundPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+        groundPlane.position.y = -0.05; // Position slightly below tiles to avoid z-fighting if tiles are at y=0
+        this.renderer.gameElementsGroup.add(groundPlane);
+        console.log('Ground plane created and added to scene.');
+
         // 3. Initialize ConstructionManager
         this.constructionManager = new ConstructionManager(this.scene, this.gameMap, this.renderer.gameElementsGroup);
         this.constructionManager.setupInitialStructures();
@@ -77,9 +86,12 @@ class Game {
         });
 
         // Setup callback for when a building is selected in the UI (new)
-        this.uiManager.onBuildingSelectCallback = (buildingId) => { // Directly assigning for now
+        // this.uiManager.onBuildingSelectCallback = (buildingId) => { // Directly assigning for now
+        //     this.selectAndFocusBuilding(buildingId);
+        // };
+        this.uiManager.setBuildingSelectCallback((buildingId) => {
             this.selectAndFocusBuilding(buildingId);
-        };
+        });
 
         // 6. Camera and Controls Setup
         this.setupCameraAndControls();

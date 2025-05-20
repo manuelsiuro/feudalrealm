@@ -18,6 +18,7 @@ class UIManager {
 
         this.buildingButtons = new Map();
         this.onSerfSelectCallback = null; // Callback for when a serf is selected from the list
+        this.onBuildingSelectCallback = null; // Callback for when a building is selected
 
         if (!this.uiOverlay) {
             console.error("UIManager: ui-overlay element not found. UI will not be initialized.");
@@ -69,6 +70,11 @@ class UIManager {
 
     setSerfSelectCallback(callback) {
         this.onSerfSelectCallback = callback;
+    }
+
+    // Method to set the building selection callback
+    setBuildingSelectCallback(callback) {
+        this.onBuildingSelectCallback = callback;
     }
 
     initStyles() {
