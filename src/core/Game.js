@@ -33,7 +33,7 @@ class Game {
 
         // DOM elements that Game needs to interact with or pass to UIManager
         this.gameCanvas = document.getElementById('game-canvas');
-        this.uiOverlay = document.getElementById('ui-overlay');
+        // this.uiOverlay = document.getElementById('ui-overlay'); // Removed
 
         // Bind event handlers to the game instance
         this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -74,7 +74,8 @@ class Game {
         // 5. Initialize UIManager
         // UIManager needs references to managers and renderer for its operations
         this.uiManager = new UIManager(
-            this.uiOverlay, // Pass the uiOverlay DOM element
+            // this.uiOverlay, // Pass the uiOverlay DOM element - Removed
+            document.body, // Pass document.body as the container for UI elements
             this.resourceManager,
             this.constructionManager,
             this.serfManager
@@ -152,10 +153,12 @@ class Game {
     handleCanvasClick(event) {
         // Prevent click handling if a UI element on the overlay was the target
         // Check if the click originated from within the uiOverlay
-        if (this.uiOverlay.contains(event.target) && event.target !== this.uiOverlay) {
-            // If the click is on any element that is a child of uiOverlay,
+        // if (this.uiOverlay.contains(event.target) && event.target !== this.uiOverlay) { // Removed
+        // Check if the click target is part of the game canvas or the document body directly
+        // This logic might need refinement based on how UI elements are structured without the overlay
+        if (event.target !== this.gameCanvas && event.target !== document.body) {
+            // If the click is on any element that is NOT the game canvas or body,
             // assume UIManager's internal event listeners will handle it.
-            // This prevents Game.js from processing clicks on UI buttons, panels, etc.
             return;
         }
 

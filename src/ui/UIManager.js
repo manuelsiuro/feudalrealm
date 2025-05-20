@@ -1,8 +1,8 @@
 import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // May be needed for UI updates
 
 class UIManager {
-    constructor(uiOverlay, resourceManager, constructionManager, serfManager) {
-        this.uiOverlay = uiOverlay;
+    constructor(uiContainer, resourceManager, constructionManager, serfManager) {
+        this.uiContainer = uiContainer; // Changed from uiOverlay to uiContainer
         this.resourceManager = resourceManager;
         this.constructionManager = constructionManager;
         this.serfManager = serfManager; // To get serf data for info panel
@@ -20,8 +20,8 @@ class UIManager {
         this.onSerfSelectCallback = null; // Callback for when a serf is selected from the list
         this.onBuildingSelectCallback = null; // Callback for when a building is selected
 
-        if (!this.uiOverlay) {
-            console.error("UIManager: ui-overlay element not found. UI will not be initialized.");
+        if (!this.uiContainer) {
+            console.error("UIManager: uiContainer element not found. UI will not be initialized.");
             return;
         }
 
@@ -268,7 +268,7 @@ class UIManager {
             this.resourcePanelContent.style.display = isHidden ? '' : 'none';
         });
 
-        this.uiOverlay.appendChild(this.resourcePanel);
+        this.uiContainer.appendChild(this.resourcePanel);
     }
 
     initSerfListPanel() {
@@ -298,7 +298,7 @@ class UIManager {
             this.serfListPanelContent.style.display = isHidden ? '' : 'none';
         });
 
-        this.uiOverlay.appendChild(this.serfListPanel);
+        this.uiContainer.appendChild(this.serfListPanel);
     }
 
     initBuildingListPanel() {
@@ -327,7 +327,7 @@ class UIManager {
             this.buildingListPanelContent.style.display = isHidden ? '' : 'none';
         });
 
-        this.uiOverlay.appendChild(this.buildingListPanel);
+        this.uiContainer.appendChild(this.buildingListPanel);
     }
 
     initMiniMapPanel() {
@@ -346,7 +346,7 @@ class UIManager {
         this.miniMapPanel.style.alignItems = 'center';
         this.miniMapPanel.style.justifyContent = 'center';
         this.miniMapPanel.textContent = 'Mini-map';
-        this.uiOverlay.appendChild(this.miniMapPanel);
+        this.uiContainer.appendChild(this.miniMapPanel);
     }
 
     initTestButtons() {
@@ -370,7 +370,7 @@ class UIManager {
             });
         });
         this.testButtonContainer.appendChild(addCheatButton);
-        this.uiOverlay.appendChild(this.testButtonContainer);
+        this.uiContainer.appendChild(this.testButtonContainer);
     }
 
     initConstructionPanel() {
@@ -446,12 +446,12 @@ class UIManager {
             this.buildingButtons.set(building.key, { button, cost: building.cost });
             this.constructionPanel.appendChild(button);
         });
-        this.uiOverlay.appendChild(this.constructionPanel);
+        this.uiContainer.appendChild(this.constructionPanel);
     }
 
     initSelectionInfoPanels() {
         // These are created on demand, so this method can be a placeholder
-        // or ensure the uiOverlay is ready for them.
+        // or ensure the uiContainer is ready for them.
     }
 
     updateResourceUI(stockpiles) {
@@ -680,7 +680,7 @@ class UIManager {
     }
 
     displaySelectedBuildingInfo(buildingModel) {
-        if (!this.uiOverlay) return;
+        if (!this.uiContainer) return;
         this.clearSelectedBuildingInfo();
         this.clearSelectedUnitInfo();
 
@@ -746,7 +746,7 @@ class UIManager {
                 actionsDiv.appendChild(placeholderButton);
             }
         }
-        this.uiOverlay.appendChild(this.selectedBuildingInfoPanel);
+        this.uiContainer.appendChild(this.selectedBuildingInfoPanel);
     }
 
     clearSelectedBuildingInfo() {
@@ -757,7 +757,7 @@ class UIManager {
     }
 
     displaySelectedUnitInfo(serfModel) {
-        if (!this.uiOverlay) return;
+        if (!this.uiContainer) return;
         this.clearSelectedUnitInfo();
         this.clearSelectedBuildingInfo();
 
@@ -806,7 +806,7 @@ class UIManager {
         }
 
         this.selectedUnitInfoPanel.innerHTML = contentHTML;
-        this.uiOverlay.appendChild(this.selectedUnitInfoPanel);
+        this.uiContainer.appendChild(this.selectedUnitInfoPanel);
     }
 
     clearSelectedUnitInfo() {

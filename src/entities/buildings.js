@@ -947,7 +947,7 @@ export function createBuildersHut() {
 export function createTransportersHut() {
     const hutGroup = new THREE.Group();
     hutGroup.name = "Transporter's Hut";
-    const baseUnit = 0.4; 
+    const baseUnit = 0.8; 
     const hutWidth = baseUnit * 1.5;
     const hutHeight = baseUnit * 1;
     const hutDepth = baseUnit * 1.2;

@@ -13,7 +13,7 @@ function createMesh(geometry, color, name = '') {
 const TERRAIN_COLORS = {
     // Grassland
     LAWN_GREEN: 0x7CFC00,
-    LIGHT_GREEN: 0x90EE90,
+    LIGHT_GREEN: 0x008000,
     FOREST_GREEN: 0x228B22, // Also for bushes
     GREY_ROCK: 0x808080,
 
@@ -63,7 +63,7 @@ export function createGrassland(size = { width: 10, depth: 10 }) {
     const numHills = Math.floor(Math.random() * 3) + 1; // 1 to 3 hills
     for (let i = 0; i < numHills; i++) {
         const hillRadius = Math.random() * (size.width / 8) + (size.width / 10);
-        const hillHeight = Math.random() * 0.5 + 0.2;
+        const hillHeight = Math.random() * 0.1 + 0.2;
         const hillGeom = new THREE.SphereGeometry(hillRadius, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
         const hillMesh = createMesh(hillGeom, TERRAIN_COLORS.LIGHT_GREEN, `Hill_${i}`);
         hillMesh.scale.y = hillHeight / hillRadius; // Squash it
@@ -87,12 +87,12 @@ export function createForest(size = { width: 10, depth: 10 }, density = 0.5) {
     //group.add(groundMesh);
 
     const treeArea = size.width * size.depth;
-    const numTrees = Math.floor(treeArea * density * 0.1); // Adjust density factor
+    const numTrees = Math.floor(treeArea * density * 0.3); // Adjust density factor
 
     for (let i = 0; i < numTrees; i++) {
         const tree = new THREE.Group();
-        const trunkHeight = Math.random() * 2 + 1.5; // 1.5m to 3.5m
-        const trunkRadius = Math.random() * 0.1 + 0.05; // 0.05m to 0.15m
+        const trunkHeight = Math.random() * 0.2 + 1.5; // 1.5m to 3.5m
+        const trunkRadius = Math.random() * 0.15 + 0.05; // 0.05m to 0.15m
         const trunkGeom = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 8);
         const trunkMesh = createMesh(trunkGeom, TERRAIN_COLORS.SADDLE_BROWN_TRUNK, 'TreeTrunk');
         trunkMesh.position.y = trunkHeight / 2;
@@ -184,7 +184,7 @@ export function createWater(size = { width: 10, depth: 10 }, type = 'lake') {
     }
     
     const waterMaterial = new THREE.MeshStandardMaterial({
-        color: TERRAIN_COLORS.LIGHT_BLUE_WATER,
+        color: TERRAIN_COLORS.DARK_BLUE_WATER_DEPTH,
         transparent: true,
         opacity: 0.75
     });
@@ -196,11 +196,11 @@ export function createWater(size = { width: 10, depth: 10 }, type = 'lake') {
     group.add(waterMesh);
 
     // Optional: Implied depth with a darker plane underneath
-    const depthPlaneGeom = new THREE.PlaneGeometry(size.width, size.depth);
-    const depthPlaneMesh = createMesh(depthPlaneGeom, TERRAIN_COLORS.DARK_BLUE_WATER_DEPTH, 'WaterDepth');
-    depthPlaneMesh.rotation.x = -Math.PI / 2;
-    depthPlaneMesh.position.y = -0.2; // Slightly below the surface
-    group.add(depthPlaneMesh);
+    //const depthPlaneGeom = new THREE.PlaneGeometry(size.width, size.depth);
+    //const depthPlaneMesh = createMesh(depthPlaneGeom, TERRAIN_COLORS.DARK_BLUE_WATER_DEPTH, 'WaterDepth');
+    //depthPlaneMesh.rotation.x = -Math.PI / 2;
+    //depthPlaneMesh.position.y = -0.2; // Slightly below the surface
+    //group.add(depthPlaneMesh);
 
     return group;
 }
@@ -211,6 +211,7 @@ export function createDesert(size = { width: 10, depth: 10 }) {
 
     const groundGeom = new THREE.PlaneGeometry(size.width, size.depth, 20, 20);
     // Make it undulating by manipulating vertices
+    /*
     const positions = groundGeom.attributes.position;
     for (let i = 0; i < positions.count; i++) {
         const y = positions.getY(i);
@@ -219,7 +220,7 @@ export function createDesert(size = { width: 10, depth: 10 }) {
         positions.setZ(i, Math.sin(x * 0.5 + y * 0.3) * 0.3 + Math.sin(x * 0.2 - y*0.7) * 0.2);
     }
     groundGeom.computeVertexNormals(); // Recalculate normals for lighting
-
+*/
     const groundMesh = createMesh(groundGeom, TERRAIN_COLORS.SANDY_YELLOW_DUNE, 'DesertDunes');
     groundMesh.rotation.x = -Math.PI / 2;
     group.add(groundMesh);

@@ -10,7 +10,7 @@ export const TERRAIN_TYPES = {
 };
 
 export const TERRAIN_COLORS = {
-    [TERRAIN_TYPES.GRASSLAND]: 0x32CD32, // LimeGreen
+    [TERRAIN_TYPES.GRASSLAND]: 0x008000, // LimeGreen
     [TERRAIN_TYPES.FOREST]: 0x228B22,    // ForestGreen
     [TERRAIN_TYPES.MOUNTAIN]: 0x808080,   // Grey
     [TERRAIN_TYPES.WATER]: 0x1E90FF,     // DodgerBlue

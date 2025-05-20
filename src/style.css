@@ -18,29 +18,3 @@ body {
     width: 100%;
     height: 100%;
 }
-
-#ui-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none; /* Allow clicks to pass through to canvas by default */
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    box-sizing: border-box; /* Include padding in width/height */
-}
-
-/* Example: Make UI elements clickable */
-#ui-overlay > * {
-    pointer-events: auto; /* Children of overlay can be interacted with */
-}
-
-/* Placeholder styling */
-#ui-overlay p {
-    background-color: rgba(0,0,0,0.5);
-    padding: 8px;
-    border-radius: 4px;
-    width: fit-content;
-}
