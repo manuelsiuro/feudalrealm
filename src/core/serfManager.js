@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import * as Units from '../entities/units.js'; 
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
 import resourceManager from './resourceManager.js'; // For tool/food checks
-import { TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path
+import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js'; // Corrected import path
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; // Updated import
-
+import { FORESTER_PLANTING_RADIUS } from '../config/unitConstants.js';
 
 class SerfManager {
     constructor(scene, gameMap, constructionManager, gameElementsGroup) { // Added gameElementsGroup
@@ -138,23 +138,150 @@ class SerfManager {
     assignJobsAndTasks() {
         if (!this.constructionManager) return;
 
-        const idleSerfs = this.serfs.filter(serf => serf.state === SERF_ACTION_STATES.IDLE && !serf.job);
+        const idleSerfs = this.serfs.filter(serf => serf.state === SERF_ACTION_STATES.IDLE && !serf.job && (!serf.task || serf.task === 'idle'));
+        const idleBuilders = idleSerfs.filter(serf => serf.serfType === SERF_PROFESSIONS.BUILDER);
+        const idleForesters = idleSerfs.filter(serf => serf.serfType === SERF_PROFESSIONS.FORESTER);
         const idleTransporters = this.serfs.filter(serf => 
             serf.serfType === SERF_PROFESSIONS.TRANSPORTER && 
             serf.state === SERF_ACTION_STATES.IDLE &&
-            !serf.taskDetails && // Not already on a transport task
+            (!serf.task || serf.task === 'idle') && 
             Object.keys(serf.inventory).reduce((sum, key) => sum + serf.inventory[key], 0) === 0
         );
-
-        // Prioritize assigning specific jobs first
-        if (idleSerfs.length > 0) {
-            this.tryAssignSerfsToProfessionJobs(idleSerfs);
+        
+        // 1. Assign Builders to Construction Sites
+        if (idleBuilders.length > 0 && this.constructionManager.buildingsUnderConstruction.length > 0) {
+            this.tryAssignBuildersToConstruction(idleBuilders, this.constructionManager.buildingsUnderConstruction);
         }
 
-        // Then assign transport tasks to available transporters
+        // 2. Assign Foresters to Plant Saplings (if conditions met)
+        if (idleForesters.length > 0) {
+            this.tryAssignForestersToPlantSaplings(idleForesters);
+        }
+
+        // 3. Assign Serfs to Profession Jobs (excluding builders and foresters already handled or who got a planting task)
+        const remainingIdleSerfsForProfessionJobs = idleSerfs.filter(serf => 
+            serf.serfType !== SERF_PROFESSIONS.BUILDER && 
+            serf.serfType !== SERF_PROFESSIONS.FORESTER && // Exclude foresters initially
+            serf.state === SERF_ACTION_STATES.IDLE && 
+            !serf.job && 
+            (!serf.task || serf.task === 'idle')
+        );
+        // Add back any idle foresters who weren't assigned a planting task
+        const unassignedIdleForesters = idleForesters.filter(f => f.state === SERF_ACTION_STATES.IDLE && (!f.task || f.task === 'idle'));
+        const allRemainingIdleSerfs = [...remainingIdleSerfsForProfessionJobs, ...unassignedIdleForesters];
+
+        if (allRemainingIdleSerfs.length > 0) {
+            this.tryAssignSerfsToProfessionJobs(allRemainingIdleSerfs);
+        }
+
+        // 4. Assign Transport Tasks
         if (idleTransporters.length > 0) {
             this.tryAssignTransportTasksToIdleTransporters(idleTransporters);
         }
+    }
+
+    tryAssignBuildersToConstruction(idleBuilders, sites) {
+        for (const site of sites) {
+            if (site.isConstructed) continue; // Skip already completed sites
+
+            // Check if this site already has a builder assigned
+            // This requires tracking assigned builders per site or checking serf.assignedConstructionSite
+            const alreadyAssignedBuilder = this.serfs.find(s => s.assignedConstructionSite && s.assignedConstructionSite.model.uuid === site.model.uuid);
+            if (alreadyAssignedBuilder) {
+                // console.log(`Site ${site.info.name} (ID: ${site.model.uuid}) already has builder ${alreadyAssignedBuilder.id}. Skipping assignment.`);
+                continue; 
+            }
+
+            if (idleBuilders.length > 0) {
+                const builder = idleBuilders.pop(); // Take the first available idle builder
+                
+                // Determine target location for the builder (e.g., site's grid position)
+                const targetLocation = site.getEntryPointGridPosition ? site.getEntryPointGridPosition() : { x: site.gridX, y: site.gridZ };
+
+                builder.setTask('construct_building', {
+                    constructionSiteId: site.model.uuid, // Pass the UUID of the building model under construction
+                    targetLocation: { x: targetLocation.x, y: targetLocation.z } // Pass y for grid Z
+                });
+                console.log(`SerfManager: Builder ${builder.id} assigned to construct ${site.info.name} (ID: ${site.model.uuid}) at (${targetLocation.x}, ${targetLocation.z}).`);
+            }
+            if (idleBuilders.length === 0) return; // All builders assigned
+        }
+    }
+
+    tryAssignForestersToPlantSaplings(idleForesters) {
+        for (const forester of idleForesters) {
+            if (forester.task && forester.task !== 'idle') continue; // Already has a task
+
+            const foresterHut = this.constructionManager.placedBuildings.find(
+                b => b.isConstructed && 
+                     b.info.jobProfession === SERF_PROFESSIONS.FORESTER &&
+                     b.workers.includes(forester.id) // Forester is assigned to this hut
+            );
+
+            if (!foresterHut) {
+                // console.log(`Forester ${forester.id} has no Forester's Hut or is not assigned to one. Cannot plant saplings.`);
+                continue;
+            }
+
+            // Forester is at their hut and idle, let's find a place to plant.
+            // Search for an empty GRASSLAND tile near the Forester's Hut.
+            const hutGridX = foresterHut.gridX;
+            const hutGridY = foresterHut.gridZ; // mapManager uses y for grid's Z
+            let bestTargetTile = null;
+
+            // Simple search in a radius
+            for (let r = -FORESTER_PLANTING_RADIUS; r <= FORESTER_PLANTING_RADIUS; r++) {
+                for (let c = -FORESTER_PLANTING_RADIUS; c <= FORESTER_PLANTING_RADIUS; c++) {
+                    if (r === 0 && c === 0) continue; // Skip the hut's own tile
+
+                    const tileX = hutGridX + c;
+                    const tileY = hutGridY + r;
+
+                    if (tileX >= 0 && tileX < this.gameMap.width && tileY >= 0 && tileY < this.gameMap.height) {
+                        const tile = this.gameMap.grid[tileY][tileX]; // grid is [row][col] so [y][x]
+                        if (tile.terrainType === TERRAIN_TYPES.GRASSLAND && !tile.resource && !this.isTileOccupiedForPlanting(tileX, tileY)) {
+                            // Found a suitable tile
+                            bestTargetTile = { x: tileX, y: tileY };
+                            break; 
+                        }
+                    }
+                }
+                if (bestTargetTile) break;
+            }
+
+            if (bestTargetTile) {
+                console.log(`SerfManager: Forester ${forester.id} from hut ${foresterHut.info.name} assigned to plant sapling at (${bestTargetTile.x}, ${bestTargetTile.y}).`);
+                forester.setTask('plant_sapling', { 
+                    targetTile: bestTargetTile,
+                    // No need for buildingId here as the task is map-based, not building-work based
+                });
+                // Forester will move to targetTile and then enter PLANTING_SAPLING state.
+            } else {
+                // console.log(`Forester ${forester.id} could not find a suitable spot to plant a sapling near ${foresterHut.info.name}.`);
+                // Forester remains idle, will be picked up by tryAssignSerfsToProfessionJobs if hut needs workers for other tasks (e.g. chopping if implemented)
+                // or will try planting again next cycle.
+            }
+        }
+    }
+
+    isTileOccupiedForPlanting(tileX, tileY) {
+        // Check if any other serf is already tasked to plant at this exact tile
+        for (const serf of this.serfs) {
+            if (serf.task === 'plant_sapling' && serf.taskDetails && serf.taskDetails.targetTile) {
+                if (serf.taskDetails.targetTile.x === tileX && serf.taskDetails.targetTile.y === tileY) {
+                    return true; // Another serf is already going to plant here
+                }
+            }
+            // Also check if a serf is currently in MOVING_TO_TARGET_TILE state for this tile
+            if (serf.state === SERF_ACTION_STATES.MOVING_TO_TARGET_TILE && serf.targetTile) {
+                 if (serf.targetTile.x === tileX && serf.targetTile.y === tileY) {
+                    return true;
+                }
+            }
+        }
+        // TODO: Check if a sapling/tree already exists once mapManager tracks this
+        // For now, mapManager.grid[y][x].resource is the primary check.
+        return false;
     }
 
     tryAssignSerfsToProfessionJobs(idleSerfs) {

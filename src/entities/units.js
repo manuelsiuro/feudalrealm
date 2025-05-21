@@ -6,7 +6,7 @@ import resourceManager from '../core/resourceManager.js'; // Import resourceMana
 import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
 // import { COLORS } from '../config/colors.js'; // No longer needed here
-import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT } from '../config/unitConstants.js';
+import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL } from '../config/unitConstants.js'; // Added BUILDER_WORK_INTERVAL
 import {
     createBaseSerf,
     SERF_MODEL_CREATORS
@@ -159,11 +159,13 @@ export class Serf extends Unit {
 
     setTask(taskType, details = {}) {
         this.task = taskType;
-        this.taskDetails = details; // e.g., { resourceType: 'stone', buildingId: 'hut_uuid' }
+        this.taskDetails = details; // e.g., { resourceType: 'stone', buildingId: 'hut_uuid', targetTile: {x,y}, constructionSiteId: 'site_uuid' }
         this.state = SERF_ACTION_STATES.IDLE; // Reset state when a new task is assigned
         this.targetNode = null; // Target map tile or building
         this.targetResourceNode = null; // Specific resource node on map
         this.assignedBuilding = null; // Reference to assigned building instance, if applicable
+        this.assignedConstructionSite = null; // Reference to assigned construction site, if applicable
+        this.targetTile = null; // For tasks like planting saplings, farming
         this.taskTimer = 0;
         this.path = null;
         this.pathIndex = 0;
@@ -178,6 +180,75 @@ export class Serf extends Unit {
                 console.warn(`${this.id} (${this.serfType}) could not find or associate with buildingId: ${details.buildingId}`);
             }
         }
+
+        // Handle construction site assignment
+        if (taskType === 'construct_building' && details.constructionSiteId) {
+            // Attempt to find the construction site data from constructionManager
+            // This requires constructionManager to expose a way to get site data.
+            // For now, we'll assume the details include targetLocation and the siteId is enough.
+            // We also need to find the building instance that is under construction.
+            const siteModel = this.scene.getObjectByProperty('uuid', details.constructionSiteId);
+            if (siteModel && siteModel.userData && siteModel.userData.buildingInstance) {
+                this.assignedConstructionSite = siteModel.userData.buildingInstance; // Store the buildingInstance which is the "site"
+                console.log(`${this.id} (${this.serfType}) assigned to construct: ${this.assignedConstructionSite.info.name} (ID: ${details.constructionSiteId})`);
+                if (details.targetLocation) {
+                    this.targetNode = { 
+                        x: details.targetLocation.x, 
+                        y: details.targetLocation.y, 
+                        constructionSiteId: details.constructionSiteId, // Keep for reference
+                        type: 'construction_site_target' // More specific type
+                    };
+                    this.state = SERF_ACTION_STATES.MOVING_TO_TARGET; // Start by moving to the site
+                    console.log(`${this.id} (${this.serfType}) will move to construction site at (${details.targetLocation.x}, ${details.targetLocation.y})`);
+                } else {
+                    console.warn(`${this.id} (${this.serfType}) construct_building task for ${details.constructionSiteId} but no targetLocation provided. Cannot initiate move.`);
+                    this.task = 'idle'; // Cannot proceed
+                }
+            } else {
+                console.error(`${this.id} (${this.serfType}) could not find construction site model or buildingInstance for ID: ${details.constructionSiteId}. Going IDLE.`);
+                this.task = 'idle';
+                this.state = SERF_ACTION_STATES.IDLE;
+            }
+        } else if (details.constructionSiteId) { // If constructionSiteId is passed for other tasks, log it.
+             console.log(`${this.id} (${this.serfType}) task involves construction site: ${details.constructionSiteId} but task is ${taskType}`);
+             if (details.targetLocation) { 
+                 this.targetNode = { 
+                    x: details.targetLocation.x, 
+                    y: details.targetLocation.y, 
+                    constructionSiteId: details.constructionSiteId,
+                    type: 'construction_site' 
+                };
+            }
+        }
+
+        if (details.targetTile) { // For Forester planting, Farmer planting/tending/harvesting
+            this.targetTile = details.targetTile;
+            console.log(`${this.id} (${this.serfType}) task involves target tile: (${details.targetTile.x}, ${details.targetTile.y})`);
+            // Initial state could be MOVING_TO_TARGET_TILE
+            if (taskType === 'plant_sapling') {
+                this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: this.targetTile.x, y: this.targetTile.y });
+                if (this.path && this.path.length > 0) {
+                    this.state = SERF_ACTION_STATES.MOVING_TO_TARGET_TILE;
+                    this.pathIndex = 0;
+                    console.log(`${this.id} (${this.serfType}) path found to target tile for ${taskType}. Moving.`);
+                } else {
+                    console.warn(`${this.id} (${this.serfType}) could not find path to target tile (${this.targetTile.x}, ${this.targetTile.y}) for ${taskType}. Going IDLE.`);
+                    this.task = 'idle'; // Cannot proceed
+                    this.targetTile = null;
+                }
+            } else {
+                // Potentially handle other tasks that use targetTile here, e.g., farming
+                // For now, only plant_sapling explicitly sets MOVING_TO_TARGET_TILE
+            }
+        }
+        
+        // More specific initial state setting based on taskType can be added here
+        // For example:
+        // if (taskType === 'construct_building' && this.targetNode) {
+        //     this.state = SERF_ACTION_STATES.MOVING_TO_CONSTRUCTION_SITE;
+        // } else if (taskType === 'plant_sapling' && this.targetTile) {
+        //     this.state = SERF_ACTION_STATES.MOVING_TO_TARGET_TILE;
+        // }
     }
 
     setDropOffPoint(point) {
@@ -574,52 +645,156 @@ export class Serf extends Unit {
     }
 
     _handleWorkingAtBuildingState(deltaTime) {
-        if (this.serfType === 'Woodcutter' && this.task === 'work_at_building') {
-             console.warn(`Woodcutter ${this.id} in deprecated WORKING_AT_BUILDING state. Transitioning to IDLE to be reassigned.`);
-             this.task = 'idle'; // Clear task to allow SerfManager to re-evaluate
-             this.state = SERF_ACTION_STATES.IDLE;
-             return;
+        if (!this.taskDetails.buildingId || !this.assignedBuilding) {
+            console.warn(`${this.id} (${this.serfType}) in WORKING_AT_BUILDING without buildingId or assignedBuilding. Going IDLE.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            return;
         }
 
-        if (this.task === 'work_at_building' && this.taskDetails.buildingId) {
-            const buildingModel = this.scene.getObjectByProperty('uuid', this.taskDetails.buildingId);
-            if (buildingModel && buildingModel.userData && buildingModel.userData.buildingInstance) {
-                const buildingInstance = buildingModel.userData.buildingInstance;
-                if (buildingInstance.info &&
-                    buildingInstance.info.jobProfession === this.serfType &&
-                    buildingInstance.info.produces && buildingInstance.info.produces.length > 0 &&
-                    buildingInstance.info.produces[0].resource &&
-                    typeof buildingInstance.info.produces[0].quantity === 'number' &&
-                    typeof buildingInstance.info.produces[0].interval === 'number') {
+        const building = this.assignedBuilding;
+        const buildingData = building.info; // This is from BUILDING_DATA
 
-                    this.taskTimer += deltaTime;
-                    const productionIntervalSeconds = buildingInstance.info.produces[0].interval / 1000;
-
-                    if (this.taskTimer >= productionIntervalSeconds) {
-                        this.taskTimer -= productionIntervalSeconds;
-                        const resourceProduced = buildingInstance.info.produces[0].resource;
-                        const amountProduced = buildingInstance.info.produces[0].quantity;
-                        const amountAdded = buildingInstance.addResource(resourceProduced, amountProduced);
-                        if (amountAdded > 0) {
-                            console.log(`${this.id} (${this.serfType}) [direct production] deposited ${amountAdded} ${resourceProduced} at ${buildingInstance.info.name}.`);
-                        } else {
-                            console.log(`${this.id} (${this.serfType}) [direct production] failed to deposit ${resourceProduced} at ${buildingInstance.info.name} (full).`);
-                        }
-                        if (buildingInstance.getStock(resourceProduced) >= buildingInstance.maxStock) {
-                            console.log(`${this.id} (${this.serfType}) [direct production] ${buildingInstance.info.name} is full of ${resourceProduced}. Going IDLE.`);
-                            this.task = 'idle';
-                            this.state = SERF_ACTION_STATES.IDLE;
-                        }
-                    }
-                } else {
-                    this.task = 'idle';
-                    this.state = SERF_ACTION_STATES.IDLE;
-                }
+        // Ensure the Serf is at the building's entry point
+        const entryPoint = building.getEntryPointGridPosition();
+        if (this.x !== entryPoint.x || this.y !== entryPoint.z) {
+            console.log(`${this.id} (${this.serfType}) not at building entry point. Moving to (${entryPoint.x}, ${entryPoint.z}).`);
+            this.targetNode = { x: entryPoint.x, y: entryPoint.z, buildingId: building.model.uuid, type: 'work_at_building_entry' };
+            this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: entryPoint.x, y: entryPoint.z });
+            if (this.path && this.path.length > 0) {
+                this.pathIndex = 0;
+                this.state = SERF_ACTION_STATES.MOVING_TO_TARGET; // Use generic MOVING_TO_TARGET
             } else {
+                console.warn(`${this.id} (${this.serfType}) could not find path to building entry. Going IDLE.`);
                 this.task = 'idle';
                 this.state = SERF_ACTION_STATES.IDLE;
             }
+            return;
+        }
+        
+        // Specific professions that have unique, non-standard "working" logic
+        // These might be better handled by their own dedicated states if complex enough
+        if (this.serfType === 'Forester') {
+            // Forester's "work" at the Forester's Hut is essentially being idle, waiting for a planting or chopping task.
+            // If a Forester is assigned 'work_at_building' for the Forester's Hut, it means it's not currently planting/chopping.
+            // It should remain idle, ready for SerfManager to assign a specific task like 'plant_sapling' or 'chop_tree'.
+            // The actual planting/chopping logic will be in their respective states (_handlePlantingSaplingState, _handleChoppingTreeState).
+            console.log(`Forester ${this.id} at Forester's Hut, is effectively idle, awaiting specific task. Task: ${this.task}, State: ${this.state}`);
+            this.task = 'idle'; // Set to idle to be reassigned by SerfManager
+            this.state = SERF_ACTION_STATES.IDLE;
+            return;
+        }
+        if (this.serfType === 'Farmer') {
+            // Farmer's "work" is planting, tending, harvesting, handled by SerfManager.
+            console.log(`Farmer ${this.id} at Farm, should be idle or have a specific farming task. Going IDLE.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            return;
+        }
+        if (this.serfType === 'Fisherman') {
+            // Fisherman's "work" is fishing.
+            // This state could transition to a specific FISHING state if needed, or handle here.
+            // For now, let's assume Fishery has `produces` like other processing buildings.
+             if (buildingData.profession !== SERF_PROFESSIONS.FISHERMAN) {
+                console.warn(`${this.id} (${this.serfType}) assigned to work at ${buildingData.name} which is not a Fishery. Going IDLE.`);
+                this.task = 'idle';
+                this.state = SERF_ACTION_STATES.IDLE;
+                return;
+            }
+            // Fishing logic will be based on buildingData.produces.interval
+        }
+         if (this.serfType === 'PigFarmer') {
+            // Pig Farmer's "work" is raising pigs.
+            // This is complex: consumes grain, produces pigs (which then become meat).
+            // This might need its own state or very careful handling here.
+            // For now, let's assume Pig Farm has `consumes` (grain) and `produces` (pigs/meat)
+             if (buildingData.profession !== SERF_PROFESSIONS.PIG_FARMER) {
+                console.warn(`${this.id} (${this.serfType}) assigned to work at ${buildingData.name} which is not a Pig Farm. Going IDLE.`);
+                this.task = 'idle';
+                this.state = SERF_ACTION_STATES.IDLE;
+                return;
+            }
+        }
+
+
+        // General processing logic for buildings with consumes/produces
+        if (buildingData.consumes && buildingData.produces && buildingData.processingTime) {
+            this.taskTimer += deltaTime;
+
+            if (this.taskTimer >= buildingData.processingTime / 1000) { // processingTime is in ms
+                this.taskTimer -= (buildingData.processingTime / 1000);
+
+                // 1. Check if building has enough input resources
+                let canProduce = true;
+                for (const item of buildingData.consumes) {
+                    if (building.getStock(item.resource) < item.quantity) {
+                        canProduce = false;
+                        console.log(`${this.id} (${this.serfType}) at ${buildingData.name}: Not enough ${item.resource} (needs ${item.quantity}, has ${building.getStock(item.resource)}). Waiting for resources.`);
+                        // Serf should wait. SerfManager will eventually assign transporters.
+                        // Potentially set a flag to indicate waiting for resources.
+                        return; // Exit and re-check next update
+                    }
+                }
+
+                // 2. Check if building has space for output resources
+                for (const item of buildingData.produces) {
+                    if (building.getStock(item.resource) + item.quantity > building.outputBufferCapacity[item.resource]) {
+                        canProduce = false;
+                        console.log(`${this.id} (${this.serfType}) at ${buildingData.name}: Not enough output space for ${item.resource}. Waiting for transport.`);
+                        // Serf should wait. SerfManager will eventually assign transporters.
+                        return; // Exit and re-check next update
+                    }
+                }
+
+                if (canProduce) {
+                    // Consume input resources
+                    for (const item of buildingData.consumes) {
+                        building.pickupResource(item.resource, item.quantity); // remove from input buffer
+                        console.log(`${this.id} (${this.serfType}) at ${buildingData.name}: Consumed ${item.quantity} ${item.resource}.`);
+                    }
+
+                    // Produce output resources
+                    for (const item of buildingData.produces) {
+                        const amountAdded = building.addResource(item.resource, item.quantity); // add to output buffer
+                        if (amountAdded > 0) {
+                            console.log(`${this.id} (${this.serfType}) at ${buildingData.name}: Produced ${amountAdded} ${item.resource}.`);
+                        } else {
+                            // This case should ideally be caught by the space check above, but as a fallback:
+                            console.warn(`${this.id} (${this.serfType}) at ${buildingData.name}: Production of ${item.resource} failed, output buffer likely full despite check.`);
+                            // Serf should wait.
+                            return; 
+                        }
+                    }
+                }
+            }
+        } else if (buildingData.produces && buildingData.produces.length > 0 && !buildingData.consumes) {
+            // Handle simple production buildings (like old Woodcutter's hut, or potentially a Mine if it auto-produces)
+            // This logic is similar to the old _handleWorkingAtBuildingState for simple producers
+            this.taskTimer += deltaTime;
+            const firstProduct = buildingData.produces[0]; // Assuming simple producers have one output defined
+            const productionIntervalSeconds = firstProduct.interval / 1000;
+
+            if (this.taskTimer >= productionIntervalSeconds) {
+                this.taskTimer -= productionIntervalSeconds;
+                const resourceProduced = firstProduct.resource;
+                const amountProduced = firstProduct.quantity;
+
+                if (building.getStock(resourceProduced) + amountProduced <= building.outputBufferCapacity[resourceProduced]) {
+                    const amountAdded = building.addResource(resourceProduced, amountProduced);
+                    if (amountAdded > 0) {
+                        console.log(`${this.id} (${this.serfType}) [direct production] produced ${amountAdded} ${resourceProduced} at ${buildingData.name}.`);
+                    } else {
+                        console.log(`${this.id} (${this.serfType}) [direct production] failed to produce ${resourceProduced} at ${buildingData.name} (output full).`);
+                        // Serf should wait.
+                    }
+                } else {
+                     console.log(`${this.id} (${this.serfType}) [direct production] ${buildingData.name} output buffer full for ${resourceProduced}. Waiting.`);
+                     // Serf should wait.
+                }
+            }
         } else {
+            // Building is not a processing/production type, or misconfigured. Serf should not be in this state here.
+            console.warn(`${this.id} (${this.serfType}) is WORKING_AT_BUILDING (${buildingData.name}) that is not a recognized producer/processor or is misconfigured. Going IDLE.`);
             this.task = 'idle';
             this.state = SERF_ACTION_STATES.IDLE;
         }
@@ -796,21 +971,40 @@ export class Serf extends Unit {
 
     _handleDroppingOffResourceState(deltaTime) {
         if (this.task === 'transport_resource' && this.taskDetails.destinationBuildingId) {
+            const buildingModel = this.scene.getObjectByProperty('uuid', this.taskDetails.destinationBuildingId); // Added to get building instance
+            if (!buildingModel || !buildingModel.userData || !buildingModel.userData.buildingInstance) {
+                console.error(`${this.id} (${this.serfType}) in DROPPING_OFF_RESOURCE: Destination building ${this.taskDetails.destinationBuildingId} not found or has no instance. Going IDLE.`);
+                this.state = SERF_ACTION_STATES.IDLE;
+                this.task = 'idle';
+                this.inventory = {}; // Clear inventory as a precaution
+                return;
+            }
+            const buildingInstance = buildingModel.userData.buildingInstance;
             const resourceType = this.taskDetails.resourceType; 
             const amountInInventory = this.inventory[resourceType] || 0;
 
             if (amountInInventory > 0) {
-                resourceManager.addResource(resourceType, amountInInventory);
-                console.log(`${this.id} (${this.serfType}) deposited ${amountInInventory} ${resourceType} to global resources.`);
-                delete this.inventory[resourceType]; 
+                // Deposit into the building's input buffer
+                const depositedAmount = buildingInstance.addResource(resourceType, amountInInventory); // Assumes addResource handles input buffer logic
+                
+                if (depositedAmount > 0) {
+                    this.inventory[resourceType] -= depositedAmount;
+                    if (this.inventory[resourceType] <= 0) {
+                        delete this.inventory[resourceType];
+                    }
+                    console.log(`${this.id} (${this.serfType}) deposited ${depositedAmount} ${resourceType} into ${buildingInstance.info.name}. Remaining in inventory: ${this.inventory[resourceType] || 0}`);
+                } else {
+                     console.log(`${this.id} (${this.serfType}) failed to deposit ${resourceType} into ${buildingInstance.info.name} (e.g., input buffer full). Will become IDLE.`);
+                }
             } else {
-                console.log(`${this.id} (${this.serfType}) arrived at dropoff but had no ${resourceType} to deposit.`);
+                console.log(`${this.id} (${this.serfType}) arrived at ${buildingInstance.info.name} for dropoff but had no ${resourceType} to deposit.`);
             }
 
             if (Object.keys(this.inventory).length === 0) {
                 console.log(`${this.id} (${this.serfType}) inventory empty. Transport task complete. Becoming IDLE.`);
             } else {
                 console.warn(`${this.id} (${this.serfType}) inventory not empty after dropoff. Remaining: ${JSON.stringify(this.inventory)}. Becoming IDLE.`);
+                // Consider if Serf should try to deposit remaining items or if this indicates an issue
                 this.inventory = {}; 
             }
             
@@ -820,6 +1014,195 @@ export class Serf extends Unit {
 
         } else {
             console.warn(`${this.id} (${this.serfType}) in DROPPING_OFF_RESOURCE but task is not 'transport_resource' or no destinationBuildingId. Going IDLE.`);
+            this.state = SERF_ACTION_STATES.IDLE;
+            this.task = 'idle';
+        }
+    }
+
+    // Placeholder for new state handlers
+    _handlePlantingSaplingState(deltaTime) {
+        if (this.task !== 'plant_sapling') {
+            console.warn(`${this.id} (${this.serfType}) in PLANTING_SAPLING state but task is ${this.task}. Going IDLE.`);
+            this.state = SERF_ACTION_STATES.IDLE;
+            this.task = 'idle';
+            return;
+        }
+
+        // Check if the Forester has a sapling (conceptual, not a physical inventory item for now)
+        // Or, if saplings are a resource, check inventory:
+        // if (!this.inventory[RESOURCE_TYPES.SAPLING] || this.inventory[RESOURCE_TYPES.SAPLING] < 1) {
+        //     console.log(`${this.id} (${this.serfType}) has no sapling to plant. Going IDLE.`);
+        //     // Potentially, task SerfManager to make Forester fetch a sapling from Forester's Hut
+        //     this.state = SERF_ACTION_STATES.IDLE;
+        //     this.task = 'idle';
+        //     return;
+        // }
+
+        this.taskTimer += deltaTime;
+        const plantingDuration = FORESTER_PLANTING_TIME / 1000; // FORESTER_PLANTING_TIME is in ms
+
+        if (this.taskTimer >= plantingDuration) {
+            // Planting complete
+            console.log(`${this.id} (${this.serfType}) finished planting sapling at (${this.x}, ${this.y}).`);
+
+            // Consume the conceptual sapling
+            // if (this.inventory[RESOURCE_TYPES.SAPLING]) {
+            //     this.inventory[RESOURCE_TYPES.SAPLING]--;
+            //     if (this.inventory[RESOURCE_TYPES.SAPLING] <= 0) {
+            //         delete this.inventory[RESOURCE_TYPES.SAPLING];
+            //     }
+            // }
+
+            // Update the map tile to indicate a sapling is planted
+            // This requires a new mapManager function, e.g., this.mapManager.placeSapling(this.x, this.y)
+            // For now, we'll just log it.
+            // The sapling itself will be a new type of resource or a special tile state.
+            // Let's assume mapManager.addResourceNode(x, y, { type: RESOURCE_TYPES.SAPLING, amount: 1, growthTime: ... })
+            // Or, if saplings grow into trees, it might be more complex.
+            // For now, let's assume the Forester's Hut manages sapling growth conceptually.
+            // The key is that the tile is now occupied by a sapling.
+            
+            // For simulation, we can directly add a "SAPLING" resource to the tile.
+            // This assumes RESOURCE_TYPES.SAPLING exists and mapManager can handle it.
+            const tile = this.mapManager.getTile(this.x, this.y);
+            if (tile && !tile.resource && tile.terrainType === TERRAIN_TYPES.GRASSLAND) { // Ensure it's plantable
+                // TODO: Define how saplings are represented. For now, let's assume a simple resource node.
+                // This part needs coordination with how mapManager and resource generation work.
+                // A Forester's Hut might have a `saplingGrowthTime` in its buildingData.
+                // For now, just mark the tile conceptually.
+                // A more robust solution would be:
+                // this.mapManager.addFeature(this.x, this.y, 'sapling', { plantedBy: this.id, plantedAt: Date.now() });
+                console.log(`Tile (${this.x}, ${this.y}) now has a sapling (conceptual).`);
+                // If saplings are actual resource nodes:
+                // this.mapManager.grid[this.y][this.x].resource = {
+                // type: RESOURCE_TYPES.SAPLING,
+                // amount: 1,
+                // visualNode: null // A sapling model could be added here
+                // };
+                // this.mapManager._createResourceNodeMeshes(); // To update visuals if needed, or a more targeted update.
+            } else {
+                console.warn(`${this.id} (${this.serfType}) could not plant sapling at (${this.x}, ${this.y}): tile not suitable or already occupied.`);
+            }
+
+            this.taskTimer = 0;
+            this.state = SERF_ACTION_STATES.IDLE;
+            this.task = 'idle'; // Forester becomes idle, ready for new task from SerfManager
+            console.log(`${this.id} (${this.serfType}) planted sapling and is now IDLE.`);
+        }
+    }
+
+    _handleFishingState(deltaTime) {
+        console.log(`${this.id} (${this.serfType}) is in _handleFishingState (Not Implemented)`);
+        // Logic: if at fishery, start fishing timer. On interval, "produce" fish into building's output or serf inventory.
+        // If inventory full, return to drop-off.
+        this.state = SERF_ACTION_STATES.IDLE; // Placeholder
+    }
+
+    _handleRaisingPigsState(deltaTime) {
+        console.log(`${this.id} (${this.serfType}) is in _handleRaisingPigsState (Not Implemented)`);
+        // Logic: if at pig farm, manage pigs. This might be complex: feed pigs (consumes grain), pigs grow, slaughter pigs (produces meat).
+        // This state might be more of a "WORKING_AT_BUILDING" specialization.
+        this.state = SERF_ACTION_STATES.IDLE; // Placeholder
+    }
+
+    _handleFarmingPlantingState(deltaTime) {
+        console.log(`${this.id} (${this.serfType}) is in _handleFarmingPlantingState (Not Implemented)`);
+        this.state = SERF_ACTION_STATES.IDLE; // Placeholder
+    }
+
+    _handleFarmingTendingState(deltaTime) {
+        console.log(`${this.id} (${this.serfType}) is in _handleFarmingTendingState (Not Implemented)`);
+        this.state = SERF_ACTION_STATES.IDLE; // Placeholder
+    }
+
+    _handleFarmingHarvestingState(deltaTime) {
+        console.log(`${this.id} (${this.serfType}) is in _handleFarmingHarvestingState (Not Implemented)`);
+        this.state = SERF_ACTION_STATES.IDLE; // Placeholder
+    }
+
+    _handleProspectingState(deltaTime) {
+        console.log(`${this.id} (${this.serfType}) is in _handleProspectingState (Not Implemented)`);
+        this.state = SERF_ACTION_STATES.IDLE; // Placeholder
+    }
+
+    _handleConstructingBuildingState(deltaTime) {
+        if (!this.assignedConstructionSite) {
+            console.warn(`${this.id} (${this.serfType}) in CONSTRUCTING_BUILDING but no assignedConstructionSite. Going IDLE.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            return;
+        }
+
+        // The actual building instance from constructionManager is stored in assignedConstructionSite
+        const site = this.assignedConstructionSite;
+
+        // Check if the building is already marked as constructed by constructionManager
+        if (site.isConstructed) {
+            console.log(`${this.id} (${this.serfType}) construction site ${site.info.name} (ID: ${site.model.uuid}) is now complete. Task finished. Going IDLE.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            this.assignedConstructionSite = null;
+            return;
+        }
+
+        // Ensure Serf is at the construction site's location (entry point or center)
+        // Assuming targetLocation was set in setTask and Serf moved via MOVING_TO_TARGET
+        const siteEntryPoint = site.getEntryPointGridPosition ? site.getEntryPointGridPosition() : { x: site.gridX, z: site.gridZ };
+
+        if (this.x !== siteEntryPoint.x || this.y !== siteEntryPoint.z) {
+            console.log(`${this.id} (${this.serfType}) not at construction site ${site.info.name}. Moving to (${siteEntryPoint.x}, ${siteEntryPoint.z}).`);
+            this.targetNode = { 
+                x: siteEntryPoint.x, 
+                y: siteEntryPoint.z, 
+                constructionSiteId: site.model.uuid, 
+                type: 'construction_site_target' 
+            };
+            this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: siteEntryPoint.x, y: siteEntryPoint.z });
+            if (this.path && this.path.length > 0) {
+                this.pathIndex = 0;
+                this.state = SERF_ACTION_STATES.MOVING_TO_TARGET; 
+            } else {
+                console.warn(`${this.id} (${this.serfType}) could not find path to construction site ${site.info.name}. Going IDLE.`);
+                this.task = 'idle';
+                this.state = SERF_ACTION_STATES.IDLE;
+            }
+            return;
+        }
+
+        // Serf is at the site. "Work" on construction.
+        this.taskTimer += deltaTime;
+        if (this.taskTimer >= BUILDER_WORK_INTERVAL) { // BUILDER_WORK_INTERVAL in seconds
+            this.taskTimer -= BUILDER_WORK_INTERVAL;
+            console.log(`${this.id} (${this.serfType}) performing construction work at ${site.info.name} (ID: ${site.model.uuid}).`);
+            // In a more advanced system, this would contribute to site.progress.
+            // For now, constructionManager's timer handles completion.
+            // We just log the action. The Serf remains here until constructionManager completes it.
+        }
+        // Serf stays in CONSTRUCTING_BUILDING state. SerfManager might re-evaluate if needed,
+        // or the Serf will transition out when site.isConstructed becomes true (checked at the start of this handler).
+    }
+
+    _handleMovingToTargetTileState(deltaTime) {
+        if (this.targetTile && this.path) {
+            const arrived = this._moveAlongPath(deltaTime);
+            if (arrived) {
+                this.setPosition(this.targetTile.x, this.targetTile.y);
+                this.path = null;
+                this.pathIndex = 0;
+                console.log(`${this.id} (${this.serfType}) arrived at target tile (${this.targetTile.x}, ${this.targetTile.y}) for task: ${this.task}`);
+
+                if (this.task === 'plant_sapling') {
+                    this.state = SERF_ACTION_STATES.PLANTING_SAPLING;
+                    this.taskTimer = 0; // Reset timer for planting duration
+                } else {
+                    console.warn(`${this.id} (${this.serfType}) arrived at target tile but task ${this.task} is not handled here. Going IDLE.`);
+                    this.state = SERF_ACTION_STATES.IDLE;
+                    this.task = 'idle';
+                }
+                this.targetTile = null; // Clear target tile after arrival
+            }
+        } else {
+            console.warn(`${this.id} (${this.serfType}) in MOVING_TO_TARGET_TILE but no targetTile or path. Reverting to IDLE.`);
             this.state = SERF_ACTION_STATES.IDLE;
             this.task = 'idle';
         }
@@ -883,6 +1266,32 @@ export class Serf extends Unit {
 
             case SERF_ACTION_STATES.DROPPING_OFF_RESOURCE:
                 this._handleDroppingOffResourceState(deltaTime);
+                break;
+
+            // Add new states to the switch
+            case SERF_ACTION_STATES.PLANTING_SAPLING:
+                this._handlePlantingSaplingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.FISHING:
+                this._handleFishingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.RAISING_PIGS:
+                this._handleRaisingPigsState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.FARMING_PLANTING:
+                this._handleFarmingPlantingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.FARMING_TENDING:
+                this._handleFarmingTendingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.FARMING_HARVESTING:
+                this._handleFarmingHarvestingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.PROSPECTING:
+                this._handleProspectingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.CONSTRUCTING_BUILDING:
+                this._handleConstructingBuildingState(deltaTime);
                 break;
         }
     }
