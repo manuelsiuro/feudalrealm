@@ -16,7 +16,7 @@ const COLORS = {
     DARK_GREY: 0xa9a9a9, 
     LIGHT_GREY: 0xd3d3d3,
     RED: 0xff0000,
-    BROWN: 0xa52a2a,
+    BROWN: 0xa5572a,
     DARK_BROWN: 0x654321,
     LIGHT_BROWN: 0xdeb887,
     DARK_GREEN: 0x006400,
@@ -955,6 +955,16 @@ export function createTransportersHut() {
     const hutMesh = createMesh(hutGeometry, COLORS.BEIGE, 'Hut');
     hutMesh.position.y = hutHeight / 2; // Adjusted
     hutGroup.add(hutMesh);
+
+    // Add a wooden cabin roof
+    const roofWidth = hutWidth * 1.2; // Slight overhang
+    const roofDepth = hutDepth * 1.2; // Slight overhang
+    const roofBlockHeight = baseUnit * 0.5; // Height of the roof block
+    const roofGeometry = new THREE.BoxGeometry(roofWidth, roofBlockHeight, roofDepth);
+    const roofMesh = createMesh(roofGeometry, COLORS.BROWN, 'Roof'); // Assuming COLORS.BROWN is available
+    roofMesh.position.y = hutHeight + roofBlockHeight / 2; // Position on top of the hut
+    hutGroup.add(roofMesh);
+
     const plankWidth = baseUnit * 0.8;
     const plankHeight = baseUnit * 0.1;
     const plankDepth = baseUnit * 0.4;
