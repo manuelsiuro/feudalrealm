@@ -587,16 +587,18 @@ export class Serf extends Unit {
                 const buildingInstance = buildingModel.userData.buildingInstance;
                 if (buildingInstance.info &&
                     buildingInstance.info.jobProfession === this.serfType &&
-                    buildingInstance.info.producesResource && 
-                    buildingInstance.info.productionIntervalMs) {
+                    buildingInstance.info.produces && buildingInstance.info.produces.length > 0 &&
+                    buildingInstance.info.produces[0].resource &&
+                    typeof buildingInstance.info.produces[0].quantity === 'number' &&
+                    typeof buildingInstance.info.produces[0].interval === 'number') {
 
                     this.taskTimer += deltaTime;
-                    const productionIntervalSeconds = buildingInstance.info.productionIntervalMs / 1000;
+                    const productionIntervalSeconds = buildingInstance.info.produces[0].interval / 1000;
 
                     if (this.taskTimer >= productionIntervalSeconds) {
                         this.taskTimer -= productionIntervalSeconds;
-                        const resourceProduced = buildingInstance.info.producesResource;
-                        const amountProduced = 1; 
+                        const resourceProduced = buildingInstance.info.produces[0].resource;
+                        const amountProduced = buildingInstance.info.produces[0].quantity;
                         const amountAdded = buildingInstance.addResource(resourceProduced, amountProduced);
                         if (amountAdded > 0) {
                             console.log(`${this.id} (${this.serfType}) [direct production] deposited ${amountAdded} ${resourceProduced} at ${buildingInstance.info.name}.`);
