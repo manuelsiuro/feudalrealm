@@ -39,6 +39,38 @@ export function createTree(options = {}) {
 }
 
 /**
+ * Creates a simple sapling model.
+ * @param {object} [options] - Options for sapling generation.
+ * @param {number} [options.height=0.8] - Height of the trunk.
+ * @param {number} [options.radius=0.1] - Radius of the trunk.
+ * @param {number} [options.leavesHeight=0.6] - Height of the leaves.
+ * @param {number} [options.leavesRadius=0.3] - Radius of the leaves.
+ * @returns {THREE.Group} A group containing the sapling model.
+ */
+export function createSapling(options = {}) {
+    const { height = 0.8, radius = 0.1, leavesHeight = 0.6, leavesRadius = 0.3 } = options;
+    const sapling = new THREE.Group();
+
+    // Trunk
+    const trunkGeometry = new THREE.CylinderGeometry(radius * 0.7, radius, height, 5); // Simpler geometry
+    const trunkMesh = new THREE.Mesh(trunkGeometry, DEFAULT_TRUNK_MATERIAL);
+    trunkMesh.position.y = height / 2;
+    trunkMesh.castShadow = true;
+    // sapling.receiveShadow = true; // Saplings might not need to receive shadows if small
+    sapling.add(trunkMesh);
+
+    // Leaves (simple sphere or small cone)
+    const leavesGeometry = new THREE.SphereGeometry(leavesRadius, 5, 4); // Simpler geometry
+    const leavesMesh = new THREE.Mesh(leavesGeometry, DEFAULT_LEAVES_MATERIAL);
+    leavesMesh.position.y = height + leavesHeight / 2 - 0.05; // Adjust position
+    leavesMesh.castShadow = true;
+    sapling.add(leavesMesh);
+    
+    sapling.name = "SaplingResourceNode";
+    return sapling;
+}
+
+/**
  * Creates a simple rock model.
  * @param {object} [options] - Options for rock generation.
  * @param {number} [options.size=0.5] - Approximate size of the rock.
@@ -341,6 +373,7 @@ export const RESOURCE_GENERATORS = {
     stone: createRock,
     gold_ore: createGoldVein,
     fertile_land: createFertileLandMarker,
+    sapling: createSapling, // Added sapling generator
     // fish: createFishSchool // Placeholder for later
 };
 

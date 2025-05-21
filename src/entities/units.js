@@ -225,21 +225,7 @@ export class Serf extends Unit {
             this.targetTile = details.targetTile;
             console.log(`${this.id} (${this.serfType}) task involves target tile: (${details.targetTile.x}, ${details.targetTile.y})`);
             // Initial state could be MOVING_TO_TARGET_TILE
-            if (taskType === 'plant_sapling') {
-                this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: this.targetTile.x, y: this.targetTile.y });
-                if (this.path && this.path.length > 0) {
-                    this.state = SERF_ACTION_STATES.MOVING_TO_TARGET_TILE;
-                    this.pathIndex = 0;
-                    console.log(`${this.id} (${this.serfType}) path found to target tile for ${taskType}. Moving.`);
-                } else {
-                    console.warn(`${this.id} (${this.serfType}) could not find path to target tile (${this.targetTile.x}, ${this.targetTile.y}) for ${taskType}. Going IDLE.`);
-                    this.task = 'idle'; // Cannot proceed
-                    this.targetTile = null;
-                }
-            } else {
-                // Potentially handle other tasks that use targetTile here, e.g., farming
-                // For now, only plant_sapling explicitly sets MOVING_TO_TARGET_TILE
-            }
+            // this.state = SERF_ACTION_STATES.MOVING_TO_TARGET_TILE; // Example, if we add this state
         }
         
         // More specific initial state setting based on taskType can be added here
