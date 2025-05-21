@@ -1,15 +1,11 @@
 // src/core/serfManager.js
 import * as THREE from 'three';
-// Import SERF_MODEL_CREATORS directly from units.js
 import * as Units from '../entities/units.js'; 
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
-import * as ResourceModels from '../entities/resources.js'; // Import all resource model creators
 import resourceManager from './resourceManager.js'; // For tool/food checks
-import { RESOURCE_TYPES } from '../config/resourceTypes.js';
-import { TERRAIN_TYPES, TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path
-import { findPathAStar } from '../utils/pathfinding.js'; 
+import { TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; // Updated import
-// import { createCastle } from '../entities/buildings.js'; // Removed to break potential circular dependency
+
 
 class SerfManager {
     constructor(scene, gameMap, constructionManager, gameElementsGroup) { // Added gameElementsGroup

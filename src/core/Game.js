@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'; // Game will manage controls instance from Renderer
 
 import { GameMap } from './MapManager.js';
 import { TILE_SIZE, TERRAIN_COLORS, TERRAIN_TYPES } from '../config/mapConstants.js'; // Corrected import path, Added TERRAIN_COLORS, TERRAIN_TYPES
