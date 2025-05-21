@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // Updated import
-
+import { COLORS } from '../config/colors.js'; // Added import for COLORS
 
 // Helper function to create a mesh with a specific geometry and color
 function createMesh(geometry, color, name = '') {
@@ -9,31 +9,6 @@ function createMesh(geometry, color, name = '') {
     mesh.name = name;
     return mesh;
 }
-
-// Color definitions (approximations)
-const COLORS = {
-    MEDIUM_GREY: 0x808080,
-    DARK_GREY: 0xa9a9a9, 
-    LIGHT_GREY: 0xd3d3d3,
-    RED: 0xff0000,
-    BROWN: 0xa5572a,
-    DARK_BROWN: 0x654321,
-    LIGHT_BROWN: 0xdeb887,
-    DARK_GREEN: 0x006400,
-    GREEN: 0x008000,
-    LIGHT_BLUE: 0xadd8e6,
-    DARK_BLUE: 0x00008b,
-    BEIGE: 0xf5f5dc,
-    RED_BROWN: 0x8b4513,
-    YELLOW: 0xffff00,
-    BLACK: 0x000000,
-    ORANGE: 0xffa500,
-    TERRACOTTA: 0xe2725b,
-    PINK: 0xffc0cb,
-    MAROON: 0x800000,
-    STONE_GREY: 0x778899, 
-    WHITE: 0xffffff,
-};
 
 // --- Building Creation Functions ---
 
