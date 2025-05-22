@@ -313,12 +313,32 @@ class UIManager {
         
         this.uiContainer.appendChild(this.selectedUnitInfoPanel);
 
-        // Selected Building Info Panel (similar setup, can be expanded later)
+        // Selected Building Info Panel
         this.selectedBuildingInfoPanel = document.createElement('div');
         this.selectedBuildingInfoPanel.id = 'selected-building-info-panel';
-        // ... (similar styling and setup as unit info panel) ...
+        this.selectedBuildingInfoPanel.classList.add('themed-panel');
+        this.selectedBuildingInfoPanel.style.position = 'absolute';
+        this.selectedBuildingInfoPanel.style.bottom = '10px';
+        // Position it to the left of the construction panel, same as unit info or adjust as needed
+        this.selectedBuildingInfoPanel.style.right = '240px'; 
+        this.selectedBuildingInfoPanel.style.width = '250px'; 
+        this.selectedBuildingInfoPanel.style.minHeight = '100px';
+        this.selectedBuildingInfoPanel.style.maxHeight = '300px';
+        this.selectedBuildingInfoPanel.style.overflowY = 'auto';
         this.selectedBuildingInfoPanel.style.display = 'none'; // Hidden by default
-        // this.uiContainer.appendChild(this.selectedBuildingInfoPanel);
+        this.selectedBuildingInfoPanel.style.padding = '10px';
+        this.selectedBuildingInfoPanel.style.boxSizing = 'border-box';
+
+        const buildingInfoTitle = document.createElement('h3');
+        buildingInfoTitle.textContent = 'Selected Building';
+        buildingInfoTitle.classList.add('themed-panel-title');
+        this.selectedBuildingInfoPanel.appendChild(buildingInfoTitle);
+
+        this.selectedBuildingInfoContent = document.createElement('div');
+        this.selectedBuildingInfoContent.classList.add('panel-content-area');
+        this.selectedBuildingInfoPanel.appendChild(this.selectedBuildingInfoContent);
+
+        this.uiContainer.appendChild(this.selectedBuildingInfoPanel); // Add to UI container
     }
 
     updateResourceUI(stockpiles) {
@@ -684,78 +704,139 @@ class UIManager {
     }
 
     displayUnitInfo(unit) {
-        if (!this.selectedUnitInfoPanel || !this.selectedUnitInfoContent) {
-            console.warn("Selected unit info panel not initialized.");
+        if (!this.selectedUnitInfoPanel || !this.selectedUnitInfoContent || !unit) {
+            this.hideUnitInfo();
             return;
         }
-
         this.selectedUnitInfoContent.innerHTML = ''; // Clear previous content
 
-        if (!unit) {
-            this.selectedUnitInfoPanel.style.display = 'none';
-            return;
-        }
-
-        const details = document.createElement('div'); // Declare details element
-
+        const details = document.createElement('div');
         details.innerHTML = `
-            <p><strong>ID:</strong> ${unit.id.substring(0, 6)}</p>
-            <p><strong>Profession:</strong> ${unit.serfType}</p>
-            <p><strong>State:</strong> ${unit.state}</p>
-            <p><strong>Position:</strong> (${unit.model && unit.model.position ? Math.round(unit.model.position.x) : 'N/A'}, ${unit.model && unit.model.position ? Math.round(unit.model.position.z) : 'N/A'})</p> 
-            <p><strong>Tile:</strong> (${unit.tileX !== undefined ? unit.tileX : 'N/A'}, ${unit.tileY !== undefined ? unit.tileY : 'N/A'})</p>
-            <p><strong>Inventory:</strong> ${unit.inventory && unit.inventory.length > 0 ? unit.inventory.map(r => r.type).join(', ') : 'Empty'}</p>
+            <p><strong>ID:</strong> ${unit.id}</p>
+            <p><strong>Type:</strong> ${unit.serfType || 'N/A'}</p>
+            <p><strong>State:</strong> ${unit.state || 'N/A'}</p>
+            <p><strong>Task:</strong> ${unit.task || 'None'}</p>
+            ${unit.model ? `<p><strong>Position:</strong> X: ${unit.model.position.x.toFixed(1)}, Z: ${unit.model.position.z.toFixed(1)}</p>` : ''}
         `;
 
-        if (unit.profession === SERF_PROFESSIONS.FORESTER) {
-            const saplingInfo = document.createElement('div');
-            saplingInfo.innerHTML = `
-                <p><strong>Saplings Planted:</strong> ${unit.plantedSaplingsCount} / ${unit.maxPlantedSaplings}</p>
-            `;
-            details.appendChild(saplingInfo);
+        if (unit.serfType === SERF_PROFESSIONS.FORESTER) {
+            const plantedCount = unit.plantedSaplingsCount !== undefined ? unit.plantedSaplingsCount : 'N/A';
+            const maxPlanted = unit.maxPlantedSaplings !== undefined ? unit.maxPlantedSaplings : 'N/A';
+            details.innerHTML += `<p><strong>Saplings Planted:</strong> ${plantedCount} / ${maxPlanted}</p>`;
 
             const upgradeButton = document.createElement('md-filled-button');
             upgradeButton.textContent = 'Upgrade Max Saplings';
             upgradeButton.style.marginTop = '10px';
             upgradeButton.style.width = '100%';
             upgradeButton.addEventListener('click', () => {
-                // Assuming the game instance is accessible, e.g., this.game
-                // And that the UIManager has a reference to the game instance or SerfManager
-                // For now, directly call on unit if possible, or use a callback
-                if (unit && typeof unit.upgradeMaxPlantedSaplings === 'function') {
+                if (unit.upgradeMaxPlantedSaplings) {
+                    // The FORESTER_SAPLING_UPGRADE_AMOUNT should be available here
+                    // It's imported at the top of UIManager.js
                     unit.upgradeMaxPlantedSaplings(FORESTER_SAPLING_UPGRADE_AMOUNT);
-                    this.displayUnitInfo(unit); // Refresh UI
-                    // Potentially, this action should cost resources, handled in Serf.js or Game.js
-                    console.log(`UI: Upgrade Max Saplings button clicked for Forester ${unit.id}`);
+                    this.displayUnitInfo(unit); // Refresh panel
+                    // Resource UI will be updated by the resourceManager's onChange event
                 } else {
-                    console.error("Cannot upgrade max saplings: unit or method not available.", unit);
+                    console.error("Selected unit does not have upgradeMaxPlantedSaplings method.");
                 }
             });
             details.appendChild(upgradeButton);
+        }
+        
+        // Display inventory if it exists and is not empty
+        if (unit.inventory && Object.keys(unit.inventory).length > 0) {
+            let inventoryHTML = '<p><strong>Inventory:</strong></p><ul>';
+            for (const resource in unit.inventory) {
+                if (unit.inventory[resource] > 0) {
+                    inventoryHTML += `<li>${resource.replace(/_/g, ' ')}: ${unit.inventory[resource]}</li>`;
+                }
+            }
+            inventoryHTML += '</ul>';
+            details.innerHTML += inventoryHTML;
         }
 
 
         this.selectedUnitInfoContent.appendChild(details);
         this.selectedUnitInfoPanel.style.display = 'block';
+        this.hideBuildingInfo(); // Hide building info when showing unit info
     }
 
     hideUnitInfo() {
         if (this.selectedUnitInfoPanel) {
             this.selectedUnitInfoPanel.style.display = 'none';
+            if (this.selectedUnitInfoContent) {
+                this.selectedUnitInfoContent.innerHTML = ''; // Clear content
+            }
         }
     }
-    
+
     displayBuildingInfo(building) {
-        // Placeholder for displaying building info
-        if (!this.selectedBuildingInfoPanel) return;
-        // ... implementation ...
-        console.log("Displaying info for building:", building);
-        // this.selectedBuildingInfoPanel.style.display = 'block';
+        if (!this.selectedBuildingInfoPanel || !this.selectedBuildingInfoContent || !building) {
+            this.hideBuildingInfo();
+            return;
+        }
+        this.selectedBuildingInfoContent.innerHTML = ''; // Clear previous content
+
+        const details = document.createElement('div');
+        let buildingName = 'N/A';
+        let buildingStatus = 'N/A';
+        let buildingPosition = '';
+
+        if (building.info && building.info.name) {
+            buildingName = building.info.name;
+        } else if (building.type) {
+            buildingName = building.type; // Fallback to type
+        }
+        
+        if (building.isConstructed !== undefined) {
+            buildingStatus = building.isConstructed ? 'Completed' : 'Under Construction';
+        }
+        
+        if (building.model) {
+            buildingPosition = `<p><strong>Position:</strong> X: ${building.model.position.x.toFixed(1)}, Z: ${building.model.position.z.toFixed(1)}</p>`;
+        }
+
+        details.innerHTML = `
+            <p><strong>Name:</strong> ${buildingName}</p>
+            <p><strong>Status:</strong> ${buildingStatus}</p>
+            ${buildingPosition}
+        `;
+
+        // Display workers if any
+        if (building.workers && building.workers.length > 0) {
+            details.innerHTML += `<p><strong>Workers:</strong> ${building.workers.length} / ${building.info.jobSlots || 'N/A'}</p>`;
+            // Could list worker IDs if needed: building.workers.join(', ')
+        } else if (building.info && building.info.jobSlots) {
+            details.innerHTML += `<p><strong>Workers:</strong> 0 / ${building.info.jobSlots}</p>`;
+        }
+        
+        // Display inventory if the building has one (e.g., for storehouses, production buildings)
+        if (building.inventory && typeof building.getStock === 'function') {
+            const inventoryItems = [];
+            for (const resourceType in building.inventory) {
+                const amount = building.getStock(resourceType);
+                if (amount > 0) {
+                    inventoryItems.push(`<li>${resourceType.replace(/_/g, ' ')}: ${amount}</li>`);
+                }
+            }
+            if (inventoryItems.length > 0) {
+                details.innerHTML += `<p><strong>Inventory:</strong></p><ul>${inventoryItems.join('')}</ul>`;
+            } else {
+                 details.innerHTML += `<p><strong>Inventory:</strong> Empty</p>`;
+            }
+        }
+
+
+        this.selectedBuildingInfoContent.appendChild(details);
+        this.selectedBuildingInfoPanel.style.display = 'block';
+        this.hideUnitInfo(); // Hide unit info when showing building info
     }
 
     hideBuildingInfo() {
         if (this.selectedBuildingInfoPanel) {
-            // this.selectedBuildingInfoPanel.style.display = 'none';
+            this.selectedBuildingInfoPanel.style.display = 'none';
+            if (this.selectedBuildingInfoContent) {
+                this.selectedBuildingInfoContent.innerHTML = ''; // Clear content
+            }
         }
     }
 

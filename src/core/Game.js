@@ -207,7 +207,7 @@ class Game {
                         clickedObject = topObject;
                         this.selectedObjects = [topObject];
                         this.renderer.setSelectedObjects(this.selectedObjects);
-                        this.uiManager.displaySelectedBuildingInfo(topObject); // Pass the model
+                        this.uiManager.displayBuildingInfo(topObject.userData.buildingInstance); // Pass the building instance
                         return; 
                     }
                 }
@@ -238,8 +238,8 @@ class Game {
             if (!clickedObject) {
                 this.selectedObjects = [];
                 this.renderer.setSelectedObjects(this.selectedObjects);
-                this.uiManager.hideUnitInfo(); // Use hideUnitInfo
-                this.uiManager.hideBuildingInfo(); // Use hideBuildingInfo (assuming it exists)
+                this.uiManager.hideUnitInfo(); 
+                this.uiManager.hideBuildingInfo(); 
             }
         }
     }
@@ -265,8 +265,8 @@ class Game {
             } else {
                 this.selectedObjects = [];
                 this.renderer.setSelectedObjects(this.selectedObjects);
-                this.uiManager.hideUnitInfo(); // Use hideUnitInfo
-                this.uiManager.hideBuildingInfo(); // Use hideBuildingInfo
+                this.uiManager.hideUnitInfo(); 
+                this.uiManager.hideBuildingInfo(); 
             }
         }
         // Debug keys
