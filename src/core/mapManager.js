@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as Terrains from '../entities/terrains.js'; // Import detailed terrain generators
+import * as Resources from '../entities/resources.js'; // Import resource generators
 import { findPathAStar } from '../utils/pathfinding.js'; // Import A* pathfinding
 import { TILE_SIZE, TERRAIN_TYPES, TERRAIN_COLORS } from '../config/mapConstants.js';
 
@@ -59,8 +60,10 @@ export class GameMap {
         this.TERRAIN_TYPES = TERRAIN_TYPES; 
 
         this._initializeGrid();
-        this._generateTerrain(); 
+        this._generateTerrain();
+        //this._placeResources(); 
         this._createTileMeshes();
+        //this._createResourceNodeMeshes(); // New method to create resource visuals
         console.log(`GameMap generated with seed: ${this.seed}`);
     }
 
@@ -193,6 +196,43 @@ export class GameMap {
         console.log("Advanced terrain generation complete.");
     }
 
+    /*
+    _placeResources() {
+        console.log("Placing resources...");
+        const RESOURCE_NODES = {
+            TREE: { type: 'wood', terrains: [TERRAIN_TYPES.FOREST], chance: 0.4, amount: () => this.rng.nextInt(50, 150), generator: Resources.RESOURCE_GENERATORS.wood, scale: {min: 0.8, max: 1.2} },
+            ROCK: { type: 'stone', terrains: [TERRAIN_TYPES.MOUNTAIN], chance: 0.3, amount: () => this.rng.nextInt(100, 250), generator: Resources.RESOURCE_GENERATORS.stone, scale: {min: 0.7, max: 1.1} },
+            GOLD_VEIN: { type: 'gold_ore', terrains: [TERRAIN_TYPES.MOUNTAIN], chance: 0.15, amount: () => this.rng.nextInt(20, 80), generator: Resources.RESOURCE_GENERATORS.gold_ore, scale: {min: 0.9, max: 1.1} },
+            FERTILE_SOIL: { type: 'fertile_land', terrains: [TERRAIN_TYPES.GRASSLAND], chance: 0.2, amount: () => 1, generator: Resources.RESOURCE_GENERATORS.fertile_land, scale: {min: TILE_SIZE * 0.3, max: TILE_SIZE * 0.4} }, // Scale radius for fertile land marker
+        };
+
+        for (let r = 0; r < this.height; r++) {
+            for (let c = 0; c < this.width; c++) {
+                const tile = this.grid[r][c];
+                if (tile.resource) continue; // Skip if already has a resource (e.g. from specific generation step)
+
+                for (const resourceKey in RESOURCE_NODES) {
+                    const resDef = RESOURCE_NODES[resourceKey];
+                    if (resDef.terrains.includes(tile.terrainType)) {
+                        if (this.rng.nextFloat() < resDef.chance) {
+                            tile.resource = { 
+                                type: resDef.type, 
+                                amount: resDef.amount(),
+                                generator: resDef.generator,
+                                scaleOptions: resDef.scale,
+                                visualNode: null // Placeholder for potential 3D model of the resource node
+                            };
+                            // console.log(`Placed ${resDef.type} at (${c},${r}) on ${tile.terrainType}`);
+                            break; // Place only one type of resource per tile for now
+                        }
+                    }
+                }
+            }
+        }
+        console.log("Resource placement complete.");
+    }
+    */
+
     _createTileMeshes() {
         // Clear existing meshes if any (e.g., if re-generating map)
         while(this.tileMeshes.children.length > 0){
@@ -243,30 +283,82 @@ export class GameMap {
         }
     }
 
-    // Add this new method to MapManager
-    removeResourceVisual(tile) {
-        if (tile && tile.resource && tile.resource.visualNode) {
-            const visualNode = tile.resource.visualNode;
-            this.resourceNodesGroup.remove(visualNode);
-            
-            // Dispose of geometry and material to free GPU memory
-            visualNode.traverse(child => {
-                if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(m => m.dispose());
-                        } else {
-                            child.material.dispose();
+    /*
+    _createResourceNodeMeshes() {
+        // Clear existing resource nodes if any
+        while(this.resourceNodesGroup.children.length > 0){
+            const child = this.resourceNodesGroup.children[0];
+            this.resourceNodesGroup.remove(child);
+            // If the child has geometry/material, dispose them to free GPU memory
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        }
+
+        for (let r = 0; r < this.height; r++) {
+            for (let c = 0; c < this.width; c++) {
+                const tileData = this.grid[r][c];
+                if (tileData.resource && tileData.resource.generator) {
+                    let resourceVisual;
+                    let randomScale = 1;
+                    if (tileData.resource.scaleOptions) {
+                        const {min, max} = tileData.resource.scaleOptions;
+                        randomScale = this.rng.nextFloat() * (max - min) + min;
+                    }
+
+                    let options = {}; 
+                    if (tileData.resource.type === 'fertile_land') {
+                        options.radius = randomScale; // Pass radius for fertile land
+                    } else if (tileData.resource.type === 'wood') {
+                        options.height = TILE_SIZE * 0.4 * randomScale;
+                        options.radius = TILE_SIZE * 0.08 * randomScale;
+                        options.leavesHeight = TILE_SIZE * 0.3 * randomScale;
+                        options.leavesRadius = TILE_SIZE * 0.16 * randomScale;
+                    } else {
+                        // Ensure options.size is defined for stone, gold_ore, etc.
+                        options.size = TILE_SIZE * 0.15 * randomScale; 
+                        if (tileData.resource.type === 'gold_ore') {
+                            options.speckCount = this.rng.nextInt(3, 7);
+                        } else if (tileData.resource.type === 'stone') {
+                            // Potentially add stone specific options if any, e.g. rock formations
                         }
                     }
+
+                    resourceVisual = tileData.resource.generator(options);
+                    
+                    // Position the resource node on the tile
+                    // Add slight random offset within the tile for natural look, but ensure it's on its tile
+                    const offsetX = (this.rng.nextFloat() - 0.5) * TILE_SIZE * 0.3;
+                    const offsetZ = (this.rng.nextFloat() - 0.5) * TILE_SIZE * 0.3;
+
+                    resourceVisual.position.set(
+                        (c - (this.width - 1) / 2) * TILE_SIZE + offsetX,
+                        0, // Base of resource models should be at y=0
+                        (r - (this.height - 1) / 2) * TILE_SIZE + offsetZ
+                    );
+
+                    // Ensure resource nodes also cast/receive shadows
+                    resourceVisual.traverse(child => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    tileData.resource.visualNode = resourceVisual; // Store reference
+                    this.resourceNodesGroup.add(resourceVisual);
                 }
-            });
-            tile.resource.visualNode = null; // Clear the reference
-            console.log(`Removed visual for depleted resource at (${tile.x}, ${tile.y})`);
+            }
         }
     }
+    */
 
+    // Add this new method to MapManager
     getTile(x, y) {
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
             return this.grid[y][x];
@@ -276,7 +368,6 @@ export class GameMap {
 
     addToScene(scene) { 
         scene.add(this.tileMeshes);
-        scene.add(this.resourceNodesGroup); // Add resource nodes to the scene
     }
 
     getWrappedCoordinates(x, y) {

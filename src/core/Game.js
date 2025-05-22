@@ -5,6 +5,7 @@ import { TILE_SIZE, TERRAIN_COLORS, TERRAIN_TYPES } from '../config/mapConstants
 import resourceManager from './resourceManager.js';
 import ConstructionManager from './constructionManager.js';
 import SerfManager from './serfManager.js';
+import { NatureManager } from './natureManager.js'; // Added import
 import Renderer from './Renderer.js';
 import UIManager from '../ui/UIManager.js';
 import { RESOURCE_TYPES } from '../config/resourceTypes.js';
@@ -19,6 +20,7 @@ class Game {
         this.gameMap = null;
         this.constructionManager = null;
         this.serfManager = null;
+        this.natureManager = null; // Added property
         this.resourceManager = resourceManager; // Direct assignment
 
         this.scene = null;
@@ -54,6 +56,12 @@ class Game {
         this.renderer.gameElementsGroup.add(this.gameMap.tileMeshes);
         console.log('GameMap created and added to scene via Game.js.');
 
+        // Initialize NatureManager
+        this.natureManager = new NatureManager(this.gameMap, this.scene);
+        this.natureManager.initializeNaturalResources();
+        this.renderer.gameElementsGroup.add(this.natureManager.resourceNodesGroup);
+        console.log('NatureManager initialized and its resources added to scene.');
+
         // Create and add the ground plane
         const groundGeometry = new THREE.PlaneGeometry(MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
         const groundMaterial = new THREE.MeshBasicMaterial({ color: TERRAIN_COLORS[TERRAIN_TYPES.GRASSLAND] });
@@ -68,7 +76,8 @@ class Game {
         this.constructionManager.setupInitialStructures();
 
         // 4. Initialize SerfManager
-        this.serfManager = new SerfManager(this.scene, this.gameMap, this.constructionManager, this.renderer.gameElementsGroup);
+        // Pass the Game instance (this) to SerfManager
+        this.serfManager = new SerfManager(this.scene, this.gameMap, this.constructionManager, this.renderer.gameElementsGroup, this);
 
         // 5. Initialize UIManager
         // UIManager needs references to managers and renderer for its operations
@@ -335,18 +344,23 @@ class Game {
     }
 
     animate() {
-        requestAnimationFrame(() => this.animate()); // Arrow function to keep 'this' context
+        requestAnimationFrame(() => this.animate());
 
         const deltaTime = this.clock.getDelta();
 
-        this.controls.update(); // Update orbit controls
-        this.constructionManager.update(deltaTime); // Update construction manager (e.g., placement indicator)
-        this.serfManager.update(deltaTime, this.constructionManager.placedBuildings); // Update serfs
+        // Update game components
+        if (this.serfManager) {
+            this.serfManager.update(deltaTime);
+        }
+        if (this.constructionManager) {
+            this.constructionManager.update(deltaTime);
+        }
+        if (this.natureManager) { // Add update call for natureManager
+            this.natureManager.update(deltaTime);
+        }
 
-        // UIManager might have animations or time-based updates too, if any.
-        // this.uiManager.update(deltaTime); 
-
-        this.renderer.render(); // Renderer handles the composer and actual rendering
+        this.controls.update(); // Update OrbitControls
+        this.renderer.render();
     }
 }
 

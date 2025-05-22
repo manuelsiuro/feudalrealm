@@ -147,7 +147,6 @@ export class NatureManager {
         return resourceVisual;
     }
 
-    /*
     removeResourceVisual(tile) {
         if (tile && tile.resource && tile.resource.visualNode) {
             const visualNode = tile.resource.visualNode;
@@ -169,7 +168,6 @@ export class NatureManager {
             // console.log(`NatureManager: Removed visual for resource at (${tile.x}, ${tile.y})`);
         }
     }
-    */
 
     addSapling(tileX, tileY) {
         const tile = this.mapManager.getTile(tileX, tileY);

@@ -6,7 +6,7 @@ import resourceManager from '../core/resourceManager.js'; // Import resourceMana
 import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
 // import { COLORS } from '../config/colors.js'; // No longer needed here
-import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL } from '../config/unitConstants.js'; // Added BUILDER_WORK_INTERVAL
+import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME } from '../config/unitConstants.js'; // Added BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME
 import {
     createBaseSerf,
     SERF_MODEL_CREATORS
@@ -70,7 +70,7 @@ export class Unit {
 }
 
 export class Serf extends Unit {
-    constructor(id, x, y, type, scene, mapManager, parentGroup) { // Added parentGroup
+    constructor(id, x, y, type, scene, mapManager, parentGroup, game) { // Added parentGroup and game
         super(id, x, y, 'serf', scene, mapManager); // this.model is initially null from Unit constructor
         this.serfType = type;
         this.task = 'idle';
@@ -78,6 +78,7 @@ export class Serf extends Unit {
         this.inventory = {};
 
         this.mapManager = mapManager;
+        this.game = game; // Store the game instance
         this.state = SERF_ACTION_STATES.IDLE;
         this.targetNode = null;
         this.taskTimer = 0;
@@ -453,6 +454,17 @@ export class Serf extends Unit {
             }
         } else if (this.task === 'mine') { 
             this._findTaskTarget(); 
+        } else if (this.task === 'plant_sapling' && this.targetTile) {
+            console.log(`${this.id} (${this.serfType}) is IDLE with plant_sapling task. Target: (${this.targetTile.x}, ${this.targetTile.y}). Finding path.`);
+            this.path = this.mapManager.findPath({ x: this.x, y: this.y }, { x: this.targetTile.x, y: this.targetTile.y });
+            if (this.path && this.path.length > 0) {
+                this.pathIndex = 0;
+                this.state = SERF_ACTION_STATES.MOVING_TO_TARGET_TILE; // Ensure this state is handled in the main update switch
+                console.log(`${this.id} (${this.serfType}) path found to target tile for planting. Moving.`);
+            } else {
+                console.warn(`${this.id} (${this.serfType}) could not find path to target tile (${this.targetTile.x}, ${this.targetTile.y}) for planting. Staying IDLE.`);
+                // SerfManager might re-assign or try finding a new tile if this serf remains idle with this task.
+            }
         }
     }
 
@@ -631,6 +643,17 @@ export class Serf extends Unit {
     }
 
     _handleWorkingAtBuildingState(deltaTime) {
+        // Example: Forester at Forester's Hut
+        if (this.serfType === 'forester' && this.taskDetails.buildingName === 'Forester\'s Hut') {
+            // Forester is at the hut, should become idle and available for planting tasks
+            console.log(`${this.id} (Forester) is at Forester\'s Hut, becoming IDLE.`);
+            this.task = 'idle';
+            this.state = SERF_ACTION_STATES.IDLE;
+            this.taskDetails = {}; // Clear task details
+            return; // Exit early, Forester is now idle
+        }
+
+        // Generic worker logic (e.g., builder, miner at mine building)
         if (!this.taskDetails.buildingId || !this.assignedBuilding) {
             console.warn(`${this.id} (${this.serfType}) in WORKING_AT_BUILDING without buildingId or assignedBuilding. Going IDLE.`);
             this.task = 'idle';
@@ -1007,73 +1030,31 @@ export class Serf extends Unit {
 
     // Placeholder for new state handlers
     _handlePlantingSaplingState(deltaTime) {
-        if (this.task !== 'plant_sapling') {
-            console.warn(`${this.id} (${this.serfType}) in PLANTING_SAPLING state but task is ${this.task}. Going IDLE.`);
+        if (!this.targetTile) {
+            console.error(`${this.id} (${this.serfType}) in PLANTING_SAPLING state without a targetTile. Going IDLE.`);
             this.state = SERF_ACTION_STATES.IDLE;
             this.task = 'idle';
             return;
         }
 
-        // Check if the Forester has a sapling (conceptual, not a physical inventory item for now)
-        // Or, if saplings are a resource, check inventory:
-        // if (!this.inventory[RESOURCE_TYPES.SAPLING] || this.inventory[RESOURCE_TYPES.SAPLING] < 1) {
-        //     console.log(`${this.id} (${this.serfType}) has no sapling to plant. Going IDLE.`);
-        //     // Potentially, task SerfManager to make Forester fetch a sapling from Forester's Hut
-        //     this.state = SERF_ACTION_STATES.IDLE;
-        //     this.task = 'idle';
-        //     return;
-        // }
-
         this.taskTimer += deltaTime;
-        const plantingDuration = FORESTER_PLANTING_TIME / 1000; // FORESTER_PLANTING_TIME is in ms
-
-        if (this.taskTimer >= plantingDuration) {
-            // Planting complete
-            console.log(`${this.id} (${this.serfType}) finished planting sapling at (${this.x}, ${this.y}).`);
-
-            // Consume the conceptual sapling
-            // if (this.inventory[RESOURCE_TYPES.SAPLING]) {
-            //     this.inventory[RESOURCE_TYPES.SAPLING]--;
-            //     if (this.inventory[RESOURCE_TYPES.SAPLING] <= 0) {
-            //         delete this.inventory[RESOURCE_TYPES.SAPLING];
-            //     }
-            // }
-
-            // Update the map tile to indicate a sapling is planted
-            // This requires a new mapManager function, e.g., this.mapManager.placeSapling(this.x, this.y)
-            // For now, we'll just log it.
-            // The sapling itself will be a new type of resource or a special tile state.
-            // Let's assume mapManager.addResourceNode(x, y, { type: RESOURCE_TYPES.SAPLING, amount: 1, growthTime: ... })
-            // Or, if saplings grow into trees, it might be more complex.
-            // For now, let's assume the Forester's Hut manages sapling growth conceptually.
-            // The key is that the tile is now occupied by a sapling.
+        if (this.taskTimer >= FORESTER_PLANTING_TIME / 1000) { // FORESTER_PLANTING_TIME is in ms
+            console.log(`${this.id} (${this.serfType}) finished planting sapling at (${this.targetTile.x}, ${this.targetTile.y}).`);
             
-            // For simulation, we can directly add a "SAPLING" resource to the tile.
-            // This assumes RESOURCE_TYPES.SAPLING exists and mapManager can handle it.
-            const tile = this.mapManager.getTile(this.x, this.y);
-            if (tile && !tile.resource && tile.terrainType === TERRAIN_TYPES.GRASSLAND) { // Ensure it's plantable
-                // TODO: Define how saplings are represented. For now, let's assume a simple resource node.
-                // This part needs coordination with how mapManager and resource generation work.
-                // A Forester's Hut might have a `saplingGrowthTime` in its buildingData.
-                // For now, just mark the tile conceptually.
-                // A more robust solution would be:
-                // this.mapManager.addFeature(this.x, this.y, 'sapling', { plantedBy: this.id, plantedAt: Date.now() });
-                console.log(`Tile (${this.x}, ${this.y}) now has a sapling (conceptual).`);
-                // If saplings are actual resource nodes:
-                // this.mapManager.grid[this.y][this.x].resource = {
-                // type: RESOURCE_TYPES.SAPLING,
-                // amount: 1,
-                // visualNode: null // A sapling model could be added here
-                // };
-                // this.mapManager._createResourceNodeMeshes(); // To update visuals if needed, or a more targeted update.
+            // Call natureManager to add the sapling
+            if (this.game && this.game.natureManager) {
+                this.game.natureManager.addSapling(this.targetTile.x, this.targetTile.y);
+                console.log(`${this.id} (${this.serfType}) successfully called natureManager.addSapling().`);
             } else {
-                console.warn(`${this.id} (${this.serfType}) could not plant sapling at (${this.x}, ${this.y}): tile not suitable or already occupied.`);
+                console.error(`${this.id} (${this.serfType}) could not plant sapling: game instance or natureManager not available.`);
+                // Optionally, retry or handle error, for now, just log and go idle
             }
 
-            this.taskTimer = 0;
             this.state = SERF_ACTION_STATES.IDLE;
-            this.task = 'idle'; // Forester becomes idle, ready for new task from SerfManager
-            console.log(`${this.id} (${this.serfType}) planted sapling and is now IDLE.`);
+            this.task = 'idle';
+            this.taskDetails = {}; // Clear task details
+            this.targetTile = null; // Clear target tile
+            this.taskTimer = 0;
         }
     }
 
@@ -1175,20 +1156,21 @@ export class Serf extends Unit {
                 this.setPosition(this.targetTile.x, this.targetTile.y);
                 this.path = null;
                 this.pathIndex = 0;
-                console.log(`${this.id} (${this.serfType}) arrived at target tile (${this.targetTile.x}, ${this.targetTile.y}) for task: ${this.task}`);
+                console.log(`${this.id} (${this.serfType}) arrived at target tile (${this.targetTile.x}, ${this.targetTile.y}) for task: ${this.task}.`);
 
                 if (this.task === 'plant_sapling') {
                     this.state = SERF_ACTION_STATES.PLANTING_SAPLING;
                     this.taskTimer = 0; // Reset timer for planting duration
+                    console.log(`${this.id} (${this.serfType}) starting to plant sapling.`);
                 } else {
-                    console.warn(`${this.id} (${this.serfType}) arrived at target tile but task ${this.task} is not handled here. Going IDLE.`);
+                    // Handle other tasks that involve moving to a specific tile
+                    console.log(`${this.id} (${this.serfType}) completed move to target tile, but no specific action defined for task ${this.task}. Going IDLE.`);
                     this.state = SERF_ACTION_STATES.IDLE;
                     this.task = 'idle';
                 }
-                this.targetTile = null; // Clear target tile after arrival
             }
         } else {
-            console.warn(`${this.id} (${this.serfType}) in MOVING_TO_TARGET_TILE but no targetTile or path. Reverting to IDLE.`);
+            console.log(`${this.id} (${this.serfType}) in MOVING_TO_TARGET_TILE but no targetTile or path. Reverting to IDLE.`);
             this.state = SERF_ACTION_STATES.IDLE;
             this.task = 'idle';
         }
@@ -1278,6 +1260,9 @@ export class Serf extends Unit {
                 break;
             case SERF_ACTION_STATES.CONSTRUCTING_BUILDING:
                 this._handleConstructingBuildingState(deltaTime);
+                break;
+            case SERF_ACTION_STATES.MOVING_TO_TARGET_TILE:
+                this._handleMovingToTargetTileState(deltaTime);
                 break;
         }
     }
