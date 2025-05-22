@@ -9,6 +9,8 @@ import { NatureManager } from './natureManager.js'; // Added import
 import Renderer from './Renderer.js';
 import UIManager from '../ui/UIManager.js';
 import { RESOURCE_TYPES } from '../config/resourceTypes.js';
+import InputManager from './InputManager.js'; // Added
+import SelectionManager from './SelectionManager.js'; // Added
 
 const MAP_WIDTH = 15;
 const MAP_HEIGHT = 15;
@@ -26,22 +28,18 @@ class Game {
         this.scene = null;
         this.camera = null;
         this.controls = null;
-        this.raycaster = new THREE.Raycaster();
-        this.mouse = new THREE.Vector2();
         this.clock = new THREE.Clock();
 
-        this.selectedObjects = []; // Managed by Game, passed to Renderer/UIManager
+        // this.selectedObjects = []; // Replaced by SelectionManager
+        this.inputManager = null; // Added
+        this.selectionManager = null; // Added
 
         // DOM elements that Game needs to interact with or pass to UIManager
         this.gameCanvas = document.getElementById('game-canvas');
-        // this.uiOverlay = document.getElementById('ui-overlay'); // Removed
 
         // Bind event handlers to the game instance
-        this.handleMouseMove = this.handleMouseMove.bind(this);
-        this.handleCanvasClick = this.handleCanvasClick.bind(this);
-        // this.handleOverlayClick = this.handleOverlayClick.bind(this); // Removed, UIManager handles its own clicks
-        this.handleKeyDown = this.handleKeyDown.bind(this);
         this.handleResize = this.handleResize.bind(this);
+        // Old event handlers like handleMouseMove, handleCanvasClick, handleKeyDown are removed
     }
 
     init() {
@@ -49,7 +47,14 @@ class Game {
         this.renderer = new Renderer(this.gameCanvas);
         this.scene = this.renderer.scene;
         this.camera = this.renderer.camera;
-        this.controls = this.renderer.controls; // Get controls from Renderer
+        this.controls = this.renderer.controls;
+
+        // Initialize InputManager
+        this.inputManager = new InputManager(this.gameCanvas);
+
+        // Initialize SelectionManager
+        this.selectionManager = new SelectionManager(this.scene, this.camera);
+
 
         // 2. Initialize GameMap
         this.gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
@@ -66,27 +71,39 @@ class Game {
         const groundGeometry = new THREE.PlaneGeometry(MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE);
         const groundMaterial = new THREE.MeshBasicMaterial({ color: TERRAIN_COLORS[TERRAIN_TYPES.GRASSLAND] });
         const groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
-        groundPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-        groundPlane.position.y = -0.05; // Position slightly below tiles to avoid z-fighting if tiles are at y=0
+        groundPlane.rotation.x = -Math.PI / 2;
+        groundPlane.position.y = -0.05;
         this.renderer.gameElementsGroup.add(groundPlane);
         console.log('Ground plane created and added to scene.');
 
         // 3. Initialize ConstructionManager
+        // ConstructionManager will be given SerfManager instance later to avoid circular dependency at construction
         this.constructionManager = new ConstructionManager(this.scene, this.gameMap, this.renderer.gameElementsGroup);
-        this.constructionManager.setupInitialStructures();
+        // setupInitialStructures might rely on SerfManager if it spawns serfs or assigns tasks.
+        // For now, assuming it only places buildings. If it needs SerfManager, this order is problematic.
+        // Let's assume setupInitialStructures is okay for now.
+        // this.constructionManager.setupInitialStructures(); // Moved after SerfManager is set on ConstructionManager
 
         // 4. Initialize SerfManager
-        // Pass the Game instance (this) to SerfManager
         this.serfManager = new SerfManager(this.scene, this.gameMap, this.constructionManager, this.renderer.gameElementsGroup, this);
 
+        // Now, provide SerfManager to ConstructionManager
+        this.constructionManager.setSerfManager(this.serfManager); // New method call
+        this.constructionManager.setupInitialStructures(); // Call after SerfManager is set, if it needs it.
+
+
+        // Configure SelectionManager with selectable groups
+        const buildingsGroup = this.renderer.gameElementsGroup.getObjectByName("GameBuildings");
+        const serfsGroup = this.serfManager.serfVisualsGroup;
+        this.selectionManager.setSelectableGroups(buildingsGroup, serfsGroup);
+
         // 5. Initialize UIManager
-        // UIManager needs references to managers and renderer for its operations
         this.uiManager = new UIManager(
-            // this.uiOverlay, // Pass the uiOverlay DOM element - Removed
-            document.body, // Pass document.body as the container for UI elements
+            document.body,
             this.resourceManager,
             this.constructionManager,
-            this.serfManager
+            this.serfManager,
+            this.selectionManager // NEW: Pass the selectionManager instance
         );
 
         // Setup callback for when a serf is selected in the UI
@@ -94,19 +111,17 @@ class Game {
             this.selectAndFocusSerf(serfId);
         });
 
-        // Setup callback for when a building is selected in the UI (new)
-        // this.uiManager.onBuildingSelectCallback = (buildingId) => { // Directly assigning for now
-        //     this.selectAndFocusBuilding(buildingId);
-        // };
-        this.uiManager.setBuildingSelectCallback((buildingId) => {
-            this.selectAndFocusBuilding(buildingId);
+        // Setup callback for when a building is selected in the UI
+        this.uiManager.setBuildingSelectCallback((buildingModelId) => { // Changed from buildingId to buildingModelId for clarity
+            this.selectAndFocusBuilding(buildingModelId);
         });
-
+        
         // 6. Camera and Controls Setup
         this.setupCameraAndControls();
 
-        // 7. Event Listeners
-        this.setupEventListeners();
+        // 7. Setup New Event Handlers using InputManager and SelectionManager
+        this.setupNewEventHandlers(); // New method
+        window.addEventListener('resize', this.handleResize, false); // Keep general resize
 
         // Initial UI updates
         this.uiManager.updateResourceUI(this.resourceManager.getAllStockpiles());
@@ -127,214 +142,132 @@ class Game {
         this.controls.minDistance = TILE_SIZE * 2;
     }
 
-    setupEventListeners() {
-        window.addEventListener('mousemove', this.handleMouseMove, false);
-        // renderer.domElement might not be available if canvas is passed directly
-        const targetElementForClicks = this.renderer.renderer.domElement;
-        targetElementForClicks.addEventListener('click', this.handleCanvasClick, false);
-        // this.uiOverlay.addEventListener('click', this.handleOverlayClick, false); // Removed
-        window.addEventListener('resize', this.handleResize, false);
-        window.addEventListener('keydown', this.handleKeyDown, false);
-    }
+    setupNewEventHandlers() {
+        const tempRaycaster = new THREE.Raycaster(); // For placement logic, Game still does this raycast
 
-    handleMouseMove(event) {
-        if (!this.constructionManager.isPlacing) return;
-
-        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        const intersects = this.raycaster.intersectObject(this.gameMap.tileMeshes, true);
-        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Assuming Y-up
-
-        if (intersects.length > 0) {
-            this.constructionManager.updatePlacementIndicator(intersects[0].point);
-        } else {
-            const intersectionPoint = new THREE.Vector3();
-            this.raycaster.ray.intersectPlane(groundPlane, intersectionPoint);
-            if (intersectionPoint) {
-                this.constructionManager.updatePlacementIndicator(intersectionPoint);
-            }
-        }
-    }
-
-    handleCanvasClick(event) {
-        // Prevent click handling if a UI element on the overlay was the target
-        // Check if the click originated from within the uiOverlay
-        // if (this.uiOverlay.contains(event.target) && event.target !== this.uiOverlay) { // Removed
-        // Check if the click target is part of the game canvas or the document body directly
-        // This logic might need refinement based on how UI elements are structured without the overlay
-        if (event.target !== this.gameCanvas && event.target !== document.body) {
-            // If the click is on any element that is NOT the game canvas or body,
-            // assume UIManager's internal event listeners will handle it.
-            return;
-        }
-
-        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        if (this.constructionManager.isPlacing) {
-            const intersectsPlacement = this.raycaster.intersectObject(this.gameMap.tileMeshes, true);
-            const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            let placementPoint = new THREE.Vector3();
-
-            if (intersectsPlacement.length > 0) {
-                placementPoint.copy(intersectsPlacement[0].point);
-            } else {
-                this.raycaster.ray.intersectPlane(groundPlane, placementPoint);
+        this.inputManager.onClick((clickData) => {
+            // Prevent click handling if a UI element was the target
+            if (clickData.rawEvent.target.closest('.themed-panel') || clickData.rawEvent.target.closest('.ui-button')) {
+                console.log("Game: Click on UI element ignored for game world interaction.");
+                return;
             }
 
-            if (placementPoint) {
-                this.constructionManager.confirmPlacement(placementPoint);
-                // UIManager might need an update after placement (e.g., button states if costs change)
-                this.uiManager.updateBuildingButtons();
-            }
-        } else {
-            // Selection logic
-            let clickedObject = null;
-
-            // Check for buildings
-            const buildingsGroup = this.renderer.gameElementsGroup.getObjectByName("GameBuildings");
-            if (buildingsGroup) {
-                const intersectsSelection = this.raycaster.intersectObjects(buildingsGroup.children, true);
-                if (intersectsSelection.length > 0) {
-                    let topObject = intersectsSelection[0].object;
-                    while (topObject.parent && topObject.parent !== buildingsGroup && !topObject.userData.buildingInstance) { // Check for userData on current or parent
-                        topObject = topObject.parent;
-                    }
-                    if (topObject.userData.buildingInstance) {
-                        clickedObject = topObject;
-                        this.selectedObjects = [topObject];
-                        this.renderer.setSelectedObjects(this.selectedObjects);
-                        this.uiManager.displayBuildingInfo(topObject.userData.buildingInstance); // Pass the building instance
-                        return; 
-                    }
-                }
-            }
-
-            // Check for serfs
-            const serfsGroup = this.serfManager.serfVisualsGroup; 
-            if (serfsGroup && serfsGroup.children.length > 0) {
-                const intersectsSerfs = this.raycaster.intersectObjects(serfsGroup.children, true); 
-                if (intersectsSerfs.length > 0) {
-                    let topSerfModel = intersectsSerfs[0].object;
-                    while (topSerfModel.parent && topSerfModel.parent !== serfsGroup && !topSerfModel.userData.serfInstance) {
-                        topSerfModel = topSerfModel.parent;
-                    }
-
-                    if (topSerfModel.userData.serfInstance) { 
-                        clickedObject = topSerfModel;
-                        this.selectedObjects = [topSerfModel];
-                        this.renderer.setSelectedObjects(this.selectedObjects);
-                        // Pass the actual serf instance, not just the model
-                        this.uiManager.displayUnitInfo(topSerfModel.userData.serfInstance); 
-                        return; 
-                    }
-                }
-            }
-            
-            // If nothing was clicked or an irrelevant part of a model was clicked
-            if (!clickedObject) {
-                this.selectedObjects = [];
-                this.renderer.setSelectedObjects(this.selectedObjects);
-                this.uiManager.hideUnitInfo(); 
-                this.uiManager.hideBuildingInfo(); 
-            }
-        }
-    }
-    
-    // handleOverlayClick(event) { // Removed
-    //     // If the click is on the overlay itself (not its children like panels or buttons)
-    //     // and not in placement mode, then deselect.
-    //     if (event.target === this.uiOverlay && !this.constructionManager.isPlacing) {
-    //         this.selectedObjects = [];
-    //         this.renderer.setSelectedObjects(this.selectedObjects);
-    //         this.uiManager.clearSelectionInfo();
-    //     }
-    //     // If the click is on a button or panel, UIManager's own event listeners should handle it.
-    //     // This function primarily handles deselection when clicking on the "empty" part of the overlay.
-    // }
-
-
-    handleKeyDown(event) {
-        if (event.key.toLowerCase() === 'escape') {
             if (this.constructionManager.isPlacing) {
-                this.constructionManager.cancelPlacement();
-                this.uiManager.updateBuildingButtons(); 
+                tempRaycaster.setFromCamera({ x: clickData.normalizedX, y: clickData.normalizedY }, this.camera);
+                const intersectsPlacement = tempRaycaster.intersectObject(this.gameMap.tileMeshes, true);
+                const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                let placementPoint = new THREE.Vector3();
+
+                if (intersectsPlacement.length > 0) {
+                    placementPoint.copy(intersectsPlacement[0].point);
+                } else {
+                    tempRaycaster.ray.intersectPlane(groundPlane, placementPoint);
+                }
+
+                if (placementPoint) {
+                    const success = this.constructionManager.confirmPlacement(placementPoint);
+                    if (success) {
+                        // Update selectable groups in SelectionManager if a new building was added
+                        const buildingsGroup = this.renderer.gameElementsGroup.getObjectByName("GameBuildings");
+                        const serfsGroup = this.serfManager.serfVisualsGroup;
+                        this.selectionManager.setSelectableGroups(buildingsGroup, serfsGroup);
+                    }
+                    this.uiManager.updateBuildingButtons(); // Update UI buttons regardless of success
+                }
             } else {
-                this.selectedObjects = [];
-                this.renderer.setSelectedObjects(this.selectedObjects);
-                this.uiManager.hideUnitInfo(); 
-                this.uiManager.hideBuildingInfo(); 
+                this.selectionManager.handleSelectionClick({ x: clickData.normalizedX, y: clickData.normalizedY });
             }
-        }
-        // Debug keys
-        if (event.key.toLowerCase() === 'a') {
-            console.log("DEBUG: 'A' key pressed. Adding 1 TOOLS_AXE.");
-            this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
-        }
-        if (event.key.toLowerCase() === 'p') {
-            console.log("DEBUG: 'P' key pressed. Adding 1 TOOLS_PICKAXE.");
-            this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
-        }
+        });
+
+        this.inputManager.onMouseMove((moveData) => {
+            if (this.constructionManager.isPlacing) {
+                tempRaycaster.setFromCamera({ x: moveData.normalizedX, y: moveData.normalizedY }, this.camera);
+                const intersects = tempRaycaster.intersectObject(this.gameMap.tileMeshes, true);
+                const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                let indicatorPoint = new THREE.Vector3();
+
+                if (intersects.length > 0) {
+                    indicatorPoint.copy(intersects[0].point);
+                } else {
+                    tempRaycaster.ray.intersectPlane(groundPlane, indicatorPoint);
+                }
+                if (indicatorPoint) {
+                    this.constructionManager.updatePlacementIndicator(indicatorPoint);
+                }
+            }
+        });
+
+        this.inputManager.onKeyDown((event) => {
+            if (event.key.toLowerCase() === 'escape') {
+                if (this.constructionManager.isPlacing) {
+                    this.constructionManager.cancelPlacement();
+                    this.uiManager.updateBuildingButtons();
+                } else {
+                    this.selectionManager.clearSelection();
+                }
+            }
+            // Debug keys
+            if (event.key.toLowerCase() === 'a') {
+                console.log("DEBUG: 'A' key pressed. Adding 1 TOOLS_AXE.");
+                this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
+            }
+            if (event.key.toLowerCase() === 'p') {
+                console.log("DEBUG: 'P' key pressed. Adding 1 TOOLS_PICKAXE.");
+                this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
+            }
+        });
+
+        this.selectionManager.onSelectionChange((selectedEntity) => {
+            if (selectedEntity && selectedEntity.model) {
+                this.renderer.setSelectedObjects([selectedEntity.model]);
+                this.focusOnEntity(selectedEntity); 
+                // UIManager also subscribes to selectionManager.onSelectionChange directly now
+            } else {
+                this.renderer.setSelectedObjects([]);
+                // UIManager handles hiding info panels
+            }
+        });
     }
+
+    focusOnEntity(entity) {
+        if (!entity || !entity.model) return;
+
+        const entityPosition = entity.model.position.clone();
+        // Maintain current camera distance/zoom, but change target
+        const offset = this.camera.position.clone().sub(this.controls.target);
+        this.controls.target.copy(entityPosition);
+        this.camera.position.copy(entityPosition).add(offset);
+        this.controls.update();
+    }
+
 
     handleResize() {
-        this.renderer.onWindowResize(); // Renderer handles its own components
-        this.uiManager.onWindowResize(); // UIManager handles its components
+        this.renderer.onWindowResize();
+        this.uiManager.onWindowResize(); 
     }
-
-    // handleBuildRequest(buildingKey) { // Removed - UIManager calls constructionManager directly
-    //     console.log(`Game: Build request for ${buildingKey}`);
-    //     this.constructionManager.startPlacement(buildingKey);
-    // }
-
-    // handleCheatResources() { // Removed - UIManager calls resourceManager directly
-    //     console.log('Game: Cheat resources requested.');
-    //     Object.values(RESOURCE_TYPES).forEach(type => {
-    //         if (typeof type === 'string') { 
-    //             this.resourceManager.addResource(type, 50);
-    //         }
-    //     });
-    // }
 
     selectAndFocusSerf(serfId) {
         const serf = this.serfManager.getSerfById(serfId);
-        if (serf && serf.model) {
-            this.selectedObjects = [serf.model];
-            this.renderer.setSelectedObjects(this.selectedObjects);
-            this.uiManager.displayUnitInfo(serf); // Pass the serf instance
-
-            // Move camera to focus on the serf
-            const serfPosition = serf.model.position;
-            // Maintain current camera distance/zoom, but change target
-            const offset = this.camera.position.clone().sub(this.controls.target);
-            this.controls.target.copy(serfPosition);
-            this.camera.position.copy(serfPosition).add(offset);
-            this.controls.update();
+        if (serf) {
+            this.selectionManager.setSelection(serf);
+            // focusOnEntity will be called by the onSelectionChange callback if selection is successful
         } else {
-            console.warn(`Game: Serf with ID ${serfId} not found or has no model.`);
+            console.warn(`Game: Serf with ID ${serfId} not found.`);
+            this.selectionManager.clearSelection(); // Clear selection if serf not found
         }
     }
 
-    selectAndFocusBuilding(buildingId) {
-        const building = this.constructionManager.placedBuildings.concat(this.constructionManager.buildingsUnderConstruction)
-            .find(b => b.model.uuid === buildingId);
+    selectAndFocusBuilding(buildingModelId) { // Parameter is model UUID
+        // Use the new constructionManager.getAllBuildings() method
+        const allBuildings = this.constructionManager.getAllBuildings();
+        const building = allBuildings.find(b => b.model && b.model.uuid === buildingModelId);
 
-        if (building && building.model) {
-            this.selectedObjects = [building.model];
-            this.renderer.setSelectedObjects(this.selectedObjects);
-            this.uiManager.displayBuildingInfo(building); // Pass the building instance
-
-            // Move camera to focus on the building
-            const buildingPosition = building.model.position;
-            const offset = this.camera.position.clone().sub(this.controls.target);
-            this.controls.target.copy(buildingPosition);
-            this.camera.position.copy(buildingPosition).add(offset);
-            this.controls.update();
+        if (building) {
+            this.selectionManager.setSelection(building);
+            // focusOnEntity will be called by the onSelectionChange callback
         } else {
-            console.warn(`Game: Building with ID ${buildingId} not found or has no model.`);
+            console.warn(`Game: Building with model ID ${buildingModelId} not found.`);
+            this.selectionManager.clearSelection(); // Clear selection if building not found
         }
     }
 
@@ -356,11 +289,11 @@ class Game {
         if (this.constructionManager) {
             this.constructionManager.update(deltaTime);
         }
-        if (this.natureManager) { // Add update call for natureManager
+        if (this.natureManager) { 
             this.natureManager.update(deltaTime);
         }
 
-        this.controls.update(); // Update OrbitControls
+        this.controls.update(); 
         this.renderer.render();
     }
 }

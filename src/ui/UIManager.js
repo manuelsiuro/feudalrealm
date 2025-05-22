@@ -3,11 +3,12 @@ import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
 import { FORESTER_SAPLING_UPGRADE_AMOUNT } from '../config/unitConstants.js';
 
 class UIManager {
-    constructor(uiContainer, resourceManager, constructionManager, serfManager) {
+    constructor(uiContainer, resourceManager, constructionManager, serfManager, selectionManager) {
         this.uiContainer = uiContainer; // Changed from uiOverlay to uiContainer
         this.resourceManager = resourceManager;
         this.constructionManager = constructionManager;
         this.serfManager = serfManager; // To get serf data for info panel
+        this.selectionManager = selectionManager; // Store SelectionManager
 
         this.resourcePanel = null;
         this.serfListPanel = null; // New panel for serf list
@@ -43,6 +44,8 @@ class UIManager {
         // Initial UI updates
         this.updateResourceUI(this.resourceManager.getAllStockpiles());
         this.updateBuildingButtons();
+
+        this._subscribeToSelectionChanges(); // Subscribe to SelectionManager
 
         // Listen for changes in serf population
         if (this.serfManager && typeof this.serfManager.onChange === 'function') {
@@ -566,142 +569,10 @@ class UIManager {
         });
     }
 
-    displaySelectedBuildingInfo(buildingModel) {
-        if (!this.uiContainer) return;
-        this.clearSelectedBuildingInfo();
-        this.clearSelectedUnitInfo();
-
-        const buildingInstance = buildingModel.userData.buildingInstance;
-        if (!buildingInstance) {
-            console.warn("UIManager: Could not find building instance on selected model:", buildingModel);
-            return;
-        }
-
-        const buildingInfo = buildingInstance.info; // Data from the Building instance
-        const buildingName = buildingInfo.name || "Unknown Building";
-        const workers = buildingInstance.workers ? buildingInstance.workers.length : 0; // Data from the Building instance
-        const maxWorkers = buildingInfo.jobSlots || 0;
-
-        this.selectedBuildingInfoPanel = document.createElement('div');
-        this.selectedBuildingInfoPanel.id = 'selected-info-panel';
-        this.selectedBuildingInfoPanel.classList.add('themed-panel');
-        this.selectedBuildingInfoPanel.style.bottom = '10px';
-        this.selectedBuildingInfoPanel.style.left = '50%';
-        this.selectedBuildingInfoPanel.style.transform = 'translateX(-50%)';
-        this.selectedBuildingInfoPanel.style.minWidth = '220px';
-        this.selectedBuildingInfoPanel.style.maxWidth = '300px';
-        this.selectedBuildingInfoPanel.style.zIndex = '100';
-
-        let contentHTML = `<h4 class="themed-panel-title" style="margin-bottom: 8px;">${buildingName}</h4>
-                           <p style="margin: 4px 0;">Position: (${buildingModel.position.x.toFixed(1)}, ${buildingModel.position.z.toFixed(1)})</p>
-                           <p style="margin: 4px 0;">Workers: ${workers} / ${maxWorkers}</p>`;
-        if (buildingInfo.produces) {
-            contentHTML += `<p style="margin: 4px 0;">Produces: ${buildingInfo.produces.map(p => p.resource.replace(/_/g, ' ')).join(', ')}</p>`;
-        }
-        if (buildingInstance.inventory) { // Data from the Building instance
-            contentHTML += `<h5 style="margin-top: 10px; margin-bottom: 5px; color: rgba(255,255,255,0.9);">Local Stock:</h5>`;
-            let stockEmpty = true;
-            for (const resourceType in buildingInstance.inventory) {
-                if (buildingInstance.inventory[resourceType] > 0) {
-                    stockEmpty = false;
-                    const currentStock = buildingInstance.inventory[resourceType];
-                    const maxStock = buildingInstance.maxStock[resourceType] || buildingInstance.maxStock.default || 0;
-                    contentHTML += `<p style="margin: 2px 0; font-size: 0.9em;">- ${resourceType.replace(/_/g, ' ')}: ${currentStock} / ${maxStock}</p>`;
-                }
-            }
-            if (stockEmpty) {
-                contentHTML += `<p style="margin: 2px 0; font-size: 0.9em; font-style: italic;">Empty</p>`;
-            }
-        }
-        if (buildingInstance.isProducing && buildingInstance.currentProduction) { // Data from the Building instance
-            contentHTML += `<p style="margin: 4px 0;">Current Task: Producing ${buildingInstance.currentProduction.resource.replace(/_/g, ' ')}</p>`;
-        }
-        contentHTML += `<div id="building-actions" style="margin-top: 16px; border-top: 1px solid #ccc; padding-top: 8px; display: flex; flex-direction: column; gap: 8px;">
-                        <h4 style="margin-top:0; margin-bottom: 8px; font-size: 1em; color: rgba(255,255,255,0.8);">Actions:</h4>`;
-        this.selectedBuildingInfoPanel.innerHTML = contentHTML;
-        const actionsDiv = this.selectedBuildingInfoPanel.querySelector('#building-actions');
-        if (actionsDiv) {
-            if (buildingInfo.key === 'WOODCUTTERS_HUT') { // Example action
-                const upgradeButton = document.createElement('md-filled-button');
-                upgradeButton.textContent = 'Upgrade (NI)';
-                upgradeButton.addEventListener('click', (e) => { e.stopPropagation(); console.log(`Action: Upgrade clicked for ${buildingName}`); });
-                actionsDiv.appendChild(upgradeButton);
-            } else {
-                const placeholderButton = document.createElement('md-outlined-button');
-                placeholderButton.textContent = 'No specific actions';
-                placeholderButton.disabled = true;
-                actionsDiv.appendChild(placeholderButton);
-            }
-        }
-        this.uiContainer.appendChild(this.selectedBuildingInfoPanel);
-    }
-
-    clearSelectedBuildingInfo() {
-        if (this.selectedBuildingInfoPanel && this.selectedBuildingInfoPanel.parentElement) {
-            this.selectedBuildingInfoPanel.parentElement.removeChild(this.selectedBuildingInfoPanel);
-        }
-        this.selectedBuildingInfoPanel = null;
-    }
-
-    displaySelectedUnitInfo(serfModel) {
-        if (!this.uiContainer) return;
-        this.clearSelectedUnitInfo();
-        this.clearSelectedBuildingInfo();
-
-        const serfInstance = serfModel.userData.serfInstance; // Use serfInstance from model's userData
-        if (!serfInstance) {
-            console.warn("UIManager: Could not find serf instance on selected model:", serfModel);
-            return;
-        }
-
-        this.selectedUnitInfoPanel = document.createElement('div');
-        this.selectedUnitInfoPanel.id = 'selected-unit-info-panel';
-        this.selectedUnitInfoPanel.classList.add('themed-panel');
-        this.selectedUnitInfoPanel.style.bottom = '10px';
-        this.selectedUnitInfoPanel.style.left = '50%';
-        this.selectedUnitInfoPanel.style.transform = 'translateX(-50%)';
-        this.selectedUnitInfoPanel.style.minWidth = '220px';
-        this.selectedUnitInfoPanel.style.maxWidth = '300px';
-        this.selectedUnitInfoPanel.style.zIndex = '100';
-
-        let contentHTML = `<h4 class="themed-panel-title" style="margin-bottom: 8px;">Serf ID: ${serfInstance.id}</h4>
-                           <p style="margin: 4px 0;">Type: ${serfInstance.serfType}</p>
-                           <p style="margin: 4px 0;">Status: ${serfInstance.state}</p>`;
-        if (serfInstance.job && serfInstance.job.info) { // Check serfInstance.job.info
-            contentHTML += `<p style="margin: 4px 0;">Job: Working at ${serfInstance.job.info.name}</p>`;
-        } else if (serfInstance.job) {
-             contentHTML += `<p style="margin: 4px 0;">Job: Assigned (Building info missing)</p>`;
-        }
-
-        if (serfInstance.taskDetails && serfInstance.taskDetails.resourceType) {
-            contentHTML += `<p style="margin: 4px 0;">Task: ${serfInstance.state} for ${serfInstance.taskDetails.resourceType.replace(/_/g, ' ')}</p>`;
-        } else if (serfInstance.taskDetails && serfInstance.taskDetails.targetBuildingName) {
-            contentHTML += `<p style="margin: 4px 0;">Task: ${serfInstance.state} related to ${serfInstance.taskDetails.targetBuildingName}</p>`;
-        }
-        // Display inventory
-        const inventory = serfInstance.inventory;
-        let inventoryContent = '';
-        for (const resource in inventory) {
-            if (inventory[resource] > 0) {
-                inventoryContent += `<li>${resource.replace(/_/g, ' ')}: ${inventory[resource]}</li>`;
-            }
-        }
-        if (inventoryContent) {
-            contentHTML += `<p style="margin: 4px 0;">Carrying:</p><ul>${inventoryContent}</ul>`;
-        } else {
-            contentHTML += `<p style="margin: 4px 0;">Carrying: Nothing</p>`;
-        }
-
-        this.selectedUnitInfoPanel.innerHTML = contentHTML;
-        this.uiContainer.appendChild(this.selectedUnitInfoPanel);
-    }
-
-    clearSelectedUnitInfo() {
-        if (this.selectedUnitInfoPanel && this.selectedUnitInfoPanel.parentElement) {
-            this.selectedUnitInfoPanel.parentElement.removeChild(this.selectedUnitInfoPanel);
-        }
-        this.selectedUnitInfoPanel = null;
-    }
+    // Removed dead code: displaySelectedBuildingInfo(buildingModel)
+    // Removed dead code: clearSelectedBuildingInfo()
+    // Removed dead code: displaySelectedUnitInfo(serfModel)
+    // Removed dead code: clearSelectedUnitInfo()
 
     displayUnitInfo(unit) {
         if (!this.selectedUnitInfoPanel || !this.selectedUnitInfoContent || !unit) {
@@ -844,7 +715,6 @@ class UIManager {
         // This method might be needed if any UI panels have sizes dependent on viewport
         // For example, if a panel should not exceed viewport height.
         // For now, most panels are fixed size or use CSS that handles responsiveness.
-        // If specific panels need JS-based resizing, add that logic here.
         // Example: if resourcePanel needs to adjust its maxHeight:
         if (this.resourcePanel) {
             this.resourcePanel.style.maxHeight = `calc(100vh - 20px - ${this.testButtonContainer.offsetHeight + 10}px)`;
@@ -854,75 +724,33 @@ class UIManager {
         }
     }
 
-    // This method will be called by Game.js or an input manager
-    handleCanvasClick(event, raycaster, camera, gameMap, constructionManager, serfManagerInstance, outlinePassSetter) {
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-
-        if (constructionManager.isPlacing) {
-            const intersectsPlacement = raycaster.intersectObject(gameMap.tileMeshes, true);
-            const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            let placementPoint = new THREE.Vector3();
-            if (intersectsPlacement.length > 0) {
-                placementPoint = intersectsPlacement[0].point;
+_subscribeToSelectionChanges() {
+    if (this.selectionManager && typeof this.selectionManager.onSelectionChange === 'function') {
+        this.selectionManager.onSelectionChange((selectedEntity) => {
+            if (selectedEntity) {
+                // Determine if it's a Serf or Building based on its properties
+                if (selectedEntity.unitType === 'serf' || selectedEntity.serfType) { // serfType is on Serf instance
+                    this.displayUnitInfo(selectedEntity); // Pass the Serf instance
+                } else if (selectedEntity.info && selectedEntity.info.name) { // Building instances have 'info.name'
+                    this.displayBuildingInfo(selectedEntity); // Pass the Building instance
+                } else {
+                    console.warn("UIManager: Selected entity type not recognized.", selectedEntity);
+                    this.hideUnitInfo();
+                    this.hideBuildingInfo();
+                    }
             } else {
-                raycaster.ray.intersectPlane(groundPlane, placementPoint);
-            }
-            if (placementPoint) constructionManager.confirmPlacement(placementPoint);
-        } else {
-            const buildingsGroup = camera.parent.getObjectByName("GameBuildings"); // Assuming scene is camera.parent
-            if (buildingsGroup) {
-                const intersectsSelection = raycaster.intersectObjects(buildingsGroup.children, true);
-                if (intersectsSelection.length > 0) {
-                    let topObject = intersectsSelection[0].object;
-                    while (topObject.parent && topObject.parent !== buildingsGroup) {
-                        topObject = topObject.parent;
-                    }
-                    outlinePassSetter([topObject]);
-                    this.displaySelectedBuildingInfo(topObject);
-                    return topObject; // Return selected object
+                this.hideUnitInfo();
+                this.hideBuildingInfo();
                 }
-            }
-
-            // Check for serf selection - serfs are now direct children of the scene
-            const serfModels = serfManagerInstance.serfs.map(s => s.model).filter(m => m);
-            if (serfModels.length > 0) {
-                const intersectsSerfs = raycaster.intersectObjects(serfModels, true);
-                if (intersectsSerfs.length > 0) {
-                    let topSerfModel = intersectsSerfs[0].object;
-                    // Traverse up to the main serf group (which is the model itself if added directly to scene)
-                     while (topSerfModel.parent && topSerfModel.parent !== camera.parent /* scene */ && !serfModels.includes(topSerfModel)) {
-                        topSerfModel = topSerfModel.parent;
-                    }
-                    if (serfModels.includes(topSerfModel)) {
-                         outlinePassSetter([topSerfModel]);
-                         this.displaySelectedUnitInfo(topSerfModel);
-                         return topSerfModel; // Return selected object
-                    }
-                }
-            }
-            outlinePassSetter([]);
-            this.clearSelectedBuildingInfo();
-            this.clearSelectedUnitInfo();
+        });
+        console.log("UIManager: Subscribed to SelectionManager changes.");
+    } else {
+        console.warn("UIManager: SelectionManager not provided or 'onSelectionChange' is not available. UI will not update on selection.");
         }
-        return null; // Return null if nothing was selected or action was placement
     }
 
-    handleOverlayClick(event, constructionManager, outlinePassSetter) {
-        // If click is on a UI button or panel, do nothing further for deselection
-        if (event.target.closest('md-filled-button, md-outlined-button, #selected-info-panel, #selected-unit-info-panel, .themed-panel')) {
-            return true; // Indicate UI interaction handled
-        }
-        // If click is on overlay but not a specific UI element, and not placing, then deselect
-        if (!constructionManager.isPlacing) {
-            outlinePassSetter([]);
-            this.clearSelectedBuildingInfo();
-            this.clearSelectedUnitInfo();
-        }
-        return false; // Indicate general overlay click, potentially for deselection
-    }
+// Removed handleCanvasClick method
+// Removed handleOverlayClick method
 }
 
 export default UIManager;
