@@ -8,6 +8,8 @@ import { SERF_ACTION_STATES } from '../config/serfActionStates.js';
 import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME, FORESTER_SAPLING_UPGRADE_COST } from '../config/unitConstants.js';
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
 import { FORESTER_MAX_PLANTED_SAPLINGS_INITIAL } from '../config/unitConstants.js';
+import Task from '../core/tasks/Task.js'; // Added import for Task
+import { TASK_STATUS } from '../core/tasks/Task.js'; // Added import for TASK_STATUS
 
 // Import all Serf State Classes
 import IdleState from './serf_states/IdleState.js';
@@ -255,59 +257,6 @@ export class Serf extends Unit {
         // is removed here. If needed for string-based tasks, it would have to be re-added
         // or (preferably) those string tasks converted to proper Task objects.
         // For this subtask, we assume SerfManager will provide necessary context via Task objects.
-    }
-
-    changeState(newStateKey) {
-            if (buildingModel && buildingModel.userData && buildingModel.userData.buildingInstance) {
-                this.assignedBuilding = buildingModel.userData.buildingInstance;
-                console.log(`${this.id} (${this.serfType}) associated with building: ${this.assignedBuilding.info.name}`);
-            } else {
-                console.warn(`${this.id} (${this.serfType}) could not find or associate with buildingId: ${details.buildingId}`);
-            }
-        }
-
-        if (taskType === 'construct_building' && details.constructionSiteId) {
-            const siteModel = this.scene.getObjectByProperty('uuid', details.constructionSiteId);
-            if (siteModel && siteModel.userData && siteModel.userData.buildingInstance) {
-                this.assignedConstructionSite = siteModel.userData.buildingInstance;
-                console.log(`${this.id} (${this.serfType}) assigned to construct: ${this.assignedConstructionSite.info.name} (ID: ${details.constructionSiteId})`);
-                if (details.targetLocation) {
-                    this.targetNode = { 
-                        x: details.targetLocation.x, 
-                        y: details.targetLocation.y, 
-                        constructionSiteId: details.constructionSiteId,
-                        type: 'construction_site_target'
-                    };
-                    this.changeState(SERF_ACTION_STATES.MOVING_TO_TARGET);
-                    console.log(`${this.id} (${this.serfType}) will move to construction site at (${details.targetLocation.x}, ${details.targetLocation.y})`);
-                } else {
-                    console.warn(`${this.id} (${this.serfType}) construct_building task for ${details.constructionSiteId} but no targetLocation provided. Cannot initiate move.`);
-                    this.task = 'idle';
-                    this.changeState(SERF_ACTION_STATES.IDLE);
-                }
-            } else {
-                console.error(`${this.id} (${this.serfType}) could not find construction site model or buildingInstance for ID: ${details.constructionSiteId}. Going IDLE.`);
-                this.task = 'idle';
-                this.changeState(SERF_ACTION_STATES.IDLE);
-            }
-        } else if (details.constructionSiteId) {
-             console.log(`${this.id} (${this.serfType}) task involves construction site: ${details.constructionSiteId} but task is ${taskType}`);
-             if (details.targetLocation) { 
-                 this.targetNode = { 
-                    x: details.targetLocation.x, 
-                    y: details.targetLocation.y, 
-                    constructionSiteId: details.constructionSiteId,
-                    type: 'construction_site' 
-                };
-            }
-        }
-
-        if (details.targetTile) {
-            this.targetTile = details.targetTile;
-            console.log(`${this.id} (${this.serfType}) task involves target tile: (${details.targetTile.x}, ${details.targetTile.y})`);
-            // The IdleState will handle transitioning to MOVING_TO_TARGET_TILE if this task is set
-        }
-        // Initial state is already IDLE, the IdleState's execute method will then transition based on the task.
     }
 
     changeState(newStateKey) {

@@ -96,6 +96,19 @@ export function createWoodcuttersHut() {
     return hutGroup;
 }
 
+export function createBlacksmith() {
+    const group = new THREE.Group();
+    group.name = "Blacksmith";
+    // Placeholder geometry: a simple box
+    const boxGeometry = new THREE.BoxGeometry(2, 1.5, 2);
+    const boxMaterial = new THREE.MeshStandardMaterial({ color: COLORS.DARK_GREY });
+    const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+    boxMesh.position.y = 1.5 / 2;
+    group.add(boxMesh);
+    console.log("Placeholder Blacksmith model created.");
+    return group;
+}
+
 export function createForestersHut() {
     const hutGroup = new THREE.Group();
     hutGroup.name = "Forester's Hut";
