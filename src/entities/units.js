@@ -6,7 +6,9 @@ import resourceManager from '../core/resourceManager.js'; // Import resourceMana
 import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js'; // Updated import
 // import { COLORS } from '../config/colors.js'; // No longer needed here
-import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME } from '../config/unitConstants.js'; // Added BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME
+import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME, FORESTER_SAPLING_UPGRADE_COST } from '../config/unitConstants.js'; // Added BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME, FORESTER_SAPLING_UPGRADE_COST
+import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
+import { FORESTER_MAX_PLANTED_SAPLINGS_INITIAL } from '../config/unitConstants.js';
 import {
     createBaseSerf,
     SERF_MODEL_CREATORS
@@ -90,6 +92,11 @@ export class Serf extends Unit {
         this.maxInventoryCapacity = MAX_SERF_INVENTORY_CAPACITY;
         this.dropOffPoint = DEFAULT_DROPOFF_POINT;
         this.parentGroup = parentGroup; // Store parentGroup
+
+        if (this.serfType === SERF_PROFESSIONS.FORESTER) {
+            this.plantedSaplingsCount = 0;
+            this.maxPlantedSaplings = FORESTER_MAX_PLANTED_SAPLINGS_INITIAL;
+        }
 
         let modelCreator;
         const serfTypeLower = this.serfType ? String(this.serfType).toLowerCase() : 'idle';
@@ -644,9 +651,12 @@ export class Serf extends Unit {
 
     _handleWorkingAtBuildingState(deltaTime) {
         // Example: Forester at Forester's Hut
-        if (this.serfType === 'forester' && this.taskDetails.buildingName === 'Forester\'s Hut') {
+        // Ensure this check uses the constant and refers to the correct building type/profession
+        if (this.serfType === SERF_PROFESSIONS.FORESTER && 
+            this.assignedBuilding && this.assignedBuilding.info && 
+            this.assignedBuilding.info.jobProfession === SERF_PROFESSIONS.FORESTER) {
             // Forester is at the hut, should become idle and available for planting tasks
-            console.log(`${this.id} (Forester) is at Forester\'s Hut, becoming IDLE.`);
+            console.log(`${this.id} (${this.serfType}) is at ${this.assignedBuilding.info.name}, becoming IDLE for planting tasks.`);
             this.task = 'idle';
             this.state = SERF_ACTION_STATES.IDLE;
             this.taskDetails = {}; // Clear task details
@@ -683,17 +693,23 @@ export class Serf extends Unit {
         
         // Specific professions that have unique, non-standard "working" logic
         // These might be better handled by their own dedicated states if complex enough
-        if (this.serfType === 'Forester') {
-            // Forester's "work" at the Forester's Hut is essentially being idle, waiting for a planting or chopping task.
-            // If a Forester is assigned 'work_at_building' for the Forester's Hut, it means it's not currently planting/chopping.
-            // It should remain idle, ready for SerfManager to assign a specific task like 'plant_sapling' or 'chop_tree'.
-            // The actual planting/chopping logic will be in their respective states (_handlePlantingSaplingState, _handleChoppingTreeState).
-            console.log(`Forester ${this.id} at Forester's Hut, is effectively idle, awaiting specific task. Task: ${this.task}, State: ${this.state}`);
-            this.task = 'idle'; // Set to idle to be reassigned by SerfManager
-            this.state = SERF_ACTION_STATES.IDLE;
-            return;
+        if (this.serfType === SERF_PROFESSIONS.FORESTER) {
+            // This block might be redundant if the above check for Forester at Forester's Hut is comprehensive.
+            // If a Forester is assigned 'work_at_building' for a Forester's Hut, 
+            // the above block should handle it by setting it to IDLE.
+            // If it reaches here, it implies it's a Forester but perhaps not at a Forester's hut,
+            // or the earlier condition wasn't met.
+            // For safety, if it's a Forester in 'WORKING_AT_BUILDING' and not handled above, make it IDLE.
+            if (this.assignedBuilding && this.assignedBuilding.info && 
+                this.assignedBuilding.info.jobProfession === SERF_PROFESSIONS.FORESTER) {
+                console.log(`Forester ${this.id} at ${this.assignedBuilding.info.name} (fallback), becoming IDLE. Task: ${this.task}, State: ${this.state}`);
+                this.task = 'idle'; // Set to idle to be reassigned by SerfManager
+                this.state = SERF_ACTION_STATES.IDLE;
+                this.taskDetails = {};
+                return;
+            }
         }
-        if (this.serfType === 'Farmer') {
+        if (this.serfType === SERF_PROFESSIONS.FARMER) { // Changed from string literal
             // Farmer's "work" is planting, tending, harvesting, handled by SerfManager.
             console.log(`Farmer ${this.id} at Farm, should be idle or have a specific farming task. Going IDLE.`);
             this.task = 'idle';
@@ -1045,6 +1061,10 @@ export class Serf extends Unit {
             if (this.game && this.game.natureManager) {
                 this.game.natureManager.addSapling(this.targetTile.x, this.targetTile.y);
                 console.log(`${this.id} (${this.serfType}) successfully called natureManager.addSapling().`);
+                if (this.serfType === SERF_PROFESSIONS.FORESTER) {
+                    this.plantedSaplingsCount++;
+                    console.log(`Forester ${this.id} planted saplings count: ${this.plantedSaplingsCount}/${this.maxPlantedSaplings}`);
+                }
             } else {
                 console.error(`${this.id} (${this.serfType}) could not plant sapling: game instance or natureManager not available.`);
                 // Optionally, retry or handle error, for now, just log and go idle
@@ -1264,6 +1284,41 @@ export class Serf extends Unit {
             case SERF_ACTION_STATES.MOVING_TO_TARGET_TILE:
                 this._handleMovingToTargetTileState(deltaTime);
                 break;
+        }
+    }
+
+    upgradeMaxPlantedSaplings(amount) {
+        if (this.serfType === SERF_PROFESSIONS.FORESTER) {
+            // Check if the game instance and resourceManager are available
+            if (this.game && this.game.resourceManager) {
+                // Check for sufficient resources
+                let canAfford = true;
+                for (const resourceType in FORESTER_SAPLING_UPGRADE_COST) {
+                    if (this.game.resourceManager.getResourceCount(resourceType) < FORESTER_SAPLING_UPGRADE_COST[resourceType]) {
+                        canAfford = false;
+                        console.warn(`Forester ${this.id} cannot afford sapling upgrade. Missing ${resourceType}.`);
+                        // Optionally, provide feedback to the UI or user here
+                        break;
+                    }
+                }
+
+                if (canAfford) {
+                    // Deduct resources
+                    for (const resourceType in FORESTER_SAPLING_UPGRADE_COST) {
+                        this.game.resourceManager.removeResource(resourceType, FORESTER_SAPLING_UPGRADE_COST[resourceType]);
+                    }
+                    this.maxPlantedSaplings += amount;
+                    console.log(`Forester ${this.id} upgraded maxPlantedSaplings to ${this.maxPlantedSaplings}. Resources deducted.`);
+                } else {
+                    // Handle the case where the player cannot afford the upgrade (e.g., UI message)
+                    console.log(`Forester ${this.id}: Not enough resources to upgrade maxPlantedSaplings.`);
+                    // Potentially trigger a UI notification
+                }
+            } else {
+                console.error(`Forester ${this.id} cannot upgrade maxPlantedSaplings: game instance or resourceManager not found.`);
+            }
+        } else {
+            console.warn(`Attempted to upgrade maxPlantedSaplings for non-Forester serf ${this.id}`);
         }
     }
 }

@@ -233,76 +233,105 @@ class SerfManager {
         }
     }
 
-    tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) { // Parameter name updated
-        for (const forester of forestersAtHutReadyToPlant) { // Iterate the correct list of foresters
-            if (forester.task && forester.task !== 'idle') continue; // Already has a task
+    tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) {
+        // Corrected condition to use this.game.gameMap and check all necessary instances
+        if (!this.game || !this.game.gameMap || !this.game.natureManager) {
+            console.error("SerfManager: Game instance, Game's MapManager (gameMap), or Game's NatureManager not properly initialized or available.");
+            return;
+        }
+        console.log(`SerfManager: Attempting to assign planting tasks to ${forestersAtHutReadyToPlant.length} foresters.`);
 
-            const foresterHut = forester.job; // Forester is already filtered to be at their hut.
+        for (const forester of forestersAtHutReadyToPlant) {
+            console.log(`SerfManager: Checking forester ${forester.id} (Profession: ${forester.profession}, SerfType: ${forester.serfType}) for planting task.`);
+            // This check is somewhat redundant if forestersAtHutReadyToPlant is correctly filtered, but good for sanity.
 
-            if (!foresterHut || !foresterHut.isConstructed || 
-                !foresterHut.info || foresterHut.info.jobProfession !== SERF_PROFESSIONS.FORESTER) {
-                console.warn(`SerfManager: Forester ${forester.id} in tryAssignForestersToPlantSaplings was expected to have a valid Forester's Hut job, but doesn't. Skipping. Job:`, forester.job);
-                continue;
+            console.log(`SerfManager: Forester ${forester.id} - plantedSaplingsCount: ${forester.plantedSaplingsCount}, maxPlantedSaplings: ${forester.maxPlantedSaplings}`);
+            if (forester.plantedSaplingsCount >= forester.maxPlantedSaplings) {
+                console.log(`SerfManager: Forester ${forester.id} has reached max saplings (${forester.plantedSaplingsCount}/${forester.maxPlantedSaplings}). Skipping.`);
+                continue; 
             }
 
-            // Forester is at their hut and idle, let's find a place to plant.
-            // Search for an empty GRASSLAND tile near the Forester's Hut.
-            const hutGridX = foresterHut.gridX;
-            const hutGridY = foresterHut.gridZ; // mapManager uses y for grid's Z
+            const hut = forester.job; // The Forester's Hut (building instance)
+            if (!hut || hut.gridX == null || hut.gridZ == null) {
+                console.warn(`SerfManager: Forester ${forester.id} has no valid hut assigned or hut has no gridX/gridZ position. Hut:`, hut);
+                continue;
+            }
+            console.log(`SerfManager: Forester ${forester.id} is at hut ${hut.info.name} (Grid: ${hut.gridX}, ${hut.gridZ}). Searching for planting spot within radius ${FORESTER_PLANTING_RADIUS}.`);
+
+
+            const hutGridX = hut.gridX;
+            const hutGridZ = hut.gridZ; 
             let bestTargetTile = null;
 
-            // Simple search in a radius
             for (let r = -FORESTER_PLANTING_RADIUS; r <= FORESTER_PLANTING_RADIUS; r++) {
                 for (let c = -FORESTER_PLANTING_RADIUS; c <= FORESTER_PLANTING_RADIUS; c++) {
-                    if (r === 0 && c === 0) continue; // Skip the hut's own tile
+                    if (r === 0 && c === 0) continue; 
 
-                    const tileX = hutGridX + c;
-                    const tileY = hutGridY + r;
+                    const currentTileX = hutGridX + c;
+                    const currentTileZ = hutGridZ + r;
 
-                    if (tileX >= 0 && tileX < this.gameMap.width && tileY >= 0 && tileY < this.gameMap.height) {
-                        const tile = this.gameMap.grid[tileY][tileX]; // grid is [row][col] so [y][x]
-                        if (tile.terrainType === TERRAIN_TYPES.GRASSLAND && !tile.resource && !this.isTileOccupiedForPlanting(tileX, tileY)) {
-                            // Found a suitable tile
-                            bestTargetTile = { x: tileX, y: tileY };
+                    if (currentTileX >= 0 && currentTileX < this.gameMap.width && currentTileZ >= 0 && currentTileZ < this.gameMap.height) {
+                        const tile = this.gameMap.grid[currentTileZ][currentTileX];
+                        const tileResource = tile.resource ? tile.resource.type : 'none';
+                        // console.log(`SerfManager: Checking tile (${currentTileX}, ${currentTileZ}) - Terrain: ${tile.terrainType}, Resource: ${tileResource}`);
+                        
+                        const isOccupied = this.isTileOccupiedForPlanting(currentTileX, currentTileZ);
+                        // console.log(`SerfManager: Tile (${currentTileX}, ${currentTileZ}) - isTileOccupiedForPlanting: ${isOccupied}`);
+
+                        if (tile.terrainType === TERRAIN_TYPES.GRASSLAND && !tile.resource && !isOccupied) {
+                            bestTargetTile = { x: currentTileX, y: currentTileZ };
+                            console.log(`SerfManager: Forester ${forester.id} found suitable tile (${currentTileX}, ${currentTileZ}).`);
                             break; 
+                        } else {
+                            let skipReason = [];
+                            if (tile.terrainType !== TERRAIN_TYPES.GRASSLAND) skipReason.push(`Not Grassland (is ${tile.terrainType})`);
+                            if (tile.resource) skipReason.push(`Has resource (${tileResource})`);
+                            if (isOccupied) skipReason.push("Occupied for planting");
+                            // console.log(`SerfManager: Tile (${currentTileX}, ${currentTileZ}) skipped: ${skipReason.join(', ')}.`);
                         }
+                    } else {
+                        // console.log(`SerfManager: Tile (${currentTileX}, ${currentTileZ}) skipped: Out of bounds.`);
                     }
                 }
                 if (bestTargetTile) break;
             }
 
             if (bestTargetTile) {
-                console.log(`SerfManager: Forester ${forester.id} from hut ${foresterHut.info.name} assigned to plant sapling at (${bestTargetTile.x}, ${bestTargetTile.y}).`);
+                console.log(`SerfManager: Forester ${forester.id} from hut ${hut.info.name} assigned to plant sapling at (${bestTargetTile.x}, ${bestTargetTile.y}).`);
                 forester.setTask('plant_sapling', { 
                     targetTile: bestTargetTile,
-                    // No need for buildingId here as the task is map-based, not building-work based
                 });
-                // Forester will move to targetTile and then enter PLANTING_SAPLING state.
             } else {
-                // console.log(`Forester ${forester.id} could not find a suitable spot to plant a sapling near ${foresterHut.info.name}.`);
-                // Forester remains idle, will be picked up by tryAssignSerfsToProfessionJobs if hut needs workers for other tasks (e.g. chopping if implemented)
-                // or will try planting again next cycle.
+                console.log(`SerfManager: Forester ${forester.id} could not find a suitable spot to plant a sapling near ${hut.info.name} (Hut at ${hutGridX},${hutGridZ}, Radius ${FORESTER_PLANTING_RADIUS}).`);
             }
         }
     }
 
-    isTileOccupiedForPlanting(tileX, tileY) {
+    isTileOccupiedForPlanting(tileX, tileY) { // tileY here represents the Z coordinate on the grid
         // Check if any other serf is already tasked to plant at this exact tile
         for (const serf of this.serfs) {
             if (serf.task === 'plant_sapling' && serf.taskDetails && serf.taskDetails.targetTile) {
                 if (serf.taskDetails.targetTile.x === tileX && serf.taskDetails.targetTile.y === tileY) {
-                    return true; // Another serf is already going to plant here
+                    return true; 
                 }
             }
-            // Also check if a serf is currently in MOVING_TO_TARGET_TILE state for this tile
             if (serf.state === SERF_ACTION_STATES.MOVING_TO_TARGET_TILE && serf.targetTile) {
                  if (serf.targetTile.x === tileX && serf.targetTile.y === tileY) {
                     return true;
                 }
             }
         }
-        // TODO: Check if a sapling/tree already exists once mapManager tracks this
-        // For now, mapManager.grid[y][x].resource is the primary check.
+        // Check if a resource (like another sapling or tree) already exists on the tile
+        // This requires this.gameMap to be available and initialized.
+        if (this.gameMap && this.gameMap.grid[tileY] && this.gameMap.grid[tileY][tileX]) {
+            if (this.gameMap.grid[tileY][tileX].resource) {
+                return true; // Tile already has a resource
+            }
+        } else {
+            // This case should ideally not happen if tileX, tileY are within bounds
+            console.warn(`isTileOccupiedForPlanting: Tile (${tileX}, ${tileY}) is out of bounds or gameMap not ready.`);
+            return true; // Treat as occupied if map data is inaccessible
+        }
         return false;
     }
 

@@ -227,7 +227,8 @@ class Game {
                         clickedObject = topSerfModel;
                         this.selectedObjects = [topSerfModel];
                         this.renderer.setSelectedObjects(this.selectedObjects);
-                        this.uiManager.displaySelectedUnitInfo(topSerfModel); // Pass the model
+                        // Pass the actual serf instance, not just the model
+                        this.uiManager.displayUnitInfo(topSerfModel.userData.serfInstance); 
                         return; 
                     }
                 }
@@ -237,8 +238,8 @@ class Game {
             if (!clickedObject) {
                 this.selectedObjects = [];
                 this.renderer.setSelectedObjects(this.selectedObjects);
-                this.uiManager.clearSelectedBuildingInfo(); // Clear specific panels
-                this.uiManager.clearSelectedUnitInfo();   // Clear specific panels
+                this.uiManager.hideUnitInfo(); // Use hideUnitInfo
+                this.uiManager.hideBuildingInfo(); // Use hideBuildingInfo (assuming it exists)
             }
         }
     }
@@ -264,8 +265,8 @@ class Game {
             } else {
                 this.selectedObjects = [];
                 this.renderer.setSelectedObjects(this.selectedObjects);
-                this.uiManager.clearSelectedBuildingInfo(); // Clear specific panels
-                this.uiManager.clearSelectedUnitInfo();   // Clear specific panels
+                this.uiManager.hideUnitInfo(); // Use hideUnitInfo
+                this.uiManager.hideBuildingInfo(); // Use hideBuildingInfo
             }
         }
         // Debug keys
@@ -303,7 +304,7 @@ class Game {
         if (serf && serf.model) {
             this.selectedObjects = [serf.model];
             this.renderer.setSelectedObjects(this.selectedObjects);
-            this.uiManager.displaySelectedUnitInfo(serf.model);
+            this.uiManager.displayUnitInfo(serf); // Pass the serf instance
 
             // Move camera to focus on the serf
             const serfPosition = serf.model.position;
@@ -324,7 +325,7 @@ class Game {
         if (building && building.model) {
             this.selectedObjects = [building.model];
             this.renderer.setSelectedObjects(this.selectedObjects);
-            this.uiManager.displaySelectedBuildingInfo(building.model); // UIManager needs to handle this
+            this.uiManager.displayBuildingInfo(building); // Pass the building instance
 
             // Move camera to focus on the building
             const buildingPosition = building.model.position;
