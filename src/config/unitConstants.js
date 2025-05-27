@@ -7,3 +7,4 @@ export const FORESTER_PLANTING_RADIUS = 5; // tiles search radius around hut for
 export const FORESTER_MAX_PLANTED_SAPLINGS_INITIAL = 10; // Initial maximum number of saplings a forester can plant
 export const FORESTER_SAPLING_UPGRADE_AMOUNT = 5; // Amount to increase max saplings by per upgrade
 export const FORESTER_SAPLING_UPGRADE_COST = { WOOD: 10, GOLD: 5 };
+export const GATHER_TIME_PER_UNIT = 1000; // ms to gather one unit of a resource

@@ -169,6 +169,17 @@ export class NatureManager {
         }
     }
 
+    removeResourceNode(x, y) {
+        const tile = this.mapManager.getTile(x, y);
+        if (tile && tile.resource) {
+            console.log(`NatureManager: Removing resource ${tile.resource.type} at (${x}, ${y})`);
+            this.removeResourceVisual(tile);
+            tile.resource = null;
+        } else {
+            console.warn(`NatureManager: Attempted to remove resource from non-existent or empty tile at (${x}, ${y})`);
+        }
+    }
+
     addSapling(tileX, tileY) {
         const tile = this.mapManager.getTile(tileX, tileY);
         if (!tile) {

@@ -1,20 +1,67 @@
 // src/entities/buildings/Blacksmith.js
+import * as THREE from 'three';
 import Building from '../Building.js';
-import { createBlacksmith } from '../buildings.js'; // Model creation function
+import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class Blacksmith extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry) {
-        super('BLACKSMITH', gridX, gridZ, gameMap, buildingDataEntry);
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry); // Use buildingDataEntry.key
         this.model = this.createModel();
         this.currentProcessingProgress = 0; // Initialize for this building type
     }
 
     createModel() {
-        // Assuming createBlacksmith is the correct function name in buildings.js
-        // If the actual Blacksmith model (for tools) is different from Armory, 
-        // ensure the correct creator is used.
-        // For this task, we'll assume createBlacksmith exists for the general Blacksmith.
-        return createBlacksmith(); 
+        const group = new THREE.Group();
+
+        const buildingColor = 0x8B4513; // Brown
+        const roofColor = 0x808080; // Grey
+        const anvilColor = 0x606060; // Darker Grey for anvil
+
+        // Building: Medium cuboid
+        const buildingWidth = TILE_SIZE * 0.9;
+        const buildingHeight = TILE_SIZE * 0.7;
+        const buildingDepth = TILE_SIZE * 0.7;
+        const buildingGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+        const buildingMaterial = new THREE.MeshStandardMaterial({ color: buildingColor });
+        const buildingMesh = new THREE.Mesh(buildingGeometry, buildingMaterial);
+        buildingMesh.castShadow = true;
+        buildingMesh.receiveShadow = true;
+        group.add(buildingMesh);
+
+        // Roof: Sloped cuboid roof
+        const roofWidth = buildingWidth * 1.1;
+        const roofHeight = TILE_SIZE * 0.2;
+        const roofDepth = buildingDepth * 1.1;
+        const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
+        const roofMaterial = new THREE.MeshStandardMaterial({ color: roofColor });
+        const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
+        roofMesh.position.y = buildingHeight / 2 + roofHeight / 2 - TILE_SIZE * 0.05; // Position on top of the building
+        roofMesh.castShadow = true;
+        roofMesh.receiveShadow = true;
+        group.add(roofMesh);
+
+        // Anvil (Optional): A small, T-shaped structure made of two grey cuboids next to the building.
+        const anvilBaseHeight = TILE_SIZE * 0.2;
+        const anvilBaseSize = TILE_SIZE * 0.15;
+        const anvilTopHeight = TILE_SIZE * 0.1;
+        const anvilTopWidth = TILE_SIZE * 0.3;
+        const anvilTopDepth = TILE_SIZE * 0.15;
+
+        const anvilBaseGeometry = new THREE.BoxGeometry(anvilBaseSize, anvilBaseHeight, anvilBaseSize);
+        const anvilMaterial = new THREE.MeshStandardMaterial({ color: anvilColor });
+        const anvilBaseMesh = new THREE.Mesh(anvilBaseGeometry, anvilMaterial);
+        anvilBaseMesh.position.set(buildingWidth / 2 + anvilBaseSize / 2 + TILE_SIZE * 0.1, -buildingHeight / 2 + anvilBaseHeight / 2, 0);
+        anvilBaseMesh.castShadow = true;
+        group.add(anvilBaseMesh);
+
+        const anvilTopGeometry = new THREE.BoxGeometry(anvilTopWidth, anvilTopHeight, anvilTopDepth);
+        const anvilTopMesh = new THREE.Mesh(anvilTopGeometry, anvilMaterial);
+        anvilTopMesh.position.set(anvilBaseMesh.position.x, anvilBaseMesh.position.y + anvilBaseHeight / 2 + anvilTopHeight / 2, 0);
+        anvilTopMesh.castShadow = true;
+        group.add(anvilTopMesh);
+        
+        group.position.y = buildingHeight / 2; // Adjust group pivot to be at the base
+        return group;
     }
 
     update(deltaTime, currentTime) {

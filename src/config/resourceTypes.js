@@ -24,5 +24,6 @@ export const RESOURCE_TYPES = {
     SHIELD: 'shield', // Singular, as per game.md for recruitment
     PIG: 'pig', // Added as a resource type for Pig Farm output / Slaughterhouse input
     SAPLING: 'sapling', // For foresters planting new trees
+    FERTILE_LAND: 'fertile_land', // Represents land suitable for farming
     // PIGS are handled as units/entities rather than simple stockpile items for now - This comment might be outdated
 };

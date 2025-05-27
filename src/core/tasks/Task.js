@@ -37,8 +37,26 @@ export const TASK_TYPES = {
     PLANT_SAPLING: 'PLANT_SAPLING',
     /** Generic task for a serf to perform work at a building (e.g., production, research). */
     WORK_AT_BUILDING: 'WORK_AT_BUILDING', 
+    /** Task for a serf to process items at a production building. */
+    PROCESS_ITEMS: 'PROCESS_ITEMS',
     // Add more task types as needed
 };
+
+/**
+ * @enum {number}
+ * @readonly
+ * @description Defines the default priorities for different task types. Higher numbers mean higher priority.
+ */
+export const TASK_PRIORITIES = {
+    DEFAULT: 0,
+    CONSTRUCT_BUILDING: 10,
+    GATHER_RESOURCE_FROM_NODE: 5,
+    TRANSPORT_RESOURCE: 7,
+    PLANT_SAPLING: 3,
+    WORK_AT_BUILDING: 4, // General work, might be overridden by specific processing tasks
+    PROCESS_ITEMS: 6,    // Processing items is generally important
+};
+
 
 /**
  * @class Task
@@ -59,10 +77,11 @@ class Task {
      * @property {TASK_STATUS} status - The current status of the task.
      * @property {number} creationTime - Timestamp of when the task was created.
      */
-    constructor(type, priority = 0, targetEntity = null) {
+    constructor(type, priority = null, targetEntity = null) { // Modified priority to allow null
         this.id = `task-${nextTaskId++}`;
         this.type = type; 
-        this.priority = priority; 
+        // Assign default priority based on type if not provided
+        this.priority = priority !== null ? priority : (TASK_PRIORITIES[type] || TASK_PRIORITIES.DEFAULT); 
         this.targetEntity = targetEntity; 
         this.assignedSerf = null;
         this.status = TASK_STATUS.PENDING;
@@ -90,7 +109,7 @@ class Task {
     onAssign(serf) {
         this.assignedSerf = serf;
         this.status = TASK_STATUS.ACTIVE;
-        // console.log(`Task ${this.id} (${this.type}) assigned to Serf ${serf.id}`);
+        // // console.log(`Task ${this.id} (${this.type}) assigned to Serf ${serf.id}`);
     }
 
     /**
@@ -123,7 +142,7 @@ class Task {
      */
     onComplete(serf) {
         this.status = TASK_STATUS.COMPLETED;
-        // console.log(`Task ${this.id} (${this.type}) completed by Serf ${serf.id}`);
+        // // console.log(`Task ${this.id} (${this.type}) completed by Serf ${serf.id}`);
         if (this.assignedSerf && this.assignedSerf.id === serf.id) {
             this.assignedSerf.currentTask = null; 
         }
@@ -137,7 +156,7 @@ class Task {
      */
     onFail(serf) {
         this.status = TASK_STATUS.FAILED;
-        console.warn(`Task ${this.id} (${this.type}) failed. Assigned serf: ${serf ? serf.id : 'none'}`);
+        // console.warn(`Task ${this.id} (${this.type}) failed. Assigned serf: ${serf ? serf.id : 'none'}`);
         if (this.assignedSerf && serf && this.assignedSerf.id === serf.id) {
             this.assignedSerf.currentTask = null;
             // Serf should transition to IDLE if not already handled by the state that detected failure.
@@ -152,7 +171,7 @@ class Task {
      */
     onCancel() {
         this.status = TASK_STATUS.CANCELLED;
-        // console.log(`Task ${this.id} (${this.type}) cancelled.`);
+        // // console.log(`Task ${this.id} (${this.type}) cancelled.`);
         if (this.assignedSerf) {
             this.assignedSerf.currentTask = null;
             // Ensure the serf is made idle if it was processing this task.
@@ -181,7 +200,7 @@ class Task {
             serf.pathIndex = 0; // Reset pathIndex
             serf.changeState(serf.states.MOVING_TO_TARGET.name); // Use name for key
         } else {
-            console.warn(`Task ${this.id}: Serf ${serf.id} could not find path to (${targetLocation.x},${targetLocation.y}). Task may fail or retry.`);
+            // console.warn(`Task ${this.id}: Serf ${serf.id} could not find path to (${targetLocation.x},${targetLocation.y}). Task may fail or retry.`);
             // Task might fail or serf goes idle and task gets reassigned or retried.
             this.onFail(serf); // Example: fail the task if pathing fails critically
         }

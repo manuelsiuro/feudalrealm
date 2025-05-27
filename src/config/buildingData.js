@@ -53,6 +53,7 @@ export const BUILDING_DATA = {
         jobProfession: SERF_PROFESSIONS.FORESTER,
         // Foresters plant trees, no direct resource production into inventory
         saplingGrowthTime: 60000,
+        maxSaplingsToPlantPerForester: 10, // Added configuration for PlantSaplingTask
         maxStock: { default: 5 }, // Small storage for potential items like saplings if they become items
         outputBufferCapacity: { default: 0 }
     },

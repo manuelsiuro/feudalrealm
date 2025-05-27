@@ -320,6 +320,94 @@ class Building {
         }
     }
 
+    /**
+     * Checks if the building has sufficient input materials for one processing cycle.
+     * @returns {boolean} True if sufficient materials are available.
+     */
+    hasSufficientInputMaterials() {
+        if (!this.consumesMaterials || this.consumesMaterials.length === 0) {
+            return true; // No materials consumed, so always sufficient.
+        }
+        return this.consumesMaterials.every(item => {
+            return (this.inventory[item.resource] || 0) >= item.quantity;
+        });
+    }
+
+    /**
+     * Checks if the building has enough space in its output buffer for one processing cycle's output.
+     * @returns {boolean} True if there is enough space for all produced materials.
+     */
+    hasSpaceForOutput() {
+        if (!this.producesMaterials || this.producesMaterials.length === 0) {
+            return true; // No materials produced, so always space.
+        }
+        return this.producesMaterials.every(item => {
+            const currentAmount = this.inventory[item.resource] || 0;
+            const maxCap = (this.outputBufferCapacity && this.outputBufferCapacity[item.resource])
+                           ? this.outputBufferCapacity[item.resource]
+                           : (this.maxStock && this.maxStock[item.resource])
+                               ? this.maxStock[item.resource]
+                               : (this.maxStock && this.maxStock.default)
+                                   ? this.maxStock.default
+                                   : 0;
+            return currentAmount + item.quantity <= maxCap;
+        });
+    }
+
+    /**
+     * Processes one cycle of production.
+     * Consumes input materials and adds produced materials to inventory.
+     * Assumes checks for sufficient input and output space have been made prior to calling.
+     * @returns {string} Outcome: 'success', 'ran_out_of_input', 'output_full', 'failed_internal_error'.
+     */
+    processCycle() {
+        if (!this.isConstructed) {
+            console.warn(`${this.name} (${this.id}): Cannot process cycle, not constructed.`);
+            return 'failed_internal_error';
+        }
+
+        // Double-check input materials (though ProcessItemsTask should also check)
+        if (!this.hasSufficientInputMaterials()) {
+            console.warn(`${this.name} (${this.id}): Process cycle called without sufficient input materials.`);
+            return 'ran_out_of_input';
+        }
+
+        // Double-check output space (though ProcessItemsTask should also check)
+        if (!this.hasSpaceForOutput()) {
+            console.warn(`${this.name} (${this.id}): Process cycle called without sufficient output space.`);
+            return 'output_full';
+        }
+
+        // Consume input materials
+        if (this.consumesMaterials && this.consumesMaterials.length > 0) {
+            for (const item of this.consumesMaterials) {
+                if ((this.inventory[item.resource] || 0) < item.quantity) {
+                    // This should ideally not happen if hasSufficientInputMaterials was checked
+                    console.error(`${this.name} (${this.id}): Critical error during input consumption. Resource: ${item.resource}, Needed: ${item.quantity}, Had: ${this.inventory[item.resource] || 0}`);
+                    return 'failed_internal_error'; // Or 'ran_out_of_input' if we want to be lenient
+                }
+                this.inventory[item.resource] -= item.quantity;
+                if (this.inventory[item.resource] === 0) {
+                    // delete this.inventory[item.resource]; // Optional: clean up
+                }
+                // console.log(`${this.name} consumed ${item.quantity} of ${item.resource}. Stock: ${this.inventory[item.resource] || 0}`);
+            }
+        }
+
+        // Produce output materials
+        if (this.producesMaterials && this.producesMaterials.length > 0) {
+            for (const item of this.producesMaterials) {
+                const currentAmount = this.inventory[item.resource] || 0;
+                // Max capacity check was done by hasSpaceForOutput, so we just add.
+                this.inventory[item.resource] = currentAmount + item.quantity;
+                // console.log(`${this.name} produced ${item.quantity} of ${item.resource}. Stock: ${this.inventory[item.resource]}`);
+            }
+        }
+        
+        // console.log(`${this.name} (${this.id}): Processing cycle completed successfully.`);
+        return 'success';
+    }
+
     // --- Update loop (to be called by ConstructionManager) ---
     // Subclasses will override this to add specific behaviors (production, consumption)
     update(deltaTime, currentTime) {

@@ -12,9 +12,9 @@ class ConstructBuildingTask extends Task {
     /**
      * Creates an instance of ConstructBuildingTask.
      * @param {Building} buildingInstance - The instance of the building to be constructed.
-     * @param {number} [priority=1] - The priority of this construction task.
+     * @param {number} [priority] - The optional priority of this construction task. Defaults via Task base class.
      */
-    constructor(buildingInstance, priority = 1) {
+    constructor(buildingInstance, priority) {
         super(TASK_TYPES.CONSTRUCT_BUILDING, priority, buildingInstance);
         /** @property {Building} building - The building instance this task is for. */
         this.building = buildingInstance; 

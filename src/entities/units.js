@@ -105,6 +105,7 @@ export class Serf extends Unit {
         this.taskDetails = {};
         this.inventory = {};
         this.currentTask = null; // Added currentTask property
+        this.plantedSaplingsCount = 0; // Initialize for all serfs
 
         this.mapManager = mapManager;
         this.game = game;
@@ -151,10 +152,11 @@ export class Serf extends Unit {
         this.currentState = this.states[SERF_ACTION_STATES.IDLE];
         // this.currentState.enter(this); // SerfManager or direct task assignment will call enter on initial state.
 
-        if (this.serfType === SERF_PROFESSIONS.FORESTER) {
-            this.plantedSaplingsCount = 0;
-            this.maxPlantedSaplings = FORESTER_MAX_PLANTED_SAPLINGS_INITIAL;
-        }
+        // Removed Forester-specific initialization of plantedSaplingsCount as it's now done above for all serfs.
+        // if (this.serfType === SERF_PROFESSIONS.FORESTER) {
+        //     this.plantedSaplingsCount = 0; 
+        //     this.maxPlantedSaplings = FORESTER_MAX_PLANTED_SAPLINGS_INITIAL;
+        // }
 
         let modelCreator;
         const serfTypeLower = this.serfType ? String(this.serfType).toLowerCase() : 'idle';
@@ -223,6 +225,51 @@ export class Serf extends Unit {
         console.log(`Serf ${this.id} created at (${x},${y}), type: ${type}. Model assigned: ${!!this.model}. Model name: ${this.model ? this.model.name : 'N/A'}`);
     }
 
+    // Add a method to set profession and reset relevant counters
+    setProfession(newProfession, jobBuilding = null) {
+        let professionChanged = false;
+        if (this.serfType !== newProfession) {
+            professionChanged = true;
+            console.log(`Serf ${this.id} changing profession from ${this.serfType} to ${newProfession}`);
+            this.serfType = newProfession;
+        }
+
+        this.jobBuilding = jobBuilding; // Update the associated job building
+        this.plantedSaplingsCount = 0;  // Reset sapling count on any job assignment change
+
+        if (this.serfType === SERF_PROFESSIONS.FORESTER) {
+            if (this.jobBuilding && this.jobBuilding.buildingTypeData && typeof this.jobBuilding.buildingTypeData.maxSaplingsToPlantPerForester === 'number') {
+                this.maxPlantedSaplings = this.jobBuilding.buildingTypeData.maxSaplingsToPlantPerForester;
+            } else {
+                // Default for Forester if no specific hut data or no hut assigned
+                this.maxPlantedSaplings = FORESTER_MAX_PLANTED_SAPLINGS_INITIAL;
+            }
+        } else {
+            this.maxPlantedSaplings = 0; // Non-foresters don't have this limit
+        }
+        
+        // Potentially update model or other profession-specific attributes here
+        // For now, we assume model changes are handled elsewhere or not needed for this scope.
+        
+        // If profession actually changed, re-evaluate task
+        if (professionChanged) {
+            if (this.currentTask && !this.currentTask.canBeExecutedBy(this)) {
+                console.warn(`Serf ${this.id} changed profession to ${newProfession}. Current task ${this.currentTask.id} (${this.currentTask.constructor.name}) is no longer valid. Clearing task and setting to IDLE.`);
+                if (this.currentTask.status === TASK_STATUS.ACTIVE || this.currentTask.status === TASK_STATUS.PENDING) {
+                    this.currentTask.handleOutcome(this, 'cancelled_job_change');
+                }
+                this.currentTask = null;
+                this.changeState(SERF_ACTION_STATES.IDLE);
+            } else if (!this.currentTask) { // If no task, go idle to pick up new profession tasks
+                this.changeState(SERF_ACTION_STATES.IDLE);
+            }
+        } else if (!this.currentTask && this.currentState.name !== SERF_ACTION_STATES.IDLE) {
+            // If profession didn't change, but serf has a new jobBuilding context and no task, ensure it can re-evaluate from IDLE
+            // This might be useful if job assignment itself should make the serf re-evaluate its IDLE state.
+             this.changeState(SERF_ACTION_STATES.IDLE);
+        }
+    }
+
     setTask(taskType, details = {}) {
         // console.warn(`Serf.setTask (\${this.id}) called with type: \${taskType}. This method is being phased out by direct task object assignment.`);
         // this.task = taskType; // The 'task' string might still be used by some UI or simple logic
@@ -251,12 +298,48 @@ export class Serf extends Unit {
         this.task = taskType; 
         this.taskDetails = details;
         this.currentTask = null; // Clear any complex task if a simple string task is set.
-        this.changeState(SERF_ACTION_STATES.IDLE); // Go idle to re-evaluate the simple task string.
+        this.changeState(SERF_ACTION_STATES.IDLE); // Go idle to re-evaluate the simple task string
 
         // The old logic for finding assignedBuilding, constructionSite, targetTile based on 'details'
         // is removed here. If needed for string-based tasks, it would have to be re-added
         // or (preferably) those string tasks converted to proper Task objects.
         // For this subtask, we assume SerfManager will provide necessary context via Task objects.
+    }
+
+    assignTask(task) {
+        if (!(task instanceof Task)) {
+            console.error(`Serf ${this.id} (${this.serfType}): assignTask called with invalid task object.`, task);
+            this.currentTask = null;
+            this.changeState(SERF_ACTION_STATES.IDLE);
+            return;
+        }
+
+        this.currentTask = task;
+        console.log(`Serf ${this.id} (${this.serfType}) assigned task: ${task.constructor.name} (ID: ${task.id}, Status: ${task.status})`);
+
+        if (this.currentTask.status === TASK_STATUS.PENDING) {
+            this.currentTask.onAssign(this); // This should set the task status to ACTIVE and potentially change serf state
+        } else {
+            console.warn(`Serf ${this.id} (${this.serfType}): Assigned task ${task.id} that is not in PENDING state. Current status: ${task.status}. The task's onAssign method will not be called again unless the task logic handles this.`);
+            // If the task is already active or completed/failed, the serf might need to re-evaluate.
+            // For now, we assume onAssign handles this or the SerfManager filters appropriately.
+            // If the task is active and assigned to this serf, this might be a re-assignment or update.
+            // If the task is active but assigned to another serf, that's an issue SerfManager should prevent.
+        }
+
+        // If the task's onAssign didn't change the state, and the serf is IDLE,
+        // it might need a nudge or the task itself will guide it in its update cycle.
+        // For now, we rely on onAssign to correctly set the serf's state.
+        // If still idle and task is active, it implies the task is waiting for conditions the serf will check in IdleState.
+        if (this.currentState.name === SERF_ACTION_STATES.IDLE && this.currentTask.status === TASK_STATUS.ACTIVE) {
+            // console.log(`Serf ${this.id} is IDLE after task assignment, task ${this.currentTask.id} is ACTIVE. Task should guide next action.`);
+            // The IdleState's execute method should now pick up the active task.
+        } else if (this.currentTask.status !== TASK_STATUS.ACTIVE && this.currentState.name !== SERF_ACTION_STATES.IDLE) {
+            // If task assignment didn't make it active and serf is not idle, force idle to re-evaluate.
+            // This case should ideally be handled by onAssign setting the correct state.
+            // console.warn(`Serf ${this.id} (${this.serfType}): Task ${task.id} not ACTIVE after onAssign, and serf not IDLE. Forcing IDLE.`);
+            // this.changeState(SERF_ACTION_STATES.IDLE);
+        }
     }
 
     changeState(newStateKey) {

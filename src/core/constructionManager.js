@@ -14,7 +14,35 @@ import Castle from '../entities/buildings/Castle.js';
 import WoodcuttersHut from '../entities/buildings/WoodcuttersHut.js';
 import TransportersHut from '../entities/buildings/TransportersHut.js';
 import Blacksmith from '../entities/buildings/Blacksmith.js';
-// ... import other specific building classes as they are created
+import ForestersHut from '../entities/buildings/ForestersHut.js';
+import Quarry from '../entities/buildings/Quarry.js';
+import FishermansHut from '../entities/buildings/FishermansHut';
+import GeologistsHut from '../entities/buildings/GeologistsHut';
+import Bakery from '../entities/buildings/Bakery.js';
+import PigFarm from '../entities/buildings/PigFarm.js';
+import Farm from '../entities/buildings/Farm.js';
+import IronMine from '../entities/buildings/IronMine.js';
+import CoalMine from '../entities/buildings/CoalMine.js';
+import GoldMine from '../entities/buildings/GoldMine.js';
+import Sawmill from '../entities/buildings/Sawmill.js';
+import Windmill from '../entities/buildings/Windmill.js';
+import Slaughterhouse from '../entities/buildings/Slaughterhouse.js';
+import IronSmelter from '../entities/buildings/IronSmelter.js';
+import ToolmakersWorkshop from '../entities/buildings/ToolmakersWorkshop.js';
+import GoldsmithsMint from '../entities/buildings/GoldsmithsMint.js';
+import BlacksmithArmory from '../entities/buildings/BlacksmithArmory.js';
+import GuardHut from '../entities/buildings/GuardHut.js';
+import Watchtower from '../entities/buildings/Watchtower.js';
+import BarracksFortress from '../entities/buildings/BarracksFortress.js';
+import WarehouseStorehouse from '../entities/buildings/WarehouseStorehouse.js';
+import BuildersHut from '../entities/buildings/BuildersHut.js';
+import Harbor from '../entities/buildings/Harbor.js';
+import Marketplace from '../entities/buildings/Marketplace.js';
+import ChurchTemple from '../entities/buildings/ChurchTemple.js';
+import Shipyard from '../entities/buildings/Shipyard.js';
+import UniversityLibrary from '../entities/buildings/UniversityLibrary.js';
+import SiegeWorkshop from '../entities/buildings/SiegeWorkshop.js';
+import TreasuryMint from '../entities/buildings/TreasuryMint.js';
 
 // Building Class Mapper
 const buildingClassMap = {
@@ -22,8 +50,35 @@ const buildingClassMap = {
     WOODCUTTERS_HUT: WoodcuttersHut,
     TRANSPORTER_HUT: TransportersHut,
     BLACKSMITH: Blacksmith,
-    // FARM: Farm, // Example for future additions
-    // QUARRY: Quarry,
+    FORESTERS_HUT: ForestersHut,
+    QUARRY: Quarry,
+    FISHERMANS_HUT: FishermansHut,
+    GEOLOGISTS_HUT: GeologistsHut,
+    BAKERY: Bakery,
+    PIG_FARM: PigFarm,
+    FARM: Farm,
+    IRON_MINE: IronMine,
+    COAL_MINE: CoalMine,
+    GOLD_MINE: GoldMine,
+    SAWMILL: Sawmill,
+    WINDMILL: Windmill,
+    SLAUGHTERHOUSE: Slaughterhouse,
+    IRON_SMELTER: IronSmelter,
+    TOOLMAKERS_WORKSHOP: ToolmakersWorkshop,
+    GOLDSMITHS_MINT: GoldsmithsMint,
+    BLACKSMITH_ARMORY: BlacksmithArmory,
+    GUARD_HUT: GuardHut,
+    WATCHTOWER: Watchtower,
+    BARRACKS_FORTRESS: BarracksFortress,
+    WAREHOUSE_STOREHOUSE: WarehouseStorehouse,
+    BUILDERS_HUT: BuildersHut,
+    HARBOR: Harbor,
+    MARKETPLACE: Marketplace,
+    CHURCH_TEMPLE: ChurchTemple,
+    SHIPYARD: Shipyard,
+    UNIVERSITY_LIBRARY: UniversityLibrary,
+    SIEGE_WORKSHOP: SiegeWorkshop,
+    TREASURY_MINT: TreasuryMint,
     // ... add other mappings here as classes are created
 };
 

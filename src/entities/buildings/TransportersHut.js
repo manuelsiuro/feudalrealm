@@ -1,15 +1,47 @@
 // src/entities/buildings/TransportersHut.js
+import * as THREE from 'three';
 import Building from '../Building.js';
-import { createTransportersHut } from '../buildings.js'; // Model creation function
+import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class TransportersHut extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry) {
-        super('TRANSPORTER_HUT', gridX, gridZ, gameMap, buildingDataEntry);
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry); // Use buildingDataEntry.key
         this.model = this.createModel();
     }
 
     createModel() {
-        return createTransportersHut();
+        const modelGroup = new THREE.Group();
+        modelGroup.name = 'TransportersHutModel';
+
+        // Simple model as no specific description in buildings.md
+        // Key Colors: Light Brown, Dark Brown (generic hut colors)
+        const lightBrown = 0xD2B48C; // Tan
+        const darkBrown = 0x5C4033;  // Dark Brown
+
+        // Hut: Small, simple cuboid (color: Light Brown).
+        const hutWidth = TILE_SIZE * 0.6;
+        const hutHeight = TILE_SIZE * 0.45;
+        const hutDepth = TILE_SIZE * 0.55;
+        const hutGeometry = new THREE.BoxGeometry(hutWidth, hutHeight, hutDepth);
+        const hutMaterial = new THREE.MeshStandardMaterial({ color: lightBrown });
+        const hutMesh = new THREE.Mesh(hutGeometry, hutMaterial);
+        hutMesh.castShadow = true;
+        hutMesh.receiveShadow = true;
+        modelGroup.add(hutMesh);
+
+        // Roof: Simple flat or slightly sloped cuboid roof (color: Dark Brown).
+        const roofWidth = hutWidth * 1.1;
+        const roofHeight = TILE_SIZE * 0.15;
+        const roofDepth = hutDepth * 1.1;
+        const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
+        const roofMaterial = new THREE.MeshStandardMaterial({ color: darkBrown });
+        const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
+        roofMesh.position.y = hutHeight * 0.5 + roofHeight * 0.5; // Position on top of the hut
+        roofMesh.castShadow = true;
+        roofMesh.receiveShadow = true;
+        modelGroup.add(roofMesh);
+
+        return modelGroup;
     }
 
     update(deltaTime, currentTime) {

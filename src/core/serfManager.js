@@ -1,13 +1,18 @@
 // src/core/serfManager.js
 import * as THREE from 'three';
-import * as Units from '../entities/units.js'; 
+import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
+import { TILE_SIZE } from '../config/mapConstants.js'; // Assuming TILE_SIZE might be used or is contextually relevant
+import * as Units from '../entities/units.js'; // Assuming Units.Serf is used
+import ConstructBuildingTask from './tasks/ConstructBuildingTask.js';
+import GatherResourceTask from './tasks/GatherResourceTask.js'; // Added import
+import TransportResourceTask from './tasks/TransportResourceTask.js'; // Added import for TransportResourceTask
+import PlantSaplingTask from './tasks/PlantSaplingTask.js'; // Import PlantSaplingTask
+import ProcessItemsTask from './tasks/ProcessItemsTask.js'; // Import ProcessItemsTask
+import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // Added import
+import { TASK_STATUS } from './tasks/Task.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js';
 import resourceManager from './resourceManager.js';
-import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js';
-import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
 import { FORESTER_PLANTING_RADIUS } from '../config/unitConstants.js';
-import ConstructBuildingTask from '../core/tasks/ConstructBuildingTask.js'; // Added
-import { TASK_STATUS } from '../core/tasks/Task.js'; // Added
 
 class SerfManager {
     constructor(scene, gameMap, constructionManager, gameElementsGroup, game) {
@@ -27,13 +32,21 @@ class SerfManager {
 
         this.onChangeCallback = null;
 
+        // Ensure initial structures are set up before spawning serfs that might depend on them
+        // this.constructionManager.setupInitialStructures(); // Assuming this is called elsewhere or before SerfManager instantiation
+        
         this.spawnInitialSerfs();
     }
 
     addConstructionTask(buildingInstance) {
+        // Ensure the building is not null and has an ID
+        if (!buildingInstance || !buildingInstance.id) {
+            console.error("SerfManager: Attempted to add construction task for invalid building instance.", buildingInstance);
+            return;
+        }
         const newTask = new ConstructBuildingTask(buildingInstance);
         this.tasks.push(newTask);
-        console.log(`SerfManager: Added new ConstructBuildingTask for ${buildingInstance.name} (${buildingInstance.id}). Total tasks: ${this.tasks.length}`);
+        console.log(`SerfManager: Added new ConstructBuildingTask for ${buildingInstance.name} (ID: ${buildingInstance.id}). Total tasks: ${this.tasks.length}`);
         // Optional: Immediately try to assign tasks, or let the main assignJobsAndTasks loop handle it.
         // this.assignJobsAndTasks(); 
     }
@@ -136,6 +149,42 @@ class SerfManager {
         }
     }
 
+    createGatherResourceTasks() {
+        if (!this.gameMap || !this.gameMap.grid) {
+            console.error("SerfManager: gameMap or gameMap.grid is not available to create gather tasks.");
+            return;
+        }
+
+        for (let r = 0; r < this.gameMap.height; r++) {
+            for (let c = 0; c < this.gameMap.width; c++) {
+                const tile = this.gameMap.grid[r][c];
+                if (tile && tile.resource && tile.resource.amount > 0) {
+                    // Check if a task for this specific resource node already exists and is active/pending
+                    const existingTask = this.tasks.find(task =>
+                        task.type === 'GATHER_RESOURCE' &&
+                        task.targetResourceNode &&
+                        task.targetResourceNode.x === tile.x &&
+                        task.targetResourceNode.y === tile.y &&
+                        task.resourceType === tile.resource.type &&
+                        (task.status === TASK_STATUS.PENDING || task.status === TASK_STATUS.ACTIVE)
+                    );
+
+                    if (!existingTask) {
+                        // Create a new GatherResourceTask
+                        // The 'tile' object itself contains x, y, and the resource object.
+                        if (!tile.resource || typeof tile.resource.type === 'undefined') {
+                            console.warn(`SerfManager: Attempted to create GatherResourceTask for tile at (${tile.x}, ${tile.y}) but tile.resource.type is undefined. Resource object:`, tile.resource);
+                            continue; // Skip creating this task
+                        }
+                        const newTask = new GatherResourceTask(tile, tile.resource.type);
+                        this.tasks.push(newTask);
+                        // console.log(`SerfManager: Created GatherResourceTask for ${tile.resource.type} at (${tile.x}, ${tile.y}). Total tasks: ${this.tasks.length}`);
+                    }
+                }
+            }
+        }
+    }
+
     update(deltaTime) { 
         this.serfs.forEach(serf => {
             if (serf.update) { 
@@ -143,14 +192,45 @@ class SerfManager {
             }
         });
         this.assignJobsAndTasks();
+        this.cleanUpCompletedTasks(); // Add this line
     }
+
+    cleanUpCompletedTasks() {
+        const activeTaskIds = new Set();
+        this.serfs.forEach(serf => {
+            if (serf.currentTask) {
+                activeTaskIds.add(serf.currentTask.id);
+            }
+        });
+
+        this.tasks = this.tasks.filter(task => {
+            const keep = task.status === TASK_STATUS.PENDING || 
+                         task.status === TASK_STATUS.ACTIVE || 
+                         (task.status === TASK_STATUS.ASSIGNED && activeTaskIds.has(task.id)); // Keep if assigned and serf still holds it
+            
+            if (!keep && (task.status === TASK_STATUS.COMPLETED || task.status === TASK_STATUS.FAILED || task.status === TASK_STATUS.CANCELLED)) {
+                // console.log(`SerfManager: Removing task ${task.id} (${task.type}) with status ${task.status}`);
+            }
+            return keep;
+        });
+    }
+
 
     assignJobsAndTasks() {
         if (!this.constructionManager) return;
 
+        // Create new gathering tasks based on map resources before assigning any tasks
+        this.createGatherResourceTasks(); 
+
+        // Create PlantSaplingTasks for available Foresters
+        this.createPlantSaplingTasks();
+
+        // Create ProcessItemsTasks for buildings that can process
+        this.createProcessItemsTasks();
+
         const availableSerfs = this.serfs.filter(serf => 
             serf.currentState.name === SERF_ACTION_STATES.IDLE && 
-            !serf.currentTask // Key change: ensure serf doesn't already have a new system task
+            !serf.currentTask 
         );
 
         if (availableSerfs.length > 0) {
@@ -159,19 +239,16 @@ class SerfManager {
 
             for (const task of this.tasks) {
                 if (task.status === TASK_STATUS.PENDING) {
-                    for (let i = 0; i < availableSerfs.length; i++) {
+                    for (let i = availableSerfs.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
                         const serf = availableSerfs[i];
                         if (task.canBeExecutedBy(serf)) {
                             console.log(`SerfManager: Assigning task ${task.id} (${task.type}) to serf ${serf.id}`);
-                            serf.currentTask = task;
-                            task.onAssign(serf); // This should change task status to ACTIVE
-
-                            availableSerfs.splice(i, 1); // Remove serf from available list
-                            break; // Move to next task
+                            serf.assignTask(task); 
+                            availableSerfs.splice(i, 1); 
+                            break; 
                         }
                     }
                 }
-                if (availableSerfs.length === 0) break; // No more serfs to assign
             }
         }
         
@@ -181,12 +258,45 @@ class SerfManager {
             task.status !== TASK_STATUS.CANCELLED
         );
 
+        // Check for serfs with resources needing to transport them to a general drop-off
+        for (const serf of this.serfs) {
+            const inventorySize = Object.values(serf.inventory).reduce((sum, count) => sum + count, 0);
+
+            // Ensure serf is IDLE, has no active task, and has items
+            if (serf.currentState.name === SERF_ACTION_STATES.IDLE && !serf.currentTask && inventorySize > 0) {
+                
+                // Find a primary drop-off point (e.g., Castle, Town Hall, or fallback to Transporter Hut)
+                let dropOffBuildingInstance = this.constructionManager.placedBuildings.find(
+                    b => (b.type === 'CASTLE' || b.type === 'TOWN_HALL') && b.isConstructed
+                );
+
+                if (!dropOffBuildingInstance) { // Fallback if no Castle/TownHall
+                    dropOffBuildingInstance = this.constructionManager.placedBuildings.find(
+                        b => b.type === 'TRANSPORTER_HUT' && b.isConstructed 
+                    );
+                }
+                
+                if (dropOffBuildingInstance) {
+                    console.log(`SerfManager: Serf ${serf.id} has ${inventorySize} items. Creating TransportResourceTask to ${dropOffBuildingInstance.name || dropOffBuildingInstance.type}.`);
+                    
+                    // TransportResourceTask constructor: (serf, destinationBuilding, itemsToTransport = null, specificResourceType = null)
+                    // Passing null for itemsToTransport and specificResourceType means transport all current inventory.
+                    const transportTask = new TransportResourceTask(serf, dropOffBuildingInstance); 
+                    
+                    this.tasks.push(transportTask); // Add to general task pool
+                    serf.assignTask(transportTask); // Assign immediately, serf state will change.
+                } else {
+                    console.warn(`SerfManager: Serf ${serf.id} has ${inventorySize} items but no drop-off building (Castle, Town Hall, Transporter Hut) found.`);
+                }
+            }
+        }
+
         // --- Existing Job/Task Assignment Logic (for non-task-system items) ---
         // Filter serfs that are STILL idle and have NO currentTask after the new task assignments
         const stillUnassignedIdleSerfs = this.serfs.filter(serf => 
             serf.currentState.name === SERF_ACTION_STATES.IDLE && 
-            !serf.currentTask && 
-            (!serf.job || (serf.job && serf.task === 'idle')) 
+            !serf.currentTask &&
+            (!serf.job || (serf.job && serf.task === 'idle')) // Legacy job check
         );
         
         const forestersAtHutReadyToPlant = stillUnassignedIdleSerfs.filter(serf => // Modified filter
@@ -197,11 +307,14 @@ class SerfManager {
             (!serf.task || serf.task === 'idle') // Old task string check for this specific logic
         );
         
-        // tryAssignBuildersToConstruction call is removed.
+        // Builders are now handled by the new Task system (ConstructBuildingTask).
+        // The old tryAssignBuildersToConstruction call is removed.
 
-        if (forestersAtHutReadyToPlant.length > 0) {
-            this.tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant);
-        }
+        // The following line is now obsolete as PlantSaplingTasks are created by createPlantSaplingTasks 
+        // and assigned through the generic task assignment loop.
+        // if (forestersAtHutReadyToPlant.length > 0) { 
+        //     this.tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant);
+        // }
 
         let candidatesForProfessionJobs = stillUnassignedIdleSerfs.filter(serf => { // Modified filter
             return serf.serfType !== SERF_PROFESSIONS.BUILDER && // Builders now handled by Task system
@@ -225,58 +338,132 @@ class SerfManager {
         }
     }
 
-    // tryAssignBuildersToConstruction method is removed.
-
-    tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) {
-        if (!this.game || !this.game.gameMap || !this.game.natureManager) {
-            console.error("SerfManager: Game instance, Game's MapManager (gameMap), or Game's NatureManager not properly initialized or available.");
+    createProcessItemsTasks() {
+        if (!this.constructionManager || !this.constructionManager.placedBuildings) {
+            // console.warn("SerfManager: ConstructionManager not available for creating ProcessItemsTasks.");
             return;
         }
-        console.log(`SerfManager: Attempting to assign planting tasks to ${forestersAtHutReadyToPlant.length} foresters.`);
 
-        for (const forester of forestersAtHutReadyToPlant) {
-            console.log(`SerfManager: Checking forester ${forester.id} (Profession: ${forester.profession}, SerfType: ${forester.serfType}) for planting task.`);
-
-            console.log(`SerfManager: Forester ${forester.id} - plantedSaplingsCount: ${forester.plantedSaplingsCount}, maxPlantedSaplings: ${forester.maxPlantedSaplings}`);
-            if (forester.plantedSaplingsCount >= forester.maxPlantedSaplings) {
-                console.log(`SerfManager: Forester ${forester.id} has reached max saplings (${forester.plantedSaplingsCount}/${forester.maxPlantedSaplings}). Skipping.`);
-                continue; 
+        for (const building of this.constructionManager.placedBuildings) {
+            if (!building.isConstructed || !building.buildingTypeData || 
+                !building.buildingTypeData.consumesMaterials || building.buildingTypeData.consumesMaterials.length === 0 ||
+                !building.buildingTypeData.producesMaterials || building.buildingTypeData.producesMaterials.length === 0 ||
+                !building.buildingTypeData.jobProfession) {
+                continue; // Skip if not a processing building or no profession defined
             }
 
-            const hut = forester.job;
-            if (!hut || hut.gridX == null || hut.gridZ == null) {
-                console.warn(`SerfManager: Forester ${forester.id} has no valid hut assigned or hut has no gridX/gridZ position. Hut:`, hut);
+            // Check if a ProcessItemsTask for this building already exists and is pending or active
+            const existingTaskForBuilding = this.tasks.find(task =>
+                task instanceof ProcessItemsTask &&
+                task.building === building &&
+                (task.status === TASK_STATUS.PENDING || task.status === TASK_STATUS.ACTIVE)
+            );
+
+            if (existingTaskForBuilding) {
+                // console.log(`SerfManager: Building ${building.name} (${building.id}) already has a ProcessItemsTask.`);
                 continue;
             }
-            console.log(`SerfManager: Forester ${forester.id} is at hut ${hut.info.name} (Grid: ${hut.gridX}, ${hut.gridZ}). Searching for planting spot within radius ${FORESTER_PLANTING_RADIUS}.`);
+
+            // Check if the building itself can process (has inputs, has space for outputs)
+            // These checks are also in ProcessItemsTask.canBeExecutedBy, but good to check early.
+            if (!building.hasSufficientInputMaterials() || !building.hasSpaceForOutput()) {
+                // console.log(`SerfManager: Building ${building.name} (${building.id}) cannot process (input/output issue).`);
+                continue;
+            }
+            
+            // Check if there's an assigned worker available (IDLE, correct profession, at the building or can move)
+            // This is a simplified check. The task's canBeExecutedBy will be more thorough.
+            const hasPotentialWorker = this.serfs.some(serf => 
+                serf.jobBuilding === building && 
+                serf.serfType === building.buildingTypeData.jobProfession &&
+                (serf.currentState.name === SERF_ACTION_STATES.IDLE || serf.currentState.name === SERF_ACTION_STATES.WORKING_AT_BUILDING) && // Serf might already be at building and idle
+                !serf.currentTask
+            );
+
+            if (!hasPotentialWorker) {
+                // Check if there is any serf with the correct profession that is idle and could be assigned to this building
+                const canAssignWorkerToBuilding = this.serfs.some(serf => 
+                    serf.serfType === building.buildingTypeData.jobProfession &&
+                    serf.currentState.name === SERF_ACTION_STATES.IDLE &&
+                    !serf.jobBuilding && // Not currently assigned to any job building
+                    !serf.currentTask
+                );
+                if (!canAssignWorkerToBuilding && building.workers.length === 0) {
+                     // console.log(`SerfManager: Building ${building.name} (${building.id}) has no potential or assignable worker for processing.`);
+                    continue;
+                }
+            }
+
+            // console.log(`SerfManager: Creating ProcessItemsTask for building ${building.name} (${building.id}).`);
+            const newTask = new ProcessItemsTask(building);
+            this.tasks.push(newTask);
+        }
+    }
+
+    createPlantSaplingTasks() {
+        if (!this.game || !this.game.gameMap || !this.game.natureManager || !this.constructionManager) {
+            // console.error("SerfManager: Game instance, GameMap, NatureManager, or ConstructionManager not properly initialized for creating PlantSaplingTasks.");
+            return;
+        }
+
+        const idleForesters = this.serfs.filter(serf =>
+            serf.serfType === SERF_PROFESSIONS.FORESTER &&
+            serf.currentState.name === SERF_ACTION_STATES.IDLE &&
+            !serf.currentTask && // Not already having a task
+            serf.jobBuilding // Must be assigned to a Forester's Hut
+        );
+
+        for (const forester of idleForesters) {
+            const forestersHut = forester.jobBuilding; // This is the Building instance
+            if (!forestersHut || forestersHut.buildingTypeData.key !== 'FORESTERS_HUT' || !forestersHut.isConstructed) {
+                continue; // Skip if not a valid, constructed Forester's Hut
+            }
+
+            // Check if a PlantSaplingTask originating from this hut is already pending or active for this forester
+            const existingTaskForForester = this.tasks.find(task =>
+                task instanceof PlantSaplingTask &&
+                task.forestersHut === forestersHut &&
+                (task.status === TASK_STATUS.PENDING || (task.status === TASK_STATUS.ACTIVE && task.assignedSerf === forester))
+            );
+            if (existingTaskForForester) {
+                // console.log(`SerfManager: Forester ${forester.id} already has/is considered for a PlantSaplingTask from hut ${forestersHut.id}.`);
+                continue;
+            }
+            
+            // Check planting limit for the forester
+            if (forester.plantedSaplingsCount >= (forester.maxPlantedSaplings)) { // Simplified this line
+                 // console.log(`SerfManager: Forester ${forester.id} has reached max saplings (${forester.plantedSaplingsCount}/${forester.maxPlantedSaplings}).`);
+                continue;
+            }
 
 
-            const hutGridX = hut.gridX;
-            const hutGridZ = hut.gridZ; 
+            const hutGridX = forestersHut.gridX;
+            const hutGridZ = forestersHut.gridZ;
             let bestTargetTile = null;
 
+            // Search for a suitable tile
             for (let r = -FORESTER_PLANTING_RADIUS; r <= FORESTER_PLANTING_RADIUS; r++) {
                 for (let c = -FORESTER_PLANTING_RADIUS; c <= FORESTER_PLANTING_RADIUS; c++) {
-                    if (r === 0 && c === 0) continue; 
+                    if (r === 0 && c === 0) continue;
 
                     const currentTileX = hutGridX + c;
                     const currentTileZ = hutGridZ + r;
 
-                    if (currentTileX >= 0 && currentTileX < this.gameMap.width && currentTileZ >= 0 && currentTileZ < this.gameMap.height) {
-                        const tile = this.gameMap.grid[currentTileZ][currentTileX];
-                        const tileResource = tile.resource ? tile.resource.type : 'none';
+                    if (this.game.gameMap.isValidTile(currentTileX, currentTileZ)) {
+                        const tile = this.game.gameMap.grid[currentTileZ][currentTileX];
                         
-                        const isOccupied = this.isTileOccupiedForPlanting(currentTileX, currentTileZ);
+                        // Check if another PlantSaplingTask is already targeting this tile
+                        const isTileTargetedByOtherPlantTask = this.tasks.some(task =>
+                            task instanceof PlantSaplingTask &&
+                            task.targetTile &&
+                            task.targetTile.x === currentTileX &&
+                            task.targetTile.y === currentTileZ &&
+                            (task.status === TASK_STATUS.PENDING || task.status === TASK_STATUS.ACTIVE)
+                        );
 
-                        if (tile.terrainType === TERRAIN_TYPES.GRASSLAND && !tile.resource && !isOccupied) {
+                        if (tile.terrainType === 'Grassland' && !tile.resource && !tile.building && !isTileTargetedByOtherPlantTask) {
                             bestTargetTile = { x: currentTileX, y: currentTileZ };
-                            console.log(`SerfManager: Forester ${forester.id} found suitable tile (${currentTileX}, ${currentTileZ}).`);
-                            break; 
-                        } else {
-                            let skipReason = [];
-                            if (tile.terrainType !== TERRAIN_TYPES.GRASSLAND) skipReason.push(`Not Grassland (is ${tile.terrainType})`);
-                            if (tile.resource) skipReason.push(`Has resource (${tileResource})`);
-                            if (isOccupied) skipReason.push("Occupied for planting");
+                            break;
                         }
                     }
                 }
@@ -284,40 +471,50 @@ class SerfManager {
             }
 
             if (bestTargetTile) {
-                console.log(`SerfManager: Forester ${forester.id} from hut ${hut.info.name} assigned to plant sapling at (${bestTargetTile.x}, ${bestTargetTile.y}).`);
-                forester.setTask('plant_sapling', { 
-                    targetTile: bestTargetTile,
-                });
+                // console.log(`SerfManager: Creating PlantSaplingTask for Forester ${forester.id} from hut ${forestersHut.id} to tile (${bestTargetTile.x}, ${bestTargetTile.y}).`);
+                const newTask = new PlantSaplingTask(bestTargetTile, forestersHut);
+                this.tasks.push(newTask);
             } else {
-                console.log(`SerfManager: Forester ${forester.id} could not find a suitable spot to plant a sapling near ${hut.info.name} (Hut at ${hutGridX},${hutGridZ}, Radius ${FORESTER_PLANTING_RADIUS}).`);
+                // console.log(`SerfManager: Forester ${forester.id} could not find a suitable spot to plant a sapling near hut ${forestersHut.id}.`);
             }
         }
     }
 
-    isTileOccupiedForPlanting(tileX, tileY) {
-        // Check if any other serf is already tasked to plant at this exact tile
-        for (const serf of this.serfs) {
-            if (serf.task === 'plant_sapling' && serf.taskDetails && serf.taskDetails.targetTile) {
-                if (serf.taskDetails.targetTile.x === tileX && serf.taskDetails.targetTile.y === tileY) {
-                    return true; 
-                }
-            }
-            if (serf.state === SERF_ACTION_STATES.MOVING_TO_TARGET_TILE && serf.targetTile) {
-                 if (serf.targetTile.x === tileX && serf.targetTile.y === tileY) {
-                    return true;
+
+    // tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) { // THIS METHOD IS NOW OBSOLETE AND SHOULD BE REMOVED
+    //     // ... (keep content for now if there's any part of it you want to refer to, but mark as obsolete)
+    //     console.warn("SerfManager: tryAssignForestersToPlantSaplings is obsolete and should be removed. PlantSaplingTasks are now created by createPlantSaplingTasks and assigned generically.");
+    //     return; 
+    //     // ... OLD LOGIC BELOW ...
+    //     // if (!this.game || !this.game.gameMap || !this.game.natureManager) {
+    //     // ... (rest of the old method's code)
+    // }
+
+    isTileOccupiedForPlanting(tileX, tileY, serfIdToExclude = null) {
+        // Check if any other serf (excluding serfIdToExclude) is ALREADY assigned a PlantSaplingTask targeting this tile
+        for (const task of this.tasks) {
+            if (task instanceof PlantSaplingTask && task.targetTile && task.targetTile.x === tileX && task.targetTile.y === tileY) {
+                if (task.status === TASK_STATUS.ACTIVE || task.status === TASK_STATUS.PENDING) {
+                    if (serfIdToExclude && task.assignedSerf && task.assignedSerf.id === serfIdToExclude) {
+                        // This is the serf we are trying to assign the task to, so don't count its own potential task.
+                        continue;
+                    }
+                    // console.log(`Tile (${tileX},${tileY}) targeted by existing PlantSaplingTask ${task.id}`);
+                    return true; // Tile is targeted by another plant task
                 }
             }
         }
-        // Check if a resource (like another sapling or tree) already exists on the tile
-        // This requires this.gameMap to be available and initialized.
+
+        // Check for existing resources or buildings on the tile
         if (this.gameMap && this.gameMap.grid[tileY] && this.gameMap.grid[tileY][tileX]) {
-            if (this.gameMap.grid[tileY][tileX].resource) {
-                return true; // Tile already has a resource
+            const tile = this.gameMap.grid[tileY][tileX];
+            if (tile.resource || tile.building) { // Check for any resource or building
+                // console.log(`Tile (${tileX},${tileY}) occupied by resource: ${tile.resource ? tile.resource.type : 'N/A'} or building: ${tile.building ? tile.building.type : 'N/A'}`);
+                return true; 
             }
         } else {
-            // This case should ideally not happen if tileX, tileY are within bounds
             console.warn(`isTileOccupiedForPlanting: Tile (${tileX}, ${tileY}) is out of bounds or gameMap not ready.`);
-            return true; // Treat as occupied if map data is inaccessible
+            return true; 
         }
         return false;
     }
