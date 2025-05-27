@@ -40,47 +40,33 @@ class ToolmakersWorkshop extends Building {
         buildingMesh.receiveShadow = true;
         modelGroup.add(buildingMesh);
 
-        // Roof: Sloped cuboid roof (simple single box for sloped effect)
-        // For a simple sloped roof, we can use a single BoxGeometry and rotate it,
-        // or use two thinner boxes. Given "sloped cuboid roof", a single box is simpler.
-        // Let's make a slightly larger, taller box and place it appropriately.
+        // Roof: Sloped cuboid roof
         const roofOverhang = TILE_SIZE * 0.05;
-        const roofThickness = TILE_SIZE * 0.15;
-        const roofMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(buildingWidth + roofOverhang, roofThickness, buildingDepth + roofOverhang),
-            new THREE.MeshPhongMaterial({ color: roofColor })
-        );
-        roofMesh.position.y = buildingHeight + roofThickness / 2; 
-        // To make it appear sloped, one could rotate it slightly, or use a more complex geometry.
-        // For simplicity, keeping it as a flat cuboid on top, slightly larger.
-        // If a visible slope is desired, two rotated boxes or a custom shape would be needed.
-        // The original code used two thin boxes to form a pitched roof, let's replicate that.
-
-        const pitchedRoofHeight = TILE_SIZE * 0.25;
+        const roofThickness = TILE_SIZE * 0.15; // Thickness of each roof panel
+        const pitchedRoofHeight = TILE_SIZE * 0.25; // Height of the peak from the building top
         const roofPieceWidth = buildingWidth + roofOverhang * 2;
-        const roofPieceDepth = (buildingDepth / 2) + roofOverhang;
+        const roofPieceDepth = (buildingDepth / Math.sqrt(2)) / 2 + roofOverhang; // Adjusted for a more typical pitched roof appearance
         const roofMaterial = new THREE.MeshPhongMaterial({ color: roofColor });
 
         const roofSlope1Mesh = new THREE.Mesh(
             new THREE.BoxGeometry(roofPieceWidth, roofThickness, roofPieceDepth),
             roofMaterial
         );
-        // Position and rotate to form one side of the pitched roof
-        roofSlope1Mesh.position.set(0, buildingHeight + pitchedRoofHeight * 0.5 - roofThickness * 0.2, buildingDepth / 4);
-        roofSlope1Mesh.rotation.x = -Math.PI / 7; // Adjust angle for desired slope
+        roofSlope1Mesh.position.set(0, buildingHeight + pitchedRoofHeight * 0.45 - roofThickness * 0.5, buildingDepth / 4 * 0.7);
+        roofSlope1Mesh.rotation.x = -Math.PI / 6; // Steeper angle for a more pronounced slope
         roofSlope1Mesh.castShadow = true;
+        roofSlope1Mesh.receiveShadow = true; // Roofs should also receive shadows
         modelGroup.add(roofSlope1Mesh);
 
         const roofSlope2Mesh = new THREE.Mesh(
             new THREE.BoxGeometry(roofPieceWidth, roofThickness, roofPieceDepth),
             roofMaterial
         );
-        // Position and rotate to form the other side
-        roofSlope2Mesh.position.set(0, buildingHeight + pitchedRoofHeight * 0.5 - roofThickness * 0.2, -buildingDepth / 4);
-        roofSlope2Mesh.rotation.x = Math.PI / 7; // Adjust angle for desired slope
+        roofSlope2Mesh.position.set(0, buildingHeight + pitchedRoofHeight * 0.45 - roofThickness * 0.5, -buildingDepth / 4 * 0.7);
+        roofSlope2Mesh.rotation.x = Math.PI / 6; // Steeper angle
         roofSlope2Mesh.castShadow = true;
+        roofSlope2Mesh.receiveShadow = true; // Roofs should also receive shadows
         modelGroup.add(roofSlope2Mesh);
-
 
         // Anvil (Optional): T-shaped structure
         const anvilBaseWidth = TILE_SIZE * 0.1;
@@ -110,8 +96,6 @@ class ToolmakersWorkshop extends Building {
         anvilTopMesh.receiveShadow = true;
         modelGroup.add(anvilTopMesh);
         
-        // The modelGroup is already centered at (0,0,0) by default.
-        // Its final position is set in the constructor.
         return modelGroup;
     }
 }

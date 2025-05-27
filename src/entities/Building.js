@@ -116,6 +116,21 @@ class Building {
     }
 
     /**
+     * Sets castShadow and receiveShadow to true for all meshes in the object.
+     * @param {THREE.Object3D} object3D - The object to traverse.
+     * @protected
+     */
+    _setShadowsRecursive(object3D) {
+        if (!object3D) return;
+        object3D.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+    }
+
+    /**
      * Places the building's model onto the game map at its grid coordinates.
      * Adds the model to the specified parent group.
      * @param {THREE.Group} buildingsGroup - The parent group in the scene to add this building's model to.
@@ -125,6 +140,10 @@ class Building {
             console.error(`Building ${this.id} (${this.name}): Model not created before placing.`);
             return;
         }
+
+        // Ensure all parts of the model are set to cast and receive shadows
+        this._setShadowsRecursive(this.model);
+
         // Convert 0-indexed grid coordinates to centered world coordinates
         const worldX = (this.gridX - (this.gameMap.width - 1) / 2) * TILE_SIZE;
         const worldZ = (this.gridZ - (this.gameMap.height - 1) / 2) * TILE_SIZE;
@@ -278,7 +297,10 @@ class Building {
     startConstruction(durationSeconds) {
         this.isConstructed = false;
         this.constructionEndTime = Date.now() + (durationSeconds * 1000);
-        this.setOpacity(0.5);
+        // this.setOpacity(0.5); // Opacity will be handled by a visual construction state/manager
+        if (this.model) {
+            this._setOpacityRecursive(this.model, 0.5);
+        }
         // console.log(`${this.name} (${this.id}) construction started. Will finish in ${durationSeconds}s.`);
     }
 
@@ -288,7 +310,10 @@ class Building {
      */
     finishConstruction() {
         this.isConstructed = true;
-        this.setOpacity(1.0);
+        // this.setOpacity(1.0); // Opacity will be handled by a visual construction state/manager
+        if (this.model) {
+            this._setOpacityRecursive(this.model, 1.0);
+        }
         this.lastProductionTime = Date.now();
         this.lastFoodCheckTime = Date.now();
         console.log(`${this.name} (${this.id}) construction complete!`);
@@ -301,23 +326,33 @@ class Building {
      */
     setOpacity(opacity) {
         if (this.model) {
-            this.model.traverse((child) => {
-                if (child.isMesh) {
-                    // Ensure material is compatible with opacity changes
-                    if (Array.isArray(child.material)) {
-                        child.material.forEach(mat => {
-                            mat.transparent = opacity < 1;
-                            mat.opacity = opacity;
-                            mat.needsUpdate = true;
-                        });
-                    } else {
-                        child.material.transparent = opacity < 1;
-                        child.material.opacity = opacity;
-                        child.material.needsUpdate = true;
-                    }
-                }
-            });
+            this._setOpacityRecursive(this.model, opacity);
         }
+    }
+
+    /**
+     * Recursively sets opacity on all materials of meshes in the object.
+     * @param {THREE.Object3D} object3D
+     * @param {number} opacity
+     * @protected
+     */
+    _setOpacityRecursive(object3D, opacity) {
+        if (!object3D) return;
+        object3D.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(material => {
+                        material.transparent = opacity < 1.0;
+                        material.opacity = opacity;
+                        material.needsUpdate = true;
+                    });
+                } else {
+                    child.material.transparent = opacity < 1.0;
+                    child.material.opacity = opacity;
+                    child.material.needsUpdate = true;
+                }
+            }
+        });
     }
 
     /**
