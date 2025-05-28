@@ -449,7 +449,12 @@ class UIManager {
         }
 
         this.buildingListPanelContent.innerHTML = '';
-        const buildings = this.constructionManager.placedBuildings.concat(this.constructionManager.buildingsUnderConstruction);
+        // Combine all relevant building lists from ConstructionManager
+        const buildings = [
+            ...this.constructionManager.placedBuildings,
+            ...this.constructionManager.activeConstructions,
+            ...this.constructionManager.constructionQueue
+        ];
 
         if (buildings.length === 0) {
             const noBuildingsMessage = document.createElement('p');
@@ -463,11 +468,24 @@ class UIManager {
 
         // Group buildings by type for better display
         const buildingsByType = buildings.reduce((acc, building) => {
-            const typeName = building.info.name || building.type;
-            if (!acc[typeName]) {
-                acc[typeName] = [];
+            // Check if building and building.info are defined
+            if (building && building.info && building.info.name) {
+                const typeName = building.info.name || building.type; // Fallback to building.type if name is somehow missing
+                if (!acc[typeName]) {
+                    acc[typeName] = [];
+                }
+                acc[typeName].push(building);
+            } else if (building && building.type) {
+                // Fallback if info or info.name is missing, but type exists
+                const typeName = building.type;
+                if (!acc[typeName]) {
+                    acc[typeName] = [];
+                }
+                acc[typeName].push(building);
+                console.warn(`UIManager: Building with ID ${building.id || 'N/A'} (Type: ${building.type}) is missing 'info.name'. Grouping by type.`);
+            } else {
+                console.warn("UIManager: Encountered a building object without 'info' or 'type' property.", building);
             }
-            acc[typeName].push(building);
             return acc;
         }, {});
 
@@ -483,9 +501,12 @@ class UIManager {
                 buildingGroup.forEach(building => {
                     const li = document.createElement('li');
                     let status = building.isConstructed ? 'Completed' : 'Constructing';
-                    li.textContent = `${building.info.name} (ID: ${building.model.uuid.substring(0,6)}) - ${status}`;
+                    // Ensure building.info and building.info.name exist before accessing
+                    const displayName = (building.info && building.info.name) ? building.info.name : (building.type || 'Unknown Building');
+                    const displayId = (building.model && building.model.uuid) ? building.model.uuid.substring(0,6) : (building.id || 'N/A');
+                    li.textContent = `${displayName} (ID: ${displayId}) - ${status}`;
                     li.classList.add('building-list-item');
-                    li.dataset.buildingId = building.model.uuid;
+                    li.dataset.buildingId = (building.model && building.model.uuid) ? building.model.uuid : '';
 
                     li.addEventListener('click', () => {
                         // Reuse selectAndFocusSerf logic for focusing, adapt for buildings

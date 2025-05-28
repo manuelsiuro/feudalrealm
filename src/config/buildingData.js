@@ -10,7 +10,8 @@ export const BUILDING_DATA = {
         name: 'Castle',
         cost: {},
         tier: 0,
-        maxHealth: 2000, // Added maxHealth
+        constructionTime: 0, // Already has constructionTime
+        maxHealth: 2000,
         jobSlots: 0,
         // Castle acts as a global drop-off, so its maxStock reflects that.
         maxStock: { 
@@ -31,7 +32,8 @@ export const BUILDING_DATA = {
         name: "Builder's Hut",
         cost: { [RESOURCE_TYPES.WOOD]: 5 },
         tier: 1,
-        maxHealth: 100, // Added maxHealth
+        constructionTime: 5000, // Example time in ms
+        maxHealth: 100,
         jobSlots: 3,
         jobProfession: SERF_PROFESSIONS.BUILDER,
         maxStock: { default: 10 }, // For small amounts of materials builders might temporarily hold
@@ -42,6 +44,7 @@ export const BUILDING_DATA = {
         name: "Woodcutter's Hut",
         cost: { [RESOURCE_TYPES.WOOD]: 20 },
         tier: 1,
+        constructionTime: 6000, // Example time in ms
         maxHealth: 150, // Added maxHealth
         producesResource: RESOURCE_TYPES.WOOD, // Simple direct production
         productionIntervalMs: 10000,         // Interval for simple production
@@ -59,6 +62,7 @@ export const BUILDING_DATA = {
         name: "Forester's Hut",
         cost: { [RESOURCE_TYPES.WOOD]: 15 },
         tier: 1,
+        constructionTime: 4000, // Example time in ms
         maxHealth: 120, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.FORESTER,
@@ -73,6 +77,7 @@ export const BUILDING_DATA = {
         name: "Transporter's Hut",
         cost: { [RESOURCE_TYPES.WOOD]: 5 },
         tier: 1,
+        constructionTime: 3000, // Example time in ms
         maxHealth: 100, // Added maxHealth
         jobSlots: 5,
         jobProfession: SERF_PROFESSIONS.TRANSPORTER,
@@ -84,6 +89,7 @@ export const BUILDING_DATA = {
         name: 'Quarry',
         cost: { [RESOURCE_TYPES.WOOD]: 25 },
         tier: 1,
+        constructionTime: 8000, // Example time in ms
         maxHealth: 180, // Added maxHealth
         producesResource: RESOURCE_TYPES.STONE, // Simple direct production
         productionIntervalMs: 12000,        // Interval for simple production
@@ -101,6 +107,7 @@ export const BUILDING_DATA = {
         name: "Fisherman's Hut",
         cost: { [RESOURCE_TYPES.WOOD]: 15 },
         tier: 1,
+        constructionTime: 4500, // Example time in ms
         maxHealth: 120, // Added maxHealth
         producesResource: RESOURCE_TYPES.FISH, // Simple direct production
         productionIntervalMs: 18000,         // Interval for simple production
@@ -115,6 +122,7 @@ export const BUILDING_DATA = {
         name: "Geologist's Hut",
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 5 },
         tier: 1,
+        constructionTime: 7000, // Example time in ms
         maxHealth: 100, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GEOLOGIST,
@@ -127,6 +135,7 @@ export const BUILDING_DATA = {
         name: 'Blacksmith',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 10 },
         tier: 2,
+        constructionTime: 10000, // Example time in ms
         maxHealth: 250, // Added maxHealth
         // This Blacksmith produces TOOLS_AXE via processing
         consumesMaterials: [{resource: RESOURCE_TYPES.IRON_BAR, quantity: 1}], 
@@ -146,6 +155,7 @@ export const BUILDING_DATA = {
         name: 'Bakery',
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 5 },
         tier: 2,
+        constructionTime: 9000, // Example time in ms
         maxHealth: 200, // Added maxHealth
         consumesMaterials: [ 
             { resource: RESOURCE_TYPES.FLOUR, quantity: 1 },
@@ -166,6 +176,7 @@ export const BUILDING_DATA = {
         name: 'Pig Farm',
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 10 },
         tier: 2,
+        constructionTime: 7500, // Example time in ms
         maxHealth: 180, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 1 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.PIG, quantity: 1 }], 
@@ -184,6 +195,7 @@ export const BUILDING_DATA = {
         name: 'Farm',
         cost: { [RESOURCE_TYPES.WOOD]: 20 }, 
         tier: 1,
+        constructionTime: 5500, // Example time in ms
         maxHealth: 150, // Added maxHealth
         producesResource: RESOURCE_TYPES.GRAIN, // Simple direct production
         productionIntervalMs: 25000,         // Interval for simple production
@@ -199,6 +211,7 @@ export const BUILDING_DATA = {
         name: 'Iron Mine',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
         tier: 2,
+        constructionTime: 12000, // Example time in ms
         maxHealth: 220, // Added maxHealth
         producesResource: RESOURCE_TYPES.IRON_ORE, // Simple direct production
         productionIntervalMs: 20000,         // Interval for simple production
@@ -217,6 +230,7 @@ export const BUILDING_DATA = {
         name: 'Coal Mine',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
         tier: 2,
+        constructionTime: 11000, // Example time in ms
         maxHealth: 220, // Added maxHealth
         producesResource: RESOURCE_TYPES.COAL_ORE, // Simple direct production
         productionIntervalMs: 18000,        // Interval for simple production
@@ -235,6 +249,7 @@ export const BUILDING_DATA = {
         name: 'Gold Mine',
         cost: { [RESOURCE_TYPES.WOOD]: 40, [RESOURCE_TYPES.STONE]: 25 },
         tier: 3,
+        constructionTime: 15000, // Example time in ms
         maxHealth: 280, // Added maxHealth
         producesResource: RESOURCE_TYPES.GOLD_ORE, // Simple direct production
         productionIntervalMs: 30000,        // Interval for simple production
@@ -253,6 +268,7 @@ export const BUILDING_DATA = {
         name: 'Sawmill',
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 10 }, 
         tier: 2,
+        constructionTime: 9500, // Example time in ms
         maxHealth: 200, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.WOOD, quantity: 1 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.PLANKS, quantity: 2 }], 
@@ -271,6 +287,7 @@ export const BUILDING_DATA = {
         name: 'Windmill',
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 15 }, 
         tier: 2,
+        constructionTime: 8500, // Example time in ms
         maxHealth: 180, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 2 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1 }], 
@@ -286,6 +303,7 @@ export const BUILDING_DATA = {
         name: 'Slaughterhouse',
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 10 },
         tier: 2,
+        constructionTime: 7000, // Example time in ms
         maxHealth: 160, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.PIG, quantity: 1 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.MEAT, quantity: 2 }], 
@@ -301,6 +319,7 @@ export const BUILDING_DATA = {
         name: 'Iron Smelter',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 20 }, 
         tier: 2,
+        constructionTime: 13000, // Example time in ms
         maxHealth: 250, // Added maxHealth
         consumesMaterials: [ 
             { resource: RESOURCE_TYPES.IRON_ORE, quantity: 2 },
@@ -321,6 +340,7 @@ export const BUILDING_DATA = {
         name: "Toolmaker's Workshop",
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 10 }, 
         tier: 3,
+        constructionTime: 14000, // Example time in ms
         maxHealth: 280, // Added maxHealth
         // Production of specific tools will be handled by more complex logic tied to UI/player choice
         // For now, `consumesMaterials` and `producesMaterials` can be empty or define a default tool.
@@ -350,6 +370,7 @@ export const BUILDING_DATA = {
         name: "Goldsmith's Mint",
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 20 }, 
         tier: 3,
+        constructionTime: 16000, // Example time in ms
         maxHealth: 260, // Added maxHealth
         consumesMaterials: [ 
             { resource: RESOURCE_TYPES.GOLD_ORE, quantity: 1 },
@@ -367,6 +388,7 @@ export const BUILDING_DATA = {
         name: 'Blacksmith Armory', 
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 }, 
         tier: 3,
+        constructionTime: 17000, // Example time in ms
         maxHealth: 300, // Added maxHealth
         // Similar to Toolmaker, specific production (swords, shields) will be chosen by player.
         jobSlots: 1,
@@ -384,6 +406,7 @@ export const BUILDING_DATA = {
         name: 'Guard Hut',
         cost: { [RESOURCE_TYPES.WOOD]: 15, [RESOURCE_TYPES.STONE]: 5 }, 
         tier: 1,
+        constructionTime: 3500, // Example time in ms
         maxHealth: 120, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GUARD, // Assuming GUARD profession
@@ -395,6 +418,7 @@ export const BUILDING_DATA = {
         name: 'Watchtower',
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 15 },
         tier: 2,
+        constructionTime: 6500, // Example time in ms
         maxHealth: 180, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GUARD, // Assuming GUARD profession
@@ -407,6 +431,7 @@ export const BUILDING_DATA = {
         name: 'Barracks/Fortress',
         cost: { [RESOURCE_TYPES.STONE]: 100, [RESOURCE_TYPES.WOOD]: 50 }, 
         tier: 3,
+        constructionTime: 20000, // Example time in ms
         maxHealth: 500, // Added maxHealth
         jobSlots: 5, // For training or stationing units
         // jobProfession: SERF_PROFESSIONS.KNIGHT, // Or trainer
@@ -420,7 +445,8 @@ export const BUILDING_DATA = {
         name: 'Warehouse/Storehouse',
         cost: { [RESOURCE_TYPES.WOOD]: 50, [RESOURCE_TYPES.STONE]: 20 },
         tier: 1, // Should be accessible early
-        maxHealth: 300, // Added maxHealth
+        constructionTime: 7000, // Example time in ms
+        maxHealth: 300,
         // This building primarily increases global storage, not local job-based storage.
         // The `storageCapacityIncrease` is handled by ResourceManager.
         // Building.js `maxStock` is for its own operational inventory, which is minimal here.
@@ -442,6 +468,7 @@ export const BUILDING_DATA = {
         name: 'Harbor',
         cost: { [RESOURCE_TYPES.WOOD]: 75, [RESOURCE_TYPES.STONE]: 25 },
         tier: 3,
+        constructionTime: 18000, // Example time in ms
         maxHealth: 350, // Added maxHealth
         jobSlots: 2, 
         // jobProfession: SERF_PROFESSIONS.TRADER, // Add if exists
@@ -453,6 +480,7 @@ export const BUILDING_DATA = {
         name: 'Marketplace',
         cost: { [RESOURCE_TYPES.WOOD]: 40, [RESOURCE_TYPES.STONE]: 10 },
         tier: 2,
+        constructionTime: 8000, // Example time in ms
         maxHealth: 200, // Added maxHealth
         jobSlots: 0, // Or 1 for a market tender if that's a role
         maxStock: { default: 100 }, // For various goods available at market
@@ -463,18 +491,20 @@ export const BUILDING_DATA = {
         name: 'Church/Temple',
         cost: { [RESOURCE_TYPES.STONE]: 150, [RESOURCE_TYPES.WOOD]: 50, [RESOURCE_TYPES.GOLD_BARS]: 10 },
         tier: 3,
+        constructionTime: 22000, // Example time in ms
         maxHealth: 400, // Added maxHealth
         jobSlots: 1, // Example (Priest)
         // jobProfession: SERF_PROFESSIONS.PRIEST, // If exists
         maxStock: { default: 10 },
         outputBufferCapacity: { default: 0 }
     },
-    SHIPYARD: { 
+    SHIPYARD: {
         key: 'SHIPYARD',
         name: 'Shipyard',
-        cost: { [RESOURCE_TYPES.WOOD]: 100, [RESOURCE_TYPES.PLANKS]: 50 },
+        cost: { [RESOURCE_TYPES.WOOD]: 100, [RESOURCE_TYPES.STONE]: 50 },
         tier: 3,
-        maxHealth: 300, // Added maxHealth
+        constructionTime: 25000, // Example time in ms
+        maxHealth: 320, // Added maxHealth
         // Produces ships (special logic, not simple resource)
         jobSlots: 2, // Example
         // jobProfession: SERF_PROFESSIONS.SHIPWRIGHT, // If exists
@@ -486,6 +516,7 @@ export const BUILDING_DATA = {
         name: 'University/Library',
         cost: { [RESOURCE_TYPES.STONE]: 120, [RESOURCE_TYPES.WOOD]: 60, [RESOURCE_TYPES.GOLD_BARS]: 20 },
         tier: 4,
+        constructionTime: 20000, // Added constructionTime
         maxHealth: 350, // Added maxHealth
         // Produces research/upgrades (special logic)
         jobSlots: 1, // Example (Scholar)
@@ -498,6 +529,7 @@ export const BUILDING_DATA = {
         name: 'Siege Workshop',
         cost: { [RESOURCE_TYPES.WOOD]: 70, [RESOURCE_TYPES.STONE]: 30, [RESOURCE_TYPES.IRON_BARS]: 20 },
         tier: 4,
+        constructionTime: 20000, // Added constructionTime
         maxHealth: 280, // Added maxHealth
         // Produces siege engines (special logic)
         jobSlots: 1, // Example
@@ -510,6 +542,7 @@ export const BUILDING_DATA = {
         name: 'Treasury/Mint',
         cost: { [RESOURCE_TYPES.STONE]: 100, [RESOURCE_TYPES.GOLD_BARS]: 50 },
         tier: 4,
+        constructionTime: 20000, // Added constructionTime
         maxHealth: 320, // Added maxHealth
         // Could produce coins or increase gold storage (special logic)
         jobSlots: 1, // Example (Mint Master)

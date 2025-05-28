@@ -13,6 +13,7 @@ import { TASK_STATUS } from './tasks/Task.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js';
 import resourceManager from './resourceManager.js';
 import { FORESTER_PLANTING_RADIUS } from '../config/unitConstants.js';
+import ReturnToJobBuildingTask from './tasks/ReturnToJobBuildingTask.js'; // Ensure this is imported
 
 class SerfManager {
     constructor(scene, gameMap, constructionManager, gameElementsGroup, game) {
@@ -38,15 +39,34 @@ class SerfManager {
         //this.spawnInitialSerfs();
     }
 
-    addConstructionTask(buildingInstance) {
+    addConstructionTask(buildingInstance, specificBuilderId = null) { // Added specificBuilderId
         // Ensure the building is not null and has an ID
         if (!buildingInstance || !buildingInstance.id) {
             console.error("SerfManager: Attempted to add construction task for invalid building instance.", buildingInstance);
             return;
         }
-        const newTask = new ConstructBuildingTask(buildingInstance);
-        this.tasks.push(newTask);
-        console.log(`SerfManager: Added new ConstructBuildingTask for ${buildingInstance.name} (ID: ${buildingInstance.id}). Total tasks: ${this.tasks.length}`);
+        // Pass this.scene to the ConstructBuildingTask constructor
+        const newTask = new ConstructBuildingTask(buildingInstance, this.scene); 
+        
+        if (specificBuilderId) {
+            const builder = this.getSerfById(specificBuilderId);
+            if (builder && builder.serfType === SERF_PROFESSIONS.BUILDER && builder.currentState.name === SERF_ACTION_STATES.IDLE && !builder.currentTask) {
+                console.log(`SerfManager: Assigning new ConstructBuildingTask for ${buildingInstance.name} (ID: ${buildingInstance.id}) directly to Builder ${specificBuilderId}.`);
+                builder.assignTask(newTask);
+                // Task is immediately assigned, so don't add to the general pool if successfully assigned.
+                // However, ConstructionManager might still want to track it via its activeConstructions list.
+                // For simplicity here, we assume direct assignment means it bypasses the general `this.tasks` queue for assignment phase.
+                // But it should still be known to the system. Let's add it to tasks for tracking, but it will be quickly ACTIVE.
+                this.tasks.push(newTask); 
+            } else {
+                console.warn(`SerfManager: Could not assign construction task directly to builder ${specificBuilderId}. Builder not found, not a builder, not idle, or already has a task. Adding to general queue.`);
+                this.tasks.push(newTask);
+            }
+        } else {
+            this.tasks.push(newTask);
+            console.log(`SerfManager: Added new ConstructBuildingTask for ${buildingInstance.name} (ID: ${buildingInstance.id}) to general task queue. Total tasks: ${this.tasks.length}`);
+        }
+        
         // Optional: Immediately try to assign tasks, or let the main assignJobsAndTasks loop handle it.
         // this.assignJobsAndTasks(); 
     }
@@ -227,6 +247,32 @@ class SerfManager {
         this.serfs.forEach(serf => {
             if (serf.update) { 
                 serf.update(deltaTime);
+            }
+
+            // After serf update, check if a builder has completed a construction task
+            // and needs to return to its hut.
+            if (serf.serfType === SERF_PROFESSIONS.BUILDER && 
+                serf.currentState.name === SERF_ACTION_STATES.IDLE && 
+                !serf.currentTask && // No new task picked up yet
+                serf.jobBuilding) { // Has a job building (Builder's Hut)
+                
+                // Check if the serf is NOT at its job building's location.
+                // The jobBuilding itself has gridX and gridZ.
+                if (serf.x !== serf.jobBuilding.gridX || serf.y !== serf.jobBuilding.gridZ) { // Use gridX/gridZ from building
+                    // Check if the serf already has a ReturnToJobBuildingTask or is already moving towards it.
+                    // This check might be redundant if serf.returnToJobBuilding() handles it,
+                    // but good for preventing duplicate task creation from SerfManager's side.
+                    const alreadyReturning = serf.currentTask instanceof ReturnToJobBuildingTask && 
+                                             serf.currentTask.jobBuilding === serf.jobBuilding;
+
+                    if (!alreadyReturning) {
+                        console.log(`SerfManager: Builder ${serf.id} is IDLE, has a hut (${serf.jobBuilding.name} at ${serf.jobBuilding.gridX},${serf.jobBuilding.gridZ}), and is not at it (${serf.x},${serf.y}). Commanding return.`);
+                        serf.returnToJobBuilding(); 
+                        // serf.returnToJobBuilding() will create and assign the ReturnToJobBuildingTask.
+                        // The task will then be managed by the serf's update cycle.
+                        // No need to add this specific task to this.tasks here, as it's directly assigned.
+                    }
+                }
             }
         });
         this.assignJobsAndTasks();
@@ -722,6 +768,14 @@ class SerfManager {
 
     getSerfById(serfId) {
         return this.serfs.find(serf => serf.id === serfId);
+    }
+
+    getAvailableSerfsByProfession(profession) {
+        return this.serfs.filter(serf => 
+            serf.serfType === profession && 
+            serf.currentState.name === SERF_ACTION_STATES.IDLE && 
+            !serf.currentTask
+        );
     }
 
     // onChange callback for UIManager to listen to serf changes

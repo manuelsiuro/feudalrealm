@@ -35,6 +35,8 @@ export const TASK_TYPES = {
     TRANSPORT_RESOURCE: 'TRANSPORT_RESOURCE',
     /** Task for a Forester to plant a sapling. */
     PLANT_SAPLING: 'PLANT_SAPLING',
+    /** Task for a serf to return to their assigned job building. */
+    RETURN_TO_JOB_BUILDING: 'RETURN_TO_JOB_BUILDING',
     /** Generic task for a serf to perform work at a building (e.g., production, research). */
     WORK_AT_BUILDING: 'WORK_AT_BUILDING', 
     /** Task for a serf to process items at a production building. */
@@ -53,6 +55,7 @@ export const TASK_PRIORITIES = {
     GATHER_RESOURCE_FROM_NODE: 5,
     TRANSPORT_RESOURCE: 7,
     PLANT_SAPLING: 3,
+    RETURN_TO_JOB_BUILDING: 3, // Added priority for returning
     WORK_AT_BUILDING: 4, // General work, might be overridden by specific processing tasks
     PROCESS_ITEMS: 6,    // Processing items is generally important
 };

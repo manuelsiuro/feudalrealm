@@ -1,87 +1,70 @@
-import SerfState from './SerfState.js';
 import { SERF_ACTION_STATES } from '../../config/serfActionStates.js';
-import { TASK_TYPES, TASK_STATUS } from '../../core/tasks/Task.js'; // Import TASK_TYPES and TASK_STATUS
-import { BUILDER_WORK_INTERVAL } from '../../config/unitConstants.js';
+import { TASK_STATUS } from '../../core/tasks/Task.js';
 
-class ConstructingBuildingState extends SerfState {
-    constructor() { 
-        super(SERF_ACTION_STATES.CONSTRUCTING_BUILDING); 
+/**
+ * @class ConstructingBuildingState
+ * @description Represents the state of a serf while they are at a construction site.
+ * The actual construction progress is handled by the Building instance itself and updated
+ * by the ConstructionManager. This state ensures the serf remains at the site
+ * and becomes idle once the building is complete or the task fails/is cancelled.
+ */
+class ConstructingBuildingState {
+    constructor() {
+        this.name = SERF_ACTION_STATES.CONSTRUCTING_BUILDING;
     }
 
+    /**
+     * Called when the serf enters this state.
+     * @param {Serf} serf - The serf entering this state.
+     */
     enter(serf) {
-        super.enter(serf);
-        serf.taskTimer = 0; // Reset or ensure timer is ready for construction work
-        
-        // Ensure the serf is at the correct location, otherwise move.
-        // This check is also in the old _handleConstructingBuildingState, good to have in enter too.
-        if (serf.currentTask && serf.currentTask.type === TASK_TYPES.CONSTRUCT_BUILDING) {
-            const targetBuilding = serf.currentTask.targetEntity;
-            if (!targetBuilding) {
-                console.warn(`${serf.id} (${serf.serfType}) in CONSTRUCTING_BUILDING but task has no targetEntity. Going IDLE.`);
-                serf.changeState(SERF_ACTION_STATES.IDLE);
-                return;
-            }
-            const entryPoint = targetBuilding.getEntryPointGridPosition();
-            if (serf.x !== entryPoint.x || serf.y !== entryPoint.z) {
-                console.log(`${serf.id} (${serf.serfType}) not at construction site ${targetBuilding.name}. Moving to (${entryPoint.x}, ${entryPoint.z}).`);
-                
-                // Use the Task's helper to move, which sets taskCallbackState
-                serf.currentTask._moveToLocation(serf, {x: entryPoint.x, y: entryPoint.z}, SERF_ACTION_STATES.CONSTRUCTING_BUILDING);
-                // The above line will change state to MOVING_TO_TARGET if path is found.
-                // If path is not found, _moveToLocation in Task.js might call task.onFail, which should make serf idle.
-            }
-        } else if (!serf.currentTask || serf.currentTask.type !== TASK_TYPES.CONSTRUCT_BUILDING) {
-            console.warn(`${serf.id} (${serf.serfType}) entered CONSTRUCTING_BUILDING without a valid construction task. Going IDLE.`);
-            serf.changeState(SERF_ACTION_STATES.IDLE);
-        }
+        console.log(`Serf ${serf.id} (${serf.serfType}) entering CONSTRUCTING_BUILDING state for building ${serf.currentTask && serf.currentTask.building ? serf.currentTask.building.name : 'Unknown'}.`);
+        // Serf should already be at the location, or the task's _moveToLocation handles it.
+        // No specific action needed here other than logging, as the serf just needs to "be present".
     }
 
+    /**
+     * Called every game tick to update the serf's state.
+     * @param {Serf} serf - The serf to update.
+     * @param {number} deltaTime - The time elapsed since the last update.
+     */
     execute(serf, deltaTime) {
-        if (!serf.currentTask || serf.currentTask.type !== TASK_TYPES.CONSTRUCT_BUILDING || serf.currentTask.status !== TASK_STATUS.ACTIVE) {
-            // console.warn(`${serf.id} (${serf.serfType}) in CONSTRUCTING_BUILDING without an active construction task. Going IDLE.`);
+        if (!serf.currentTask || !(serf.currentTask.constructor.name === 'ConstructBuildingTask')) {
+            console.warn(`Serf ${serf.id} is in CONSTRUCTING_BUILDING state but has no valid ConstructBuildingTask. Transitioning to IDLE.`);
             serf.changeState(SERF_ACTION_STATES.IDLE);
             return;
         }
 
-        const targetBuilding = serf.currentTask.targetEntity;
+        const task = serf.currentTask;
+        const building = task.building;
 
-        if (!targetBuilding) {
-            console.error(`${serf.id} (${serf.serfType}) in CONSTRUCTING_BUILDING: currentTask has no targetEntity. Task failing.`);
-            serf.currentTask.onFail(serf); // This will set serf.currentTask to null
+        // Check if the building is constructed (task is complete)
+        if (task.status === TASK_STATUS.COMPLETED) {
+            console.log(`Serf ${serf.id} (${serf.serfType}): Construction task for ${building.name} is COMPLETED. ConstructingBuildingState transitioning to IDLE.`);
+            serf.changeState(SERF_ACTION_STATES.IDLE);
+            return;
+        }
+
+        // Check if the task failed or was cancelled
+        if (task.status === TASK_STATUS.FAILED || task.status === TASK_STATUS.CANCELLED) {
+            console.log(`Serf ${serf.id} (${serf.serfType}): Construction task for ${building.name} is ${task.status}. ConstructingBuildingState transitioning to IDLE.`);
             serf.changeState(SERF_ACTION_STATES.IDLE);
             return;
         }
         
-        // Check if already at the target location (important if re-entering state or after a short move)
-        const entryPoint = targetBuilding.getEntryPointGridPosition();
+        const entryPoint = building.getEntryPointGridPosition();
         if (serf.x !== entryPoint.x || serf.y !== entryPoint.z) {
-            // console.log(`${serf.id} (${serf.serfType}) not at construction site ${targetBuilding.name} during execute. Re-initiating move.`);
-             // Task's _moveToLocation will set the correct next state upon arrival.
-            serf.currentTask._moveToLocation(serf, {x: entryPoint.x, y: entryPoint.z}, SERF_ACTION_STATES.CONSTRUCTING_BUILDING);
-            return; // Exit execute, as state will change to MOVING_TO_TARGET or task will fail
-        }
-
-
-        if (serf.currentTask.isComplete(serf)) { // Checks targetBuilding.isConstructed
-            serf.currentTask.onComplete(serf); // This will nullify serf.currentTask and make serf IDLE
-            // onComplete in ConstructBuildingTask should handle serf state change to IDLE.
-            return;
-        }
-
-        // Serf is at the site. "Work" on construction.
-        serf.taskTimer += deltaTime;
-        if (serf.taskTimer >= BUILDER_WORK_INTERVAL) { 
-            serf.taskTimer -= BUILDER_WORK_INTERVAL;
-            // console.log(`${serf.id} (${serf.serfType}) performing construction work at ${targetBuilding.name} (ID: ${targetBuilding.id}).`);
-            // Actual construction progress is managed by ConstructionManager's building.constructionEndTime.
-            // This state just keeps the serf "busy" at the site.
-            // The Serf remains in this state. The task's isComplete will eventually become true.
+            console.warn(`Serf ${serf.id} (${serf.serfType}) in CONSTRUCTING_BUILDING state is not at the building site (${entryPoint.x}, ${entryPoint.z}). Current: (${serf.x}, ${serf.y}). Task should manage location.`);
         }
     }
 
+    /**
+     * Called when the serf exits this state.
+     * @param {Serf} serf - The serf exiting this state.
+     */
     exit(serf) {
-        super.exit(serf);
-        serf.taskTimer = 0; // Reset timer when exiting state
+        console.log(`Serf ${serf.id} (${serf.serfType}) exiting CONSTRUCTING_BUILDING state.`);
     }
 }
+
 export default ConstructingBuildingState;

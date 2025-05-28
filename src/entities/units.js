@@ -35,6 +35,8 @@ import FarmingHarvestingState from './serf_states/FarmingHarvestingState.js';
 import ProspectingState from './serf_states/ProspectingState.js';
 import ConstructingBuildingState from './serf_states/ConstructingBuildingState.js';
 import MovingToTargetTileState from './serf_states/MovingToTargetTileState.js';
+import ReturnToJobBuildingTask from '../core/tasks/ReturnToJobBuildingTask.js'; // Import the new task
+
 import {
     createBaseSerf,
     SERF_MODEL_CREATORS
@@ -150,7 +152,12 @@ export class Serf extends Unit {
         
         this.state = SERF_ACTION_STATES.IDLE; 
         this.currentState = this.states[SERF_ACTION_STATES.IDLE];
-        // this.currentState.enter(this); // SerfManager or direct task assignment will call enter on initial state.
+        // Ensure the CONSTRUCTING_BUILDING state is correctly mapped
+        if (!this.states[SERF_ACTION_STATES.CONSTRUCTING_BUILDING]) {
+            console.error(`Serf ${this.id}: CONSTRUCTING_BUILDING state not initialized!`);
+            // Fallback, though it should be present from the list above
+            this.states[SERF_ACTION_STATES.CONSTRUCTING_BUILDING] = new ConstructingBuildingState(); 
+        }
 
         // Removed Forester-specific initialization of plantedSaplingsCount as it's now done above for all serfs.
         // if (this.serfType === SERF_PROFESSIONS.FORESTER) {
@@ -309,9 +316,22 @@ export class Serf extends Unit {
     assignTask(task) {
         if (!(task instanceof Task)) {
             console.error(`Serf ${this.id} (${this.serfType}): assignTask called with invalid task object.`, task);
+            // Ensure currentTask is cleared and serf goes idle if the new task is invalid.
+            if (this.currentTask && (this.currentTask.status === TASK_STATUS.ACTIVE || this.currentTask.status === TASK_STATUS.PENDING)) {
+                console.warn(`Serf ${this.id} (${this.serfType}): Invalid task assignment, cancelling existing task ${this.currentTask.id} (${this.currentTask.constructor.name})`);
+                this.currentTask.handleOutcome(this, 'cancelled_invalid_new_task');
+            }
             this.currentTask = null;
             this.changeState(SERF_ACTION_STATES.IDLE);
             return;
+        }
+
+        // If there's an existing task, and it's different from the new one, cancel the old one.
+        if (this.currentTask && this.currentTask !== task) {
+            if (this.currentTask.status === TASK_STATUS.ACTIVE || this.currentTask.status === TASK_STATUS.PENDING) {
+                console.log(`Serf ${this.id} (${this.serfType}): New task ${task.constructor.name} (ID: ${task.id}) assigned, cancelling previous task ${this.currentTask.id} (${this.currentTask.constructor.name}, Status: ${this.currentTask.status})`);
+                this.currentTask.handleOutcome(this, 'cancelled_new_task'); // Task's onCancel should handle state changes
+            }
         }
 
         this.currentTask = task;
@@ -321,24 +341,24 @@ export class Serf extends Unit {
             this.currentTask.onAssign(this); // This should set the task status to ACTIVE and potentially change serf state
         } else {
             console.warn(`Serf ${this.id} (${this.serfType}): Assigned task ${task.id} that is not in PENDING state. Current status: ${task.status}. The task's onAssign method will not be called again unless the task logic handles this.`);
-            // If the task is already active or completed/failed, the serf might need to re-evaluate.
-            // For now, we assume onAssign handles this or the SerfManager filters appropriately.
-            // If the task is active and assigned to this serf, this might be a re-assignment or update.
-            // If the task is active but assigned to another serf, that's an issue SerfManager should prevent.
+            // If a task is re-assigned (e.g. from PENDING to ACTIVE by an external manager, then assigned here),
+            // and it's already ACTIVE and meant for this serf, this is okay.
+            // The main concern is if onAssign was missed.
+            // If the task is active and assigned to another serf, that's an issue SerfManager should prevent.
         }
 
         // If the task's onAssign didn't change the state, and the serf is IDLE,
         // it might need a nudge or the task itself will guide it in its update cycle.
         // For now, we rely on onAssign to correctly set the serf's state.
         // If still idle and task is active, it implies the task is waiting for conditions the serf will check in IdleState.
-        if (this.currentState.name === SERF_ACTION_STATES.IDLE && this.currentTask.status === TASK_STATUS.ACTIVE) {
+        if (this.currentState.name === SERF_ACTION_STATES.IDLE && this.currentTask && this.currentTask.status === TASK_STATUS.ACTIVE) {
             // console.log(`Serf ${this.id} is IDLE after task assignment, task ${this.currentTask.id} is ACTIVE. Task should guide next action.`);
             // The IdleState's execute method should now pick up the active task.
-        } else if (this.currentTask.status !== TASK_STATUS.ACTIVE && this.currentState.name !== SERF_ACTION_STATES.IDLE) {
+        } else if (this.currentTask && this.currentTask.status !== TASK_STATUS.ACTIVE && this.currentState.name !== SERF_ACTION_STATES.IDLE) {
             // If task assignment didn't make it active and serf is not idle, force idle to re-evaluate.
-            // This case should ideally be handled by onAssign setting the correct state.
+            // This case should ideally be handled by onAssign setting the correct state or the task itself failing.
             // console.warn(`Serf ${this.id} (${this.serfType}): Task ${task.id} not ACTIVE after onAssign, and serf not IDLE. Forcing IDLE.`);
-            // this.changeState(SERF_ACTION_STATES.IDLE);
+            // this.changeState(SERF_ACTION_STATES.IDLE); // This might be too aggressive, let task lifecycle manage failures.
         }
     }
 
@@ -462,6 +482,34 @@ export class Serf extends Unit {
 
         if (this.currentState) {
             this.currentState.execute(this, deltaTime);
+        }
+
+        // If a serf becomes IDLE and has a currentTask that is COMPLETED, FAILED, or CANCELLED,
+        // clear it so it can pick up new tasks or truly be idle.
+        if (this.currentState.name === SERF_ACTION_STATES.IDLE && this.currentTask) {
+            if (this.currentTask.status === TASK_STATUS.COMPLETED || 
+                this.currentTask.status === TASK_STATUS.FAILED ||
+                this.currentTask.status === TASK_STATUS.CANCELLED) { // Added CANCELLED
+                console.log(`Serf ${this.id} is IDLE and current task ${this.currentTask.id} (${this.currentTask.constructor.name}) is ${this.currentTask.status}. Clearing task.`);
+                if (typeof this.currentTask.onCleanUp === 'function') { // Safety check for onCleanUp
+                    this.currentTask.onCleanUp(this); 
+                }
+                this.currentTask = null;
+            }
+        }
+    }
+
+    returnToJobBuilding() {
+        if (this.jobBuilding) {
+            console.log(`Serf ${this.id} (${this.serfType}) is returning to its job building: ${this.jobBuilding.name} at (${this.jobBuilding.gridX}, ${this.jobBuilding.gridZ}).`);
+            const returnTask = new ReturnToJobBuildingTask(this.jobBuilding);
+            this.assignTask(returnTask);
+        } else {
+            console.warn(`Serf ${this.id} (${this.serfType}) tried to return to job building, but has no jobBuilding assigned.`);
+            // If no job building, just go idle or handle as appropriate
+            if (this.currentState.name !== SERF_ACTION_STATES.IDLE) {
+                this.changeState(SERF_ACTION_STATES.IDLE);
+            }
         }
     }
 
