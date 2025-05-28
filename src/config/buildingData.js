@@ -26,6 +26,17 @@ export const BUILDING_DATA = {
         producesMaterials: [], // Renamed from 'produces' for clarity with Building.js
         consumesMaterials: []  // Renamed from 'consumes' for clarity with Building.js
     },
+    BUILDERS_HUT: {
+        key: 'BUILDERS_HUT',
+        name: "Builder's Hut",
+        cost: { [RESOURCE_TYPES.WOOD]: 5 },
+        tier: 1,
+        maxHealth: 100, // Added maxHealth
+        jobSlots: 3,
+        jobProfession: SERF_PROFESSIONS.BUILDER,
+        maxStock: { default: 10 }, // For small amounts of materials builders might temporarily hold
+        outputBufferCapacity: { default: 0 }
+    },
     WOODCUTTERS_HUT: {
         key: 'WOODCUTTERS_HUT',
         name: "Woodcutter's Hut",
@@ -425,17 +436,7 @@ export const BUILDING_DATA = {
             [RESOURCE_TYPES.MEAT]: 80, [RESOURCE_TYPES.SWORD]: 20, [RESOURCE_TYPES.SHIELD]: 20,
         }
     },
-    BUILDERS_HUT: {
-        key: 'BUILDERS_HUT',
-        name: "Builder's Hut",
-        cost: { [RESOURCE_TYPES.WOOD]: 5 },
-        tier: 1,
-        maxHealth: 100, // Added maxHealth
-        jobSlots: 3,
-        jobProfession: SERF_PROFESSIONS.BUILDER,
-        maxStock: { default: 10 }, // For small amounts of materials builders might temporarily hold
-        outputBufferCapacity: { default: 0 }
-    },
+    
     HARBOR: {
         key: 'HARBOR',
         name: 'Harbor',

@@ -56,13 +56,16 @@ class SerfManager {
         const centerX = Math.floor(this.gameMap.width / 2);
         const centerZ = Math.floor(this.gameMap.height / 2); // Using Z for the Y-axis in grid
 
+        let spawnX = centerX;
+        let spawnZ = centerZ;
+
         // Find the Transporter Hut placed by setupInitialStructures
+        /*
         const transporterHut = this.constructionManager.placedBuildings.find(
             b => b.type === 'TRANSPORTER_HUT' && b.isConstructed
         );
 
-        let spawnX = centerX;
-        let spawnZ = centerZ;
+        
 
         if (transporterHut) {
             spawnX = Math.round(transporterHut.model.position.x / TILE_SIZE);
@@ -85,6 +88,7 @@ class SerfManager {
         if (woodcutterSerf) {
             console.log(`Initial Woodcutter serf ${woodcutterSerf.id} spawned at (${woodcutterSpawnX}, ${woodcutterSpawnZ}).`);
         }
+            */
 
         // Spawn 1 Builder serf
         let builderSpawnX = spawnX - 1;
@@ -92,11 +96,37 @@ class SerfManager {
         // Ensure spawn position is within map bounds
         builderSpawnX = Math.max(0, Math.min(builderSpawnX, this.gameMap.width - 1));
         builderSpawnZ = Math.max(0, Math.min(builderSpawnZ, this.gameMap.height - 1));
-        // Create the Builder serf
-        // Note: Builder serfs are now handled by the ConstructBuildingTask system, but we still spawn one for initial setup.
+        
         console.log(`Spawning initial Builder serf at (${builderSpawnX}, ${builderSpawnZ})`);
         const builderSerf = this.createSerf(SERF_PROFESSIONS.BUILDER, builderSpawnX, builderSpawnZ);
 
+        if (builderSerf) {
+            console.log(`Initial Builder serf ${builderSerf.id} spawned at (${builderSpawnX}, ${builderSpawnZ}).`);
+            // Find the BUILDERS_HUT
+            const buildersHut = this.constructionManager.placedBuildings.find(
+                b => b.type === 'BUILDERS_HUT' // Assuming 'BUILDERS_HUT' is the correct type key
+            );
+
+            if (buildersHut) {
+                console.log(`Found BUILDERS_HUT (ID: ${buildersHut.id}) for initial Builder assignment.`);
+                // Assign the builder to the hut
+                builderSerf.setProfession(SERF_PROFESSIONS.BUILDER, buildersHut);
+                const workerAdded = buildersHut.addWorker(builderSerf.id);
+                if (workerAdded) {
+                    console.log(`Builder serf ${builderSerf.id} successfully added as worker to BUILDERS_HUT ${buildersHut.id}.`);
+                } else {
+                    console.warn(`Failed to add Builder serf ${builderSerf.id} as worker to BUILDERS_HUT ${buildersHut.id}. Hut might be full or serf already added.`);
+                }
+                // Ensure the serf is idle to pick up tasks
+                builderSerf.changeState(SERF_ACTION_STATES.IDLE);
+            } else {
+                console.warn("SerfManager: BUILDERS_HUT not found after spawning initial builder. Builder will be idle without a specific hut.");
+            }
+        } else {
+            console.error("SerfManager: Failed to spawn initial Builder serf.");
+        }
+
+        /*
         // Spawn X Transporter serfs
         const amountOfTransporters = 1; // Number of Transporter serfs to spawn
         for (let i = 0; i < amountOfTransporters; i++) {
@@ -122,6 +152,7 @@ class SerfManager {
                 console.log(`Initial Transporter serf ${newSerf.id} spawned at (${finalSpawnX}, ${finalSpawnZ}) (no hut found).`);
             }
         }
+            */
     }
 
     createSerf(type, gridX, gridY) {

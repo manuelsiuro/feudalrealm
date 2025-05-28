@@ -50,6 +50,23 @@ class IdleState extends SerfState {
             }
             return; 
         }
+
+        // If serf has an assigned job building and no active task, move to it.
+        if (serf.jobBuilding) {
+            const jobEntryPoint = serf.jobBuilding.getEntryPointGridPosition();
+            // Check if serf is not already at the job building's entry point
+            // jobEntryPoint.z corresponds to the map's y-axis for pathfinding
+            if (serf.x !== jobEntryPoint.x || serf.y !== jobEntryPoint.z) { 
+                // console.log(`Serf ${serf.id} (${serf.serfType}) is IDLE, has job @ ${serf.jobBuilding.name}. Moving from (${serf.x},${serf.y}) to (${jobEntryPoint.x},${jobEntryPoint.z})`);
+                serf.targetPos = { x: jobEntryPoint.x, y: jobEntryPoint.z }; // Set targetPos for MovingToTargetState
+                serf.changeState(SERF_ACTION_STATES.MOVING_TO_TARGET);
+                return; // Exit after initiating move
+            } else {
+                // Serf is at the job building.
+                // If no task, it remains IDLE here, ready for tasks related to this building.
+                // console.log(`Serf ${serf.id} is IDLE and already at job building ${serf.jobBuilding.name}.`);
+            }
+        }
         
         // Fallback for simple string-based tasks
         if (serf.task === 'plant_sapling' && serf.targetTile) {

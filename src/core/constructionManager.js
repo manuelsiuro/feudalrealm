@@ -319,6 +319,7 @@ class ConstructionManager {
         const mapCenterZ = Math.floor(this.gameMap.height / 2);
 
         // Ensure Castle is placed if not already
+        /*
         let castleInstance = this.placedBuildings.find(b => b.type === 'CASTLE');
         if (!castleInstance) {
             console.log("[ConstructionManager] No Castle found, placing one initially.");
@@ -326,15 +327,18 @@ class ConstructionManager {
         } else {
             console.log("[ConstructionManager] Castle already exists.");
         }
-        
+        */
+        /*
         const hutGridX = mapCenterX + 3;
         const hutGridZ = mapCenterZ;
         this.placeAndConstructInitialBuilding('TRANSPORTER_HUT', hutGridX, hutGridZ);
-
+        */
         // Place a Builder Hut nearby
-        const builderHutGridX = mapCenterX - 3;
-        const builderHutGridZ = mapCenterZ;
-        this.placeAndConstructInitialBuilding('BUILDERS_HUT', builderHutGridX, builderHutGridZ);
+        //const builderHutGridX = mapCenterX - 3;
+        //const builderHutGridZ = mapCenterZ;
+        //this.placeAndConstructInitialBuilding('BUILDERS_HUT', builderHutGridX, builderHutGridZ);
+        
+        /*
         // Place a Woodcutters Hut nearby
         const woodcutterHutGridX = mapCenterX - 5;
         const woodcutterHutGridZ = mapCenterZ;
@@ -343,7 +347,7 @@ class ConstructionManager {
         const forestersHutGridX = mapCenterX - 7;
         const forestersHutGridZ = mapCenterZ;
         this.placeAndConstructInitialBuilding('FORESTERS_HUT', forestersHutGridX, forestersHutGridZ);
-
+        */
         console.log("[ConstructionManager] Initial structures setup complete.");
     }
 

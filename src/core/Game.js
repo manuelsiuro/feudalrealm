@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { GameMap } from '../map/map.js'; // Corrected import path
+import { GameMap } from './MapManager.js'; // Corrected import path
 import { TILE_SIZE, TERRAIN_COLORS, TERRAIN_TYPES } from '../config/mapConstants.js'; // Corrected import path, Added TERRAIN_COLORS, TERRAIN_TYPES
 import resourceManager from './resourceManager.js';
 import ConstructionManager from './constructionManager.js';
@@ -58,7 +58,6 @@ class Game {
 
         // 2. Initialize GameMap
         this.gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
-        this.gameMap.generateMapFeatures(); // Call to generate varied terrain
         this.renderer.gameElementsGroup.add(this.gameMap.tileMeshes);
         console.log('GameMap created, features generated, and added to scene via Game.js.');
 

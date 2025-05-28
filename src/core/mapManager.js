@@ -76,6 +76,8 @@ export class GameMap {
                     y: r, // Map grid row
                     terrainType: TERRAIN_TYPES.GRASSLAND, // Default
                     resource: null, // To be populated by _placeResources
+                    building: null, // Add building reference
+                    isOccupied: false // Add isOccupied flag
                 };
             }
         }
@@ -361,9 +363,13 @@ export class GameMap {
     // Add this new method to MapManager
     getTile(x, y) {
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
-            return this.grid[y][x];
+            // Ensure y (row) and x (column) are used correctly for grid access
+            if (this.grid[y] && this.grid[y][x] !== undefined) {
+                return this.grid[y][x];
+            }
         }
-        return null; // Out of bounds
+        // console.warn(`Requested tile out of bounds or invalid: (${x}, ${y})`);
+        return null; // Out of bounds or invalid
     }
 
     addToScene(scene) { 
@@ -399,5 +405,45 @@ export class GameMap {
             // console.log(`No path found from (${startPos.x},${startPos.y}) to (${endPos.x},${endPos.y}).`);
         }
         return path;
+    }
+
+    // New method to place a building
+    placeBuilding(x, y, building) {
+        const tile = this.getTile(x, y);
+        if (tile && !tile.isOccupied) {
+            tile.building = building;
+            tile.isOccupied = true;
+            // console.log(`Building ${building.type || 'Unknown Type'} placed at (${x}, ${y}) in MapManager`);
+            return true;
+        }
+        // console.warn(`MapManager: Failed to place building at (${x}, ${y}). Tile occupied: ${tile ? tile.isOccupied : 'N/A'}, Tile valid: ${!!tile}`);
+        return false;
+    }
+
+    // New method to remove a building (good to have for consistency)
+    removeBuilding(x, y) {
+        const tile = this.getTile(x, y);
+        if (tile && tile.building) {
+            // console.log(`Building ${tile.building.type || 'Unknown Type'} removed from (${x}, ${y}) in MapManager`);
+            tile.building = null;
+            tile.isOccupied = false;
+            return true;
+        }
+        // console.warn(`MapManager: Failed to remove building at (${x}, ${y}). No building found or tile invalid.`);
+        return false;
+    }
+
+    // New method to set terrain (good to have for consistency)
+    setTerrain(x, y, terrainType) {
+        const tile = this.getTile(x, y);
+        if (tile) {
+            tile.terrainType = terrainType;
+            // Potentially re-create or update tile mesh if visual changes based on terrain type
+            // For now, just updating data. Mesh update would be more involved.
+            // console.log(`Terrain at (${x}, ${y}) set to ${terrainType} in MapManager`);
+            return true;
+        }
+        // console.warn(`MapManager: Failed to set terrain at (${x}, ${y}). Tile invalid.`);
+        return false;
     }
 }
