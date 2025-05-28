@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Console Validation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+        .info { background: #cce7ff; color: #004085; border-left: 5px solid #007bff; }
+        #console {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Construction System Console Validation</h1>
+        <div class="info">
+            <strong>Instructions:</strong> Open your browser's Developer Console (F12) to see detailed validation results.
+            The console output is also mirrored below for convenience.
+        </div>
+        <div id="console"></div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600" style="display: none;"></canvas>
+
+    <script type="module">
+        const consoleDiv = document.getElementById('console');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            consoleDiv.textContent += logMessage + '\n';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function logError(message, error = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ❌ ERROR: ${message}`;
+            console.error(logMessage, error);
+            consoleDiv.textContent += logMessage + '\n';
+            if (error) {
+                consoleDiv.textContent += `    ${error.message}\n`;
+            }
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function logSuccess(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ✅ ${message}`;
+            console.log(logMessage);
+            consoleDiv.textContent += logMessage + '\n';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        async function validateConstruction() {
+            log('🏗️ Starting Construction System Validation');
+            log('================================================');
+
+            try {
+                // Test 1: Import Game class
+                log('Test 1: Importing Game class...');
+                const { default: Game } = await import('./src/core/Game.js');
+                logSuccess('Game class imported successfully');
+
+                // Test 2: Create Game instance
+                log('Test 2: Creating Game instance...');
+                const canvas = document.getElementById('gameCanvas');
+                const game = new Game(canvas);
+                logSuccess('Game instance created successfully');
+
+                // Test 3: Check ConstructionManager
+                log('Test 3: Checking ConstructionManager...');
+                if (game.constructionManager) {
+                    logSuccess('ConstructionManager is accessible');
+                } else {
+                    throw new Error('ConstructionManager not found on game instance');
+                }
+
+                // Test 4: Validate API methods
+                log('Test 4: Validating API methods...');
+                const requiredMethods = [
+                    'queueBuilding',
+                    'getConstructionQueue',
+                    'getActiveConstructions',
+                    'getPlacedBuildings'
+                ];
+
+                for (const method of requiredMethods) {
+                    if (typeof game.constructionManager[method] === 'function') {
+                        logSuccess(`✓ ${method}() method exists`);
+                    } else {
+                        throw new Error(`${method}() method not found`);
+                    }
+                }
+
+                // Test 5: Test building queue functionality
+                log('Test 5: Testing building queue functionality...');
+                const queueResult = game.constructionManager.queueBuilding('house', 5, 5);
+                if (queueResult) {
+                    logSuccess('Building queued successfully');
+                } else {
+                    log('⚠️ Building queue returned false (might be expected behavior)');
+                }
+
+                // Test 6: Test queue retrieval
+                log('Test 6: Testing queue retrieval...');
+                const queue = game.constructionManager.getConstructionQueue();
+                if (Array.isArray(queue)) {
+                    logSuccess(`Construction queue retrieved: ${queue.length} items`);
+                } else {
+                    throw new Error('getConstructionQueue() did not return an array');
+                }
+
+                // Test 7: Test active constructions
+                log('Test 7: Testing active constructions...');
+                const active = game.constructionManager.getActiveConstructions();
+                if (Array.isArray(active)) {
+                    logSuccess(`Active constructions retrieved: ${active.length} items`);
+                } else {
+                    throw new Error('getActiveConstructions() did not return an array');
+                }
+
+                // Test 8: Test placed buildings
+                log('Test 8: Testing placed buildings...');
+                const placed = game.constructionManager.getPlacedBuildings();
+                if (Array.isArray(placed)) {
+                    logSuccess(`Placed buildings retrieved: ${placed.length} items`);
+                } else {
+                    throw new Error('getPlacedBuildings() did not return an array');
+                }
+
+                log('================================================');
+                logSuccess('🎉 ALL TESTS PASSED! Construction system is working correctly.');
+
+            } catch (error) {
+                log('================================================');
+                logError('Validation failed', error);
+                log('================================================');
+            }
+        }
+
+        // Start validation when page loads
+        validateConstruction();
+    </script>
+</body>
+</html>

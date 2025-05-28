@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Test</title>
+</head>
+<body>
+    <h1>Testing Game Import</h1>
+    <div id="status">Loading...</div>
+    <canvas id="game-canvas" style="display: none;"></canvas>
+
+    <script type="module">
+        try {
+            console.log('Starting import test...');
+            
+            // Test the import
+            import Game from './src/core/Game.js';
+            
+            console.log('Game imported successfully:', Game);
+            document.getElementById('status').innerHTML = 'Game imported successfully! ✅';
+            
+            // Try to create an instance
+            const game = new Game();
+            console.log('Game instance created:', game);
+            document.getElementById('status').innerHTML += '<br>Game instance created! ✅';
+            
+            // Try to initialize
+            await game.init();
+            console.log('Game initialized successfully:', game);
+            document.getElementById('status').innerHTML += '<br>Game initialized! ✅';
+            
+        } catch (error) {
+            console.error('Import error:', error);
+            document.getElementById('status').innerHTML = `Error: ${error.message} ❌`;
+        }
+    </script>
+</body>
+</html>

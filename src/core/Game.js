@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { GameMap } from './MapManager.js'; // Corrected import path
+import { GameMap } from './mapManager.js'; // Corrected import path
 import { TILE_SIZE, TERRAIN_COLORS, TERRAIN_TYPES } from '../config/mapConstants.js'; // Corrected import path, Added TERRAIN_COLORS, TERRAIN_TYPES
 import resourceManager from './resourceManager.js';
 import ConstructionManager from './constructionManager.js';

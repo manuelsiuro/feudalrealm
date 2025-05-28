@@ -326,10 +326,17 @@ class Building {
      */
     startConstructionProcess(builderId, scene) {
         console.log(`[Building START_CONSTRUCTION_PROCESS] ${this.id} (${this.name}): Called by builder ${builderId}. Current state: ${this.currentConstructionState}, Required time: ${this.constructionRequiredTime}`);
+        
         if (this.currentConstructionState !== BUILDING_STATE_NEEDS_CONSTRUCTION) {
-            console.warn(`${this.name} (${this.id}): Construction already started or completed.`);
+            console.warn(`${this.name} (${this.id}): Construction already started or completed. Current state: ${this.currentConstructionState}`);
             return;
         }
+        
+        if (this.assignedBuilderId && this.assignedBuilderId !== builderId) {
+            console.warn(`${this.name} (${this.id}): Already assigned to builder ${this.assignedBuilderId}. Cannot assign to ${builderId}.`);
+            return;
+        }
+        
         if (this.constructionRequiredTime <= 0) {
             console.log(`${this.name} (${this.id}): No construction time required. Marking as constructed.`);
             this.completeConstructionProcess();
@@ -378,20 +385,28 @@ class Building {
      */
     completeConstructionProcess() {
         console.log(`[Building COMPLETE_CONSTRUCTION_PROCESS] ${this.id} (${this.name}): Called. Current state before: ${this.currentConstructionState}`);
+        
         this.currentConstructionState = BUILDING_STATE_CONSTRUCTED;
         this.isConstructed = true; // Ensure legacy flag is set
-        this.assignedBuilderId = null;
         this.currentConstructionProgress = this.constructionRequiredTime; // Cap progress
+        
+        // Clear builder assignment
+        const previousBuilderId = this.assignedBuilderId;
+        this.assignedBuilderId = null;
 
+        // Restore full opacity
         if (this.model) {
             this._setOpacityRecursive(this.model, 1.0);
         }
         
+        // Remove progress bar with cleanup
         this._removeProgressBar();
 
-        this.lastProductionTime = Date.now(); // Initialize for production buildings
-        this.lastFoodCheckTime = Date.now(); // Initialize for food consuming buildings
-        console.log(`[Building COMPLETE_CONSTRUCTION_PROCESS] ${this.name} (${this.id}) construction complete! New state: ${this.currentConstructionState}`);
+        // Initialize timing for production buildings
+        this.lastProductionTime = Date.now();
+        this.lastFoodCheckTime = Date.now();
+        
+        console.log(`[Building COMPLETE_CONSTRUCTION_PROCESS] ${this.name} (${this.id}) construction complete! Builder ${previousBuilderId} can return to hut. New state: ${this.currentConstructionState}`);
     }
 
     /**
@@ -480,41 +495,50 @@ class Building {
 
         // Background (the empty part of the bar)
         const backgroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
-        const backgroundMaterial = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.7 });
+        const backgroundMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x333333, 
+            transparent: true, 
+            opacity: 0.8 
+        });
         const backgroundBar = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
-        // backgroundBar.position.z = barDepth / 2; // Shift slightly to avoid z-fighting if on same plane
 
         // Foreground (the filled part of the bar)
-        const foregroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth); // Start with full width, will be scaled
-        const foregroundMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.9 });
+        const foregroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
+        const foregroundMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffaa00, // Orange color for construction
+            transparent: true, 
+            opacity: 0.9 
+        });
         const foregroundBar = new THREE.Mesh(foregroundGeometry, foregroundMaterial);
         foregroundBar.position.x = -barWidth / 2; // Align left edge
         
         // Group them for easier positioning and management
-        this.progressBarGroup = new THREE.Group(); // Assign to the new property
+        this.progressBarGroup = new THREE.Group();
         this.progressBarGroup.add(backgroundBar);
         this.progressBarGroup.add(foregroundBar);
         
         this.progressBarMesh = foregroundBar; // Store reference to the part that scales
         this.progressBarMesh.userData.isProgressBar = true;
+        this.progressBarMesh.userData.buildingId = this.id;
         backgroundBar.userData.isProgressBarBackground = true;
+        backgroundBar.userData.buildingId = this.id;
         this.progressBarGroup.name = `ProgressBar_${this.id}`;
 
         // Position the progress bar above the building model
         const buildingBox = new THREE.Box3().setFromObject(this.model);
         const buildingHeight = buildingBox.max.y - buildingBox.min.y;
-        const buildingCenter = new THREE.Vector3();
-        buildingBox.getCenter(buildingCenter);
 
         // Position the group relative to the building's model's world position
         this.progressBarGroup.position.set(
             this.model.position.x, 
-            this.model.position.y + buildingHeight + TILE_SIZE * 0.2, // A bit above the building
+            this.model.position.y + buildingHeight + TILE_SIZE * 0.3, // A bit above the building
             this.model.position.z
         );
         
         scene.add(this.progressBarGroup);
         this._updateProgressBar(); // Set initial scale
+        
+        console.log(`[Building] Progress bar created for ${this.name} (${this.id})`);
     }
 
     /**
@@ -528,12 +552,23 @@ class Building {
 
         const progressRatio = Math.min(this.currentConstructionProgress / this.constructionRequiredTime, 1);
         this.progressBarMesh.scale.x = progressRatio;
+        
         // Adjust position to keep the left edge aligned as it scales
         const barWidth = TILE_SIZE * (this.info.size?.width || 1) * 0.8;
         this.progressBarMesh.position.x = - (barWidth * (1 - progressRatio)) / 2;
 
+        // Change color based on progress
+        if (this.progressBarMesh.material) {
+            if (progressRatio < 0.33) {
+                this.progressBarMesh.material.color.setHex(0xff4444); // Red for early progress
+            } else if (progressRatio < 0.66) {
+                this.progressBarMesh.material.color.setHex(0xffaa00); // Orange for mid progress
+            } else {
+                this.progressBarMesh.material.color.setHex(0x44ff44); // Green for near completion
+            }
+        }
 
-        // Make sure the progress bar is visible
+        // Make sure the progress bar is visible only during construction
         if (this.progressBarGroup) {
             this.progressBarGroup.visible = this.currentConstructionState === BUILDING_STATE_UNDER_CONSTRUCTION;
         }
@@ -546,6 +581,7 @@ class Building {
     _removeProgressBar() {
         if (this.progressBarGroup && this.progressBarGroup.parent) {
             this.progressBarGroup.parent.remove(this.progressBarGroup);
+            
             // Dispose of geometries and materials to free up resources
             this.progressBarGroup.traverse(child => {
                 if (child instanceof THREE.Mesh) {
@@ -559,6 +595,8 @@ class Building {
                     }
                 }
             });
+            
+            console.log(`[Building] Progress bar removed for ${this.name} (${this.id})`);
         }
         this.progressBarMesh = null;
         this.progressBarGroup = null;

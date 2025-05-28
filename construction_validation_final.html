@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Validation Complete</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.loading { background: #f39c12; animation: pulse 1s infinite; }
+        .status-indicator.success { background: #27ae60; }
+        .status-indicator.error { background: #e74c3c; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .log-container {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+            border: 1px solid #333;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>        <div class="container">
+            <!-- Hidden game canvas -->
+            <canvas id="game-canvas" style="display: none;"></canvas>
+            
+            <h1>🏗️ Construction System Validation</h1>
+        
+        <div class="test-section">
+            <h3><span id="gameStatusIndicator" class="status-indicator loading"></span>Game Status</h3>
+            <div class="controls">
+                <button id="initGameBtn">Initialize Game</button>
+                <button id="checkStateBtn" disabled>Check State</button>
+                <button id="clearLogBtn">Clear Log</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="buildingCount">-</div>
+                    <div class="stat-label">Buildings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="serfCount">-</div>
+                    <div class="stat-label">Serfs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="builderCount">-</div>
+                    <div class="stat-label">Builders</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="queueCount">-</div>
+                    <div class="stat-label">Queue</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 Construction Testing</h3>
+            <div class="controls">
+                <button id="startTestBtn" disabled>Start Full Test</button>
+                <button id="quickTestBtn" disabled>Quick Test</button>
+                <button id="monitorBtn" disabled>Monitor Progress</button>
+                <button id="stopTestBtn" disabled>Stop Test</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="testProgress"></div>
+            </div>
+            <div id="testStatus">Ready to test...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Test Log</h3>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Import game modules
+        import Game from './src/core/Game.js';
+        
+        // UI Elements
+        const gameStatusIndicator = document.getElementById('gameStatusIndicator');
+        const initGameBtn = document.getElementById('initGameBtn');
+        const checkStateBtn = document.getElementById('checkStateBtn');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const startTestBtn = document.getElementById('startTestBtn');
+        const quickTestBtn = document.getElementById('quickTestBtn');
+        const monitorBtn = document.getElementById('monitorBtn');
+        const stopTestBtn = document.getElementById('stopTestBtn');
+        const testProgress = document.getElementById('testProgress');
+        const testStatus = document.getElementById('testStatus');
+        const logContainer = document.getElementById('logContainer');
+        
+        // Stats elements
+        const buildingCount = document.getElementById('buildingCount');
+        const serfCount = document.getElementById('serfCount');
+        const builderCount = document.getElementById('builderCount');
+        const queueCount = document.getElementById('queueCount');
+        
+        // Game instance
+        let game = null;
+        let gameCanvas = null;
+        let testInProgress = false;
+        let monitorInterval = null;
+        
+        // Logging system
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📝';
+            const logEntry = `[${timestamp}] ${emoji} ${message}`;
+            
+            logContainer.innerHTML += logEntry + '\n';
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            console.log(logEntry);
+        }
+        
+        // Update stats display
+        function updateStats() {
+            if (!game || !game.constructionManager || !game.serfManager) {
+                buildingCount.textContent = '-';
+                serfCount.textContent = '-';
+                builderCount.textContent = '-';
+                queueCount.textContent = '-';
+                return;
+            }
+            
+            const buildings = game.constructionManager.getAllBuildings() || [];
+            const serfs = game.serfManager.serfs || [];
+            const builders = serfs.filter(s => s.profession === 'builder');
+            const queue = game.constructionManager.constructionQueue || [];
+            
+            buildingCount.textContent = buildings.length;
+            serfCount.textContent = serfs.length;
+            builderCount.textContent = builders.length;
+            queueCount.textContent = queue.length;
+        }
+        
+        // Initialize game
+        async function initializeGame() {
+            try {
+                log('Initializing game...');
+                gameStatusIndicator.className = 'status-indicator loading';
+                
+                // Create game instance
+                game = new Game();
+                window.game = game; // Expose globally
+                
+                // Initialize the game
+                await game.init();
+                
+                // Wait for game components to be ready
+                let attempts = 0;
+                const maxAttempts = 50;
+                
+                const checkInit = () => {
+                    attempts++;
+                    if (game.constructionManager && game.serfManager && game.gameMap) {
+                        gameStatusIndicator.className = 'status-indicator success';
+                        log('Game initialized successfully!', 'success');
+                        
+                        // Enable controls
+                        checkStateBtn.disabled = false;
+                        startTestBtn.disabled = false;
+                        quickTestBtn.disabled = false;
+                        monitorBtn.disabled = false;
+                        
+                        updateStats();
+                        return;
+                    }
+                    
+                    if (attempts < maxAttempts) {
+                        setTimeout(checkInit, 100);
+                    } else {
+                        gameStatusIndicator.className = 'status-indicator error';
+                        log('Game initialization timeout', 'error');
+                    }
+                };
+                
+                checkInit();
+                
+            } catch (error) {
+                gameStatusIndicator.className = 'status-indicator error';
+                log(`Game initialization error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Check game state
+        function checkGameState() {
+            if (!game) {
+                log('Game not initialized', 'error');
+                return;
+            }
+            
+            log('=== Game State Check ===');
+            
+            const buildings = game.constructionManager?.getAllBuildings() || [];
+            const serfs = game.serfManager?.serfs || [];
+            const queue = game.constructionManager?.constructionQueue || [];
+            const active = game.constructionManager?.activeConstructions || new Map();
+            
+            log(`Buildings: ${buildings.length}`);
+            log(`Serfs: ${serfs.length}`);
+            log(`Construction Queue: ${queue.length}`);
+            log(`Active Constructions: ${active.size}`);
+            
+            buildings.forEach((b, i) => {
+                log(`  Building ${i + 1}: ${b.type} at (${b.gridX}, ${b.gridZ}) - ${b.state} (${Math.round(b.constructionProgress * 100)}%)`);
+            });
+            
+            serfs.forEach((s, i) => {
+                log(`  Serf ${i + 1}: ${s.profession} at (${s.gridX}, ${s.gridZ}) - ${s.currentState?.constructor.name || 'Unknown'}`);
+            });
+            
+            updateStats();
+        }
+        
+        // Quick construction test
+        async function quickTest() {
+            if (!game || testInProgress) return;
+            
+            testInProgress = true;
+            stopTestBtn.disabled = false;
+            quickTestBtn.disabled = true;
+            
+            try {
+                log('=== Quick Construction Test ===');
+                testStatus.textContent = 'Running quick test...';
+                
+                // Find a good location
+                let x = 5, z = 5;
+                for (let testX = 3; testX < 10; testX++) {
+                    for (let testZ = 3; testZ < 10; testZ++) {
+                        if (game.constructionManager.isBuildable(testX, testZ)) {
+                            x = testX;
+                            z = testZ;
+                            break;
+                        }
+                    }
+                    if (x !== 5) break;
+                }
+                
+                log(`Requesting construction at (${x}, ${z})`);
+                const success = game.constructionManager.requestConstruction('WOODCUTTERS_HUT', x, z);
+                
+                if (!success) {
+                    log('Construction request failed', 'error');
+                    testStatus.textContent = 'Test failed';
+                    return;
+                }
+                
+                log('Construction requested successfully', 'success');
+                testStatus.textContent = 'Monitoring construction...';
+                
+                // Monitor for 10 seconds
+                let progress = 0;
+                let checks = 0;
+                const maxChecks = 20;
+                
+                const monitor = setInterval(() => {
+                    checks++;
+                    progress = (checks / maxChecks) * 100;
+                    testProgress.style.width = progress + '%';
+                    
+                    const buildings = game.constructionManager.getAllBuildings() || [];
+                    const targetBuilding = buildings.find(b => b.gridX === x && b.gridZ === z);
+                    
+                    if (targetBuilding) {
+                        log(`Progress: ${Math.round(targetBuilding.constructionProgress * 100)}% - State: ${targetBuilding.state}`);
+                        
+                        if (targetBuilding.state === 'built') {
+                            clearInterval(monitor);
+                            log('Construction completed successfully!', 'success');
+                            testStatus.textContent = 'Test completed successfully!';
+                            testProgress.style.width = '100%';
+                            return;
+                        }
+                    }
+                    
+                    if (checks >= maxChecks) {
+                        clearInterval(monitor);
+                        log('Test timeout', 'warning');
+                        testStatus.textContent = 'Test completed (timeout)';
+                    }
+                    
+                    updateStats();
+                }, 500);
+                
+            } catch (error) {
+                log(`Test error: ${error.message}`, 'error');
+                testStatus.textContent = 'Test error';
+            } finally {
+                setTimeout(() => {
+                    testInProgress = false;
+                    quickTestBtn.disabled = false;
+                    stopTestBtn.disabled = true;
+                    testProgress.style.width = '0%';
+                }, 2000);
+            }
+        }
+        
+        // Full construction test
+        async function fullTest() {
+            if (!game || testInProgress) return;
+            
+            testInProgress = true;
+            startTestBtn.disabled = true;
+            stopTestBtn.disabled = false;
+            
+            try {
+                log('=== Full Construction System Test ===');
+                testStatus.textContent = 'Running comprehensive test...';
+                
+                // Test multiple buildings
+                const buildingTypes = ['WOODCUTTERS_HUT', 'MINERS_HUT', 'FISHERMANS_HUT'];
+                const constructions = [];
+                
+                for (let i = 0; i < buildingTypes.length; i++) {
+                    const buildingType = buildingTypes[i];
+                    let x = 3 + i * 2, z = 3 + i * 2;
+                    
+                    // Find valid location
+                    for (let testX = x; testX < x + 5; testX++) {
+                        for (let testZ = z; testZ < z + 5; testZ++) {
+                            if (game.constructionManager.isBuildable(testX, testZ)) {
+                                x = testX;
+                                z = testZ;
+                                break;
+                            }
+                        }
+                        if (game.constructionManager.isBuildable(x, z)) break;
+                    }
+                    
+                    log(`Requesting ${buildingType} at (${x}, ${z})`);
+                    const success = game.constructionManager.requestConstruction(buildingType, x, z);
+                    
+                    if (success) {
+                        constructions.push({ type: buildingType, x, z });
+                        log(`✅ ${buildingType} queued`, 'success');
+                    } else {
+                        log(`❌ Failed to queue ${buildingType}`, 'error');
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                log(`Monitoring ${constructions.length} constructions...`);
+                
+                // Monitor all constructions
+                let totalChecks = 0;
+                const maxTotalChecks = 60;
+                
+                const fullMonitor = setInterval(() => {
+                    totalChecks++;
+                    const progress = (totalChecks / maxTotalChecks) * 100;
+                    testProgress.style.width = progress + '%';
+                    
+                    const buildings = game.constructionManager.getAllBuildings() || [];
+                    let completed = 0;
+                    let inProgress = 0;
+                    
+                    constructions.forEach(construction => {
+                        const building = buildings.find(b => 
+                            b.gridX === construction.x && 
+                            b.gridZ === construction.z && 
+                            b.type === construction.type
+                        );
+                        
+                        if (building) {
+                            if (building.state === 'built') {
+                                completed++;
+                            } else if (building.state === 'constructing') {
+                                inProgress++;
+                            }
+                        }
+                    });
+                    
+                    testStatus.textContent = `Progress: ${completed} completed, ${inProgress} in progress`;
+                    log(`Status: ${completed}/${constructions.length} completed, ${inProgress} in progress`);
+                    
+                    if (completed === constructions.length) {
+                        clearInterval(fullMonitor);
+                        log('All constructions completed!', 'success');
+                        testStatus.textContent = 'Full test completed successfully!';
+                        testProgress.style.width = '100%';
+                        return;
+                    }
+                    
+                    if (totalChecks >= maxTotalChecks) {
+                        clearInterval(fullMonitor);
+                        log(`Test timeout. Completed: ${completed}/${constructions.length}`, 'warning');
+                        testStatus.textContent = `Test timeout: ${completed}/${constructions.length} completed`;
+                    }
+                    
+                    updateStats();
+                }, 1000);
+                
+            } catch (error) {
+                log(`Full test error: ${error.message}`, 'error');
+                testStatus.textContent = 'Full test error';
+            } finally {
+                setTimeout(() => {
+                    testInProgress = false;
+                    startTestBtn.disabled = false;
+                    stopTestBtn.disabled = true;
+                }, 3000);
+            }
+        }
+        
+        // Monitor construction progress
+        function startMonitoring() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorBtn.textContent = 'Monitor Progress';
+                return;
+            }
+            
+            monitorBtn.textContent = 'Stop Monitoring';
+            log('=== Starting Construction Monitor ===');
+            
+            monitorInterval = setInterval(() => {
+                if (!game) return;
+                
+                const buildings = game.constructionManager?.getAllBuildings() || [];
+                const constructing = buildings.filter(b => b.state === 'constructing');
+                const queue = game.constructionManager?.constructionQueue || [];
+                const active = game.constructionManager?.activeConstructions || new Map();
+                
+                if (constructing.length > 0 || queue.length > 0 || active.size > 0) {
+                    log(`Monitor: ${constructing.length} constructing, ${queue.length} queued, ${active.size} active`);
+                    
+                    constructing.forEach(b => {
+                        log(`  ${b.type} at (${b.gridX}, ${b.gridZ}): ${Math.round(b.constructionProgress * 100)}%`);
+                    });
+                }
+                
+                updateStats();
+            }, 2000);
+        }
+        
+        // Stop all tests
+        function stopTests() {
+            testInProgress = false;
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                monitorBtn.textContent = 'Monitor Progress';
+            }
+            
+            startTestBtn.disabled = false;
+            quickTestBtn.disabled = false;
+            stopTestBtn.disabled = true;
+            testProgress.style.width = '0%';
+            testStatus.textContent = 'Tests stopped';
+            
+            log('All tests stopped', 'warning');
+        }
+        
+        // Clear log
+        function clearLog() {
+            logContainer.innerHTML = '';
+            log('Log cleared');
+        }
+        
+        // Event listeners
+        initGameBtn.addEventListener('click', initializeGame);
+        checkStateBtn.addEventListener('click', checkGameState);
+        clearLogBtn.addEventListener('click', clearLog);
+        startTestBtn.addEventListener('click', fullTest);
+        quickTestBtn.addEventListener('click', quickTest);
+        monitorBtn.addEventListener('click', startMonitoring);
+        stopTestBtn.addEventListener('click', stopTests);
+        
+        // Initial setup
+        log('Construction validation system ready');
+        log('Click "Initialize Game" to begin testing');
+        
+        // Auto-update stats every 2 seconds
+        setInterval(updateStats, 2000);
+    </script>
+</body>
+</html>

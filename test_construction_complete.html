@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Cycle Validation Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-panel {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .game-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #333;
+            margin: 20px 0;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .button.danger {
+            background-color: #f44336;
+        }
+        .button.danger:hover {
+            background-color: #da190b;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .log-container {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ Construction Cycle Validation Test</h1>
+        
+        <div class="test-panel">
+            <h3>Test Controls</h3>
+            <button class="button" onclick="runFullValidation()">🔍 Run Full Construction Cycle Test</button>
+            <button class="button" onclick="checkGameState()">📊 Check Game State</button>
+            <button class="button" onclick="testSingleConstruction()">🏠 Test Single Construction</button>
+            <button class="button" onclick="testMultipleConstructions()">🏘️ Test Multiple Constructions</button>
+            <button class="button" onclick="testPriorityQueue()">⚡ Test Priority Queue</button>
+            <button class="button danger" onclick="clearLog()">🗑️ Clear Log</button>
+        </div>
+
+        <div class="test-panel">
+            <h3>Test Status</h3>
+            <div id="status" class="status info">Ready to test...</div>
+        </div>
+
+        <div class="game-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="test-panel">
+            <h3>Test Log</h3>
+            <div id="log" class="log-container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Game } from './src/core/Game.js';
+
+        // Global variables
+        window.testLog = [];
+        let game;
+
+        // Initialize game
+        async function initGame() {
+            try {
+                logMessage('🎮 Initializing game...');
+                updateStatus('Initializing game...', 'info');
+                
+                const canvas = document.getElementById('gameCanvas');
+                game = new Game(canvas);
+                await game.initialize();
+                
+                // Expose game globally for testing
+                window.game = game;
+                
+                logMessage('✅ Game initialized successfully');
+                updateStatus('Game ready for testing', 'success');
+                
+                // Load validation script
+                await loadValidationScript();
+                
+            } catch (error) {
+                logMessage('❌ Game initialization failed: ' + error.message);
+                updateStatus('Game initialization failed', 'error');
+                console.error('Game initialization error:', error);
+            }
+        }
+
+        // Load validation script
+        async function loadValidationScript() {
+            try {
+                const response = await fetch('./test_construction_validation.js');
+                const scriptContent = await response.text();
+                eval(scriptContent);
+                logMessage('📜 Validation script loaded');
+            } catch (error) {
+                logMessage('⚠️ Could not load validation script: ' + error.message);
+            }
+        }
+
+        // Test functions
+        window.runFullValidation = function() {
+            logMessage('🔍 Starting full construction cycle validation...');
+            updateStatus('Running full validation...', 'info');
+            
+            if (typeof validateConstructionCycle === 'function') {
+                const result = validateConstructionCycle();
+                if (result) {
+                    updateStatus('Full validation completed', 'success');
+                } else {
+                    updateStatus('Validation failed', 'error');
+                }
+            } else {
+                logMessage('❌ Validation function not available');
+                updateStatus('Validation function not found', 'error');
+            }
+        };
+
+        window.checkGameState = function() {
+            logMessage('📊 Checking game state...');
+            if (typeof checkGameState === 'function') {
+                checkGameState();
+            } else if (window.game) {
+                const game = window.game;
+                logMessage(`Buildings: ${game.buildingManager.buildings.length}`);
+                logMessage(`Serfs: ${game.serfManager.serfs.length}`);
+                logMessage(`Construction queue: ${game.constructionManager.constructionQueue.length}`);
+                logMessage(`Active constructions: ${game.constructionManager.activeConstructions.length}`);
+            } else {
+                logMessage('❌ Game not available');
+            }
+        };
+
+        window.testSingleConstruction = function() {
+            logMessage('🏠 Testing single construction...');
+            updateStatus('Testing single construction...', 'info');
+            
+            if (!window.game) {
+                logMessage('❌ Game not available');
+                updateStatus('Game not available', 'error');
+                return;
+            }
+
+            const game = window.game;
+            const mapWidth = game.map.width;
+            const mapHeight = game.map.height;
+            const x = Math.floor(mapWidth / 2) + 3;
+            const y = Math.floor(mapHeight / 2) + 3;
+
+            const success = game.constructionManager.requestConstruction({
+                type: 'woodcutter',
+                x: x,
+                y: y,
+                priority: 1
+            });
+
+            if (success) {
+                logMessage(`✅ Construction requested at (${x}, ${y})`);
+                updateStatus('Construction requested successfully', 'success');
+            } else {
+                logMessage(`❌ Construction request failed at (${x}, ${y})`);
+                updateStatus('Construction request failed', 'error');
+            }
+        };
+
+        window.testMultipleConstructions = function() {
+            logMessage('🏘️ Testing multiple constructions...');
+            updateStatus('Testing multiple constructions...', 'info');
+            
+            if (!window.game) {
+                logMessage('❌ Game not available');
+                updateStatus('Game not available', 'error');
+                return;
+            }
+
+            const game = window.game;
+            const mapWidth = game.map.width;
+            const mapHeight = game.map.height;
+            const centerX = Math.floor(mapWidth / 2);
+            const centerY = Math.floor(mapHeight / 2);
+
+            const constructions = [
+                { type: 'woodcutter', x: centerX + 4, y: centerY + 4, priority: 2 },
+                { type: 'quarry', x: centerX + 6, y: centerY + 4, priority: 1 },
+                { type: 'farm', x: centerX + 4, y: centerY + 6, priority: 3 }
+            ];
+
+            let successCount = 0;
+            constructions.forEach((construction, index) => {
+                const success = game.constructionManager.requestConstruction(construction);
+                if (success) {
+                    successCount++;
+                    logMessage(`✅ Construction ${index + 1} requested: ${construction.type} at (${construction.x}, ${construction.y})`);
+                } else {
+                    logMessage(`❌ Construction ${index + 1} failed: ${construction.type} at (${construction.x}, ${construction.y})`);
+                }
+            });
+
+            logMessage(`📊 ${successCount}/${constructions.length} constructions requested successfully`);
+            updateStatus(`${successCount}/${constructions.length} constructions requested`, successCount === constructions.length ? 'success' : 'error');
+        };
+
+        window.testPriorityQueue = function() {
+            logMessage('⚡ Testing priority queue...');
+            updateStatus('Testing priority queue...', 'info');
+            
+            if (!window.game) {
+                logMessage('❌ Game not available');
+                updateStatus('Game not available', 'error');
+                return;
+            }
+
+            const queue = window.game.constructionManager.constructionQueue;
+            logMessage(`📋 Current queue length: ${queue.length}`);
+            
+            if (queue.length > 0) {
+                logMessage('Queue priorities:');
+                queue.forEach((item, index) => {
+                    logMessage(`  ${index + 1}. ${item.type} - Priority: ${item.priority}`);
+                });
+                
+                // Check if queue is properly sorted
+                let isSorted = true;
+                for (let i = 1; i < queue.length; i++) {
+                    if (queue[i].priority < queue[i-1].priority) {
+                        isSorted = false;
+                        break;
+                    }
+                }
+                
+                if (isSorted) {
+                    logMessage('✅ Queue is properly sorted by priority');
+                    updateStatus('Priority queue working correctly', 'success');
+                } else {
+                    logMessage('❌ Queue is not properly sorted');
+                    updateStatus('Priority queue sorting issue', 'error');
+                }
+            } else {
+                logMessage('📋 Queue is empty');
+                updateStatus('No items in queue to test', 'info');
+            }
+        };
+
+        window.clearLog = function() {
+            window.testLog = [];
+            document.getElementById('log').innerHTML = '';
+        };
+
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            window.testLog.push(logEntry);
+            
+            const logContainer = document.getElementById('log');
+            logContainer.innerHTML += logEntry + '\n';
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            console.log(logEntry);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>

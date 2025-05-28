@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settlers Game</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #2c3e50;
+            overflow: hidden;
+        }
+        
+        #app {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Test Panel */
+        #test-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            max-width: 350px;
+            font-size: 12px;
+            border: 1px solid #444;
+        }
+
+        .test-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 3px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.3s;
+        }
+
+        .test-button:hover {
+            background: #2980b9;
+        }
+
+        .test-button.success {
+            background: #27ae60;
+        }
+
+        .test-button.error {
+            background: #e74c3c;
+        }
+
+        #test-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        .log-entry.success { background: rgba(39, 174, 96, 0.2); }
+        .log-entry.error { background: rgba(231, 76, 60, 0.2); }
+        .log-entry.warning { background: rgba(241, 196, 15, 0.2); }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- Test Panel -->
+        <div id="test-panel">
+            <h4 style="margin: 0 0 10px 0;">Construction Cycle Tests</h4>
+            <div>
+                <button class="test-button" onclick="runConstructionTest()">Test Construction Cycle</button>
+                <button class="test-button" onclick="testPriorityQueue()">Test Priority Queue</button>
+                <button class="test-button" onclick="addTestResources()">Add Test Resources</button>
+                <button class="test-button" onclick="clearTestLog()">Clear Log</button>
+            </div>
+            <div>
+                <button class="test-button" onclick="spawnBuilder()">Spawn Builder</button>
+                <button class="test-button" onclick="showGameState()">Show Game State</button>
+                <button class="test-button" onclick="forceCompleteConstruction()">Force Complete</button>
+            </div>
+            <div id="test-log"></div>
+        </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+    
+    <script>
+        let testLog = [];
+        
+        function logTest(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            testLog.push({ timestamp, message, type });
+            updateTestLog();
+            console.log(`[TEST ${timestamp}] ${type.toUpperCase()}: ${message}`);
+        }
+        
+        function updateTestLog() {
+            const logElement = document.getElementById('test-log');
+            logElement.innerHTML = testLog.slice(-20).map(entry => 
+                `<div class="log-entry ${entry.type}">[${entry.timestamp}] ${entry.message}</div>`
+            ).join('');
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function clearTestLog() {
+            testLog = [];
+            updateTestLog();
+        }
+        
+        function waitForGame() {
+            return new Promise((resolve) => {
+                if (window.game && window.game.constructionManager) {
+                    resolve(window.game);
+                } else {
+                    setTimeout(() => waitForGame().then(resolve), 100);
+                }
+            });
+        }
+        
+        async function runConstructionTest() {
+            logTest('Starting construction cycle test...');
+            
+            try {
+                const game = await waitForGame();
+                
+                // Check initial state
+                const builders = game.serfManager.getAvailableSerfsByProfession('BUILDER');
+                logTest(`Available builders: ${builders.length}`);
+                
+                if (builders.length === 0) {
+                    logTest('No builders available, spawning one...', 'warning');
+                    spawnBuilder();
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                // Add resources if needed
+                const wood = game.resourceManager.getResourceCount('WOOD');
+                if (wood < 20) {
+                    game.resourceManager.addResource('WOOD', 50);
+                    logTest('Added 50 wood');
+                }
+                
+                // Start placement
+                game.constructionManager.startPlacement('WOODCUTTERS_HUT');
+                logTest('Started Woodcutter\'s Hut placement');
+                
+                // Find a valid placement location
+                const mapCenter = Math.floor(game.gameMap.width / 2);
+                let placed = false;
+                
+                for (let offset = 3; offset < 8 && !placed; offset++) {
+                    const gridX = mapCenter + offset;
+                    const gridZ = mapCenter;
+                    
+                    if (game.constructionManager.isBuildable(gridX, gridZ)) {
+                        const worldX = (gridX - (game.gameMap.width - 1) / 2) * 10;
+                        const worldZ = (gridZ - (game.gameMap.height - 1) / 2) * 10;
+                        
+                        const success = game.constructionManager.confirmPlacement({ x: worldX, z: worldZ });
+                        if (success) {
+                            logTest(`Building placed at grid (${gridX}, ${gridZ})`, 'success');
+                            placed = true;
+                            
+                            // Monitor construction
+                            monitorConstruction(game);
+                        }
+                    }
+                }
+                
+                if (!placed) {
+                    logTest('Failed to find valid placement location', 'error');
+                }
+                
+            } catch (error) {
+                logTest(`Test error: ${error.message}`, 'error');
+            }
+        }
+        
+        function monitorConstruction(game) {
+            let checkCount = 0;
+            const maxChecks = 30;
+            
+            const monitor = setInterval(() => {
+                checkCount++;
+                
+                const queue = game.constructionManager.constructionQueue.length;
+                const active = game.constructionManager.activeConstructions.length;
+                const placed = game.constructionManager.placedBuildings.length;
+                
+                logTest(`Monitor ${checkCount}: Queue=${queue}, Active=${active}, Placed=${placed}`);
+                
+                // Check active construction progress
+                if (game.constructionManager.activeConstructions.length > 0) {
+                    const building = game.constructionManager.activeConstructions[0];
+                    const progress = (building.currentConstructionProgress / building.constructionRequiredTime * 100).toFixed(1);
+                    logTest(`Progress: ${progress}% (Builder: ${building.assignedBuilderId || 'None'})`);
+                }
+                
+                // Check for completion
+                const completedHuts = game.constructionManager.placedBuildings.filter(b => b.type === 'WOODCUTTERS_HUT');
+                if (completedHuts.length > 0 && game.constructionManager.activeConstructions.length === 0) {
+                    logTest('Construction completed successfully!', 'success');
+                    clearInterval(monitor);
+                    return;
+                }
+                
+                if (checkCount >= maxChecks) {
+                    logTest('Monitoring timeout', 'warning');
+                    clearInterval(monitor);
+                }
+            }, 1000);
+        }
+        
+        async function testPriorityQueue() {
+            logTest('Testing priority queue...');
+            
+            const game = await waitForGame();
+            
+            // Add resources
+            game.resourceManager.addResource('WOOD', 100);
+            game.resourceManager.addResource('STONE', 50);
+            
+            const buildings = ['WOODCUTTERS_HUT', 'QUARRY', 'BUILDERS_HUT'];
+            const mapCenter = Math.floor(game.gameMap.width / 2);
+            
+            buildings.forEach((buildingType, index) => {
+                game.constructionManager.startPlacement(buildingType);
+                const worldX = (mapCenter + index * 2 - (game.gameMap.width - 1) / 2) * 10;
+                const worldZ = (mapCenter + 2 - (game.gameMap.height - 1) / 2) * 10;
+                
+                const success = game.constructionManager.confirmPlacement({ x: worldX, z: worldZ });
+                logTest(`Queued ${buildingType}: ${success ? 'Success' : 'Failed'}`);
+            });
+            
+            logTest(`Final queue size: ${game.constructionManager.constructionQueue.length}`);
+        }
+        
+        async function addTestResources() {
+            const game = await waitForGame();
+            game.resourceManager.addResource('WOOD', 100);
+            game.resourceManager.addResource('STONE', 100);
+            game.resourceManager.addResource('IRON_ORE', 50);
+            logTest('Added test resources');
+        }
+        
+        async function spawnBuilder() {
+            const game = await waitForGame();
+            const builderHut = game.constructionManager.placedBuildings.find(b => b.type === 'BUILDERS_HUT');
+            if (builderHut) {
+                game.serfManager.spawnSerf('BUILDER', builderHut);
+                logTest('Spawned new builder');
+            } else {
+                logTest('No Builder\'s Hut found', 'error');
+            }
+        }
+        
+        async function showGameState() {
+            const game = await waitForGame();
+            logTest('=== GAME STATE ===');
+            logTest(`Buildings: ${game.constructionManager.placedBuildings.length} placed, ${game.constructionManager.activeConstructions.length} active, ${game.constructionManager.constructionQueue.length} queued`);
+            logTest(`Serfs: ${game.serfManager.serfs.length} total`);
+            logTest(`Wood: ${game.resourceManager.getResourceCount('WOOD')}`);
+            logTest('================');
+        }
+        
+        async function forceCompleteConstruction() {
+            const game = await waitForGame();
+            if (game.constructionManager.activeConstructions.length > 0) {
+                const building = game.constructionManager.activeConstructions[0];
+                building.currentConstructionProgress = building.constructionRequiredTime;
+                logTest('Forced construction completion');
+            } else {
+                logTest('No active constructions to complete', 'warning');
+            }
+        }
+        
+        // Initialize when game is loaded
+        waitForGame().then(() => {
+            logTest('Game loaded and ready for testing', 'success');
+        });
+    </script>
+</body>
+</html>
