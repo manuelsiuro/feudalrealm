@@ -3,8 +3,8 @@ import Building from '../Building.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class FishermansHut extends Building {
-    constructor(gridX, gridZ, gameMap, buildingDataEntry) {
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry);
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager);
         this.model = this.createModel();
     }
 

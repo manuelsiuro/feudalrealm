@@ -11,6 +11,7 @@ import UIManager from '../ui/UIManager.js';
 import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import InputManager from './InputManager.js'; // Added
 import SelectionManager from './SelectionManager.js'; // Added
+import ResourceFlowManager from './ResourceFlowManager.js'; // Added for Quick Win #3
 
 const MAP_WIDTH = 15;
 const MAP_HEIGHT = 15;
@@ -24,6 +25,7 @@ class Game {
         this.serfManager = null;
         this.natureManager = null; // Added property
         this.resourceManager = resourceManager; // Direct assignment
+        this.resourceFlowManager = null; // Added for Quick Win #3
 
         this.scene = null;
         this.camera = null;
@@ -84,8 +86,15 @@ class Game {
         // Let's assume setupInitialStructures is okay for now.
         // this.constructionManager.setupInitialStructures(); // Moved after SerfManager is set on ConstructionManager
 
+        // Initialize ResourceFlowManager for Quick Win #3 (moved before SerfManager)
+        this.resourceFlowManager = new ResourceFlowManager(this.scene);
+        console.log('ResourceFlowManager initialized for flow visualization.');
+
+        // Pass ResourceFlowManager to ConstructionManager
+        this.constructionManager.setResourceFlowManager(this.resourceFlowManager);
+
         // 4. Initialize SerfManager
-        this.serfManager = new SerfManager(this.scene, this.gameMap, this.constructionManager, this.renderer.gameElementsGroup, this);
+        this.serfManager = new SerfManager(this.scene, this.gameMap, this.constructionManager, this.renderer.gameElementsGroup, this, this.resourceFlowManager);
 
         // Now, provide SerfManager to ConstructionManager
         this.constructionManager.setSerfManager(this.serfManager); // New method call
@@ -217,15 +226,56 @@ class Game {
                 console.log("DEBUG: 'P' key pressed. Adding 1 TOOLS_PICKAXE.");
                 this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
             }
+            
+            // Quick Win #3: Flow visualization controls
+            if (event.key.toLowerCase() === 'f') {
+                if (event.shiftKey) {
+                    // Shift+F: Toggle particles
+                    this.resourceFlowManager.toggleParticles();
+                    console.log(`🎨 Flow particles ${this.resourceFlowManager.config.showParticles ? 'enabled' : 'disabled'}`);
+                } else {
+                    // F: Toggle flows
+                    this.resourceFlowManager.toggleFlows();
+                    console.log(`🌊 Resource flows ${this.resourceFlowManager.config.showFlows ? 'enabled' : 'disabled'}`);
+                }
+            }
+            if (event.key.toLowerCase() === 't') {
+                // T: Toggle trails
+                this.resourceFlowManager.toggleTrails();
+                console.log(`👣 Serf trails ${this.resourceFlowManager.config.showTrails ? 'enabled' : 'disabled'}`);
+            }
         });
 
         this.selectionManager.onSelectionChange((selectedEntity) => {
             if (selectedEntity && selectedEntity.model) {
                 this.renderer.setSelectedObjects([selectedEntity.model]);
                 this.focusOnEntity(selectedEntity); 
+                
+                // Enhanced selection feedback based on entity type
+                if (selectedEntity.info && selectedEntity.info.name) {
+                    console.log(`🏗️ Building Selected: ${selectedEntity.info.name} ${selectedEntity.isConstructed ? '(Complete)' : '(Under Construction)'}`);
+                } else if (selectedEntity.serfType) {
+                    console.log(`👷 Serf Selected: ${selectedEntity.serfType} (ID: ${selectedEntity.id})`);
+                }
+                
                 // UIManager also subscribes to selectionManager.onSelectionChange directly now
             } else {
                 this.renderer.setSelectedObjects([]);
+                
+                // Clear any selection animations from previously selected objects
+                this.scene.traverse((child) => {
+                    if (child.userData.selectionAnimation) {
+                        child.userData.selectionAnimation.isSelected = false;
+                        // Reset emissive colors
+                        child.traverse((subChild) => {
+                            if (subChild.isMesh && subChild.material && subChild.material.emissive) {
+                                subChild.material.emissive.setRGB(0, 0, 0);
+                            }
+                        });
+                    }
+                });
+                
+                console.log("🚫 Selection cleared");
                 // UIManager handles hiding info panels
             }
         });
@@ -294,6 +344,12 @@ class Game {
         if (this.natureManager) { 
             this.natureManager.update(deltaTime);
         }
+        if (this.resourceFlowManager) {
+            this.resourceFlowManager.update(deltaTime);
+        }
+
+        // Update selection animations
+        this.renderer.updateSelectionAnimations(deltaTime);
 
         this.controls.update(); 
         this.renderer.render();

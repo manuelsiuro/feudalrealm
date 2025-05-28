@@ -4,9 +4,9 @@ import { BUILDING_DATA } from '../../config/buildingData.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class Shipyard extends Building {
-    constructor(gridX, gridZ, gameMap) {
-        const buildingDataEntry = BUILDING_DATA.SHIPYARD;
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry);
+    constructor(gridX, gridZ, gameMap, buildingDataEntry = null, resourceFlowManager = null) {
+        const buildingData = buildingDataEntry || BUILDING_DATA.SHIPYARD;
+        super(buildingData.key, gridX, gridZ, gameMap, buildingData, resourceFlowManager);
 
         this.model = this.createModel();
         if (this.model) {

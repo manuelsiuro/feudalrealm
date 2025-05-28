@@ -64,6 +64,19 @@ class DepositingResourceInBuildingState extends SerfState {
                         resourceManager.addResource(resourceType, amountToDeposit);
                     }
                     
+                    // Record resource flow for visualization
+                    if (serf.resourceFlowManager) {
+                        const fromPosition = serf.model.position.clone();
+                        const toPosition = destinationBuilding.model?.position || destinationBuilding.position;
+                        serf.resourceFlowManager.recordFlow(
+                            fromPosition,
+                            toPosition,
+                            resourceType,
+                            amountToDeposit,
+                            'serf_to_building'
+                        );
+                    }
+                    
                     serf.inventory[resourceType] -= amountToDeposit;
                     if (serf.inventory[resourceType] <= 0) {
                         delete serf.inventory[resourceType];

@@ -178,3 +178,148 @@ body {
     background-color: rgba(255,255,255,0.1);
     color: white;
 }
+
+/* Enhanced Selection Feedback Styles */
+
+/* Selection state styles for building and serf list items */
+.building-list-item.selected,
+.serf-list-item.selected {
+    background-color: rgba(0, 255, 136, 0.2) !important;
+    color: #00ff88 !important;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
+    font-weight: bold;
+}
+
+.building-list-item.selected:hover,
+.serf-list-item.selected:hover {
+    background-color: rgba(0, 255, 136, 0.3) !important;
+    transform: translateX(3px);
+}
+
+/* Animation for selection state changes */
+.building-list-item,
+.serf-list-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced info panel animations for selected entities */
+.themed-panel.entity-selected {
+    border-color: rgba(0, 255, 136, 0.6);
+    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: selectedPanelGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes selectedPanelGlow {
+    0% { 
+        box-shadow: 0 4px 16px rgba(0, 255, 136, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    100% { 
+        box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4), 0 8px 40px rgba(0, 0, 0, 0.6);
+    }
+}
+
+/* Selection indicator for panel titles */
+.themed-panel-title.entity-selected {
+    color: #00ff88;
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+    border-bottom-color: rgba(0, 255, 136, 0.5);
+}
+
+/* Enhanced button states for construction panel */
+.ui-button.building-selected {
+    background-color: rgba(0, 255, 136, 0.15);
+    border-color: rgba(0, 255, 136, 0.4);
+    color: #00ff88;
+}
+
+/* Selection status indicator */
+.selection-status {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ff88;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.selection-status.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Pulse animation for newly selected items */
+@keyframes selectionPulse {
+    0% { 
+        background-color: rgba(0, 255, 136, 0.3);
+        transform: scale(1);
+    }
+    50% { 
+        background-color: rgba(0, 255, 136, 0.5);
+        transform: scale(1.02);
+    }
+    100% { 
+        background-color: rgba(0, 255, 136, 0.2);
+        transform: scale(1);
+    }
+}
+
+.selection-pulse {
+    animation: selectionPulse 0.6s ease-out;
+}
+
+/* Resource Counter Bar Styling */
+#resource-counter-bar {
+    font-family: 'Roboto', sans-serif;
+    user-select: none;
+}
+
+#resource-counter-bar .resource-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+#resource-counter-bar .resource-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#resource-counter-bar .resource-amount {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+}
+
+/* Enhanced animations for resource changes */
+@keyframes resourceUpdate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.resource-item-updated {
+    animation: resourceUpdate 0.4s ease-in-out;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 1200px) {
+    #resource-counter-bar {
+        font-size: 12px;
+        height: 45px;
+        padding: 0 15px;
+    }
+    
+    #resource-counter-bar .resource-item {
+        min-width: 60px;
+        gap: 4px;
+        padding: 3px 6px;
+    }
+}

@@ -15,9 +15,10 @@ class WoodcuttersHut extends Building {
      * @param {number} gridZ - The 0-indexed Z grid coordinate.
      * @param {GameMap} gameMap - Reference to the game's map instance.
      * @param {object} buildingDataEntry - Configuration data for this building type.
+     * @param {ResourceFlowManager} resourceFlowManager - The resource flow manager instance.
      */
-    constructor(gridX, gridZ, gameMap, buildingDataEntry) {
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry); // Use buildingDataEntry.key
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Use buildingDataEntry.key
         this.model = this.createModel();
     }
 

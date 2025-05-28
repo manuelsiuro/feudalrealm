@@ -43,11 +43,11 @@ class Renderer {
         this.composer.addPass(this.renderPass);
 
         this.outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), this.scene, this.camera);
-        this.outlinePass.edgeStrength = 5;
-        this.outlinePass.edgeGlow = 0.5;
-        this.outlinePass.edgeThickness = 1;
-        this.outlinePass.visibleEdgeColor.set('#ffffff');
-        this.outlinePass.hiddenEdgeColor.set('#190a05');
+        this.outlinePass.edgeStrength = 8;  // Increased for more visible selection
+        this.outlinePass.edgeGlow = 1.2;    // Enhanced glow effect
+        this.outlinePass.edgeThickness = 2;  // Thicker outline for better visibility
+        this.outlinePass.visibleEdgeColor.set('#00ff88');  // Bright green for selected objects
+        this.outlinePass.hiddenEdgeColor.set('#004422');   // Darker green for hidden edges
         this.composer.addPass(this.outlinePass);
 
         this.fxaaPass = new ShaderPass(FXAAShader);
@@ -119,6 +119,104 @@ class Renderer {
     // Method to update selected objects for outline pass
     setSelectedObjects(objects) {
         this.outlinePass.selectedObjects = objects;
+        
+        // Clear any previous selection indicators
+        this.clearSelectionIndicators();
+        
+        // Add selection indicators for each selected object
+        if (objects && objects.length > 0) {
+            this.addSelectionIndicators(objects);
+        }
+    }
+    
+    clearSelectionIndicators() {
+        // Remove any existing selection indicator meshes
+        const indicatorsToRemove = [];
+        this.scene.traverse((child) => {
+            if (child.userData.isSelectionIndicator) {
+                indicatorsToRemove.push(child);
+            }
+        });
+        indicatorsToRemove.forEach(indicator => {
+            indicator.parent.remove(indicator);
+            if (indicator.geometry) indicator.geometry.dispose();
+            if (indicator.material) indicator.material.dispose();
+        });
+    }
+    
+    addSelectionIndicators(objects) {
+        objects.forEach(object => {
+            if (object && object.children) {
+                // Create a subtle ground indicator ring
+                this.createGroundIndicator(object);
+                
+                // Add pulsing animation properties to the object
+                if (!object.userData.selectionAnimation) {
+                    object.userData.selectionAnimation = {
+                        isSelected: true,
+                        pulseTime: 0,
+                        originalIntensity: object.children.length > 0 ? 1.0 : 1.0
+                    };
+                }
+            }
+        });
+    }
+    
+    createGroundIndicator(buildingModel) {
+        // Create a subtle ring indicator on the ground
+        const ringGeometry = new THREE.RingGeometry(2, 2.5, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ff88,
+            transparent: true,
+            opacity: 0.4,
+            side: THREE.DoubleSide
+        });
+        
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2; // Lay flat on ground
+        ring.position.copy(buildingModel.position);
+        ring.position.y += 0.1; // Slightly above ground to avoid z-fighting
+        ring.userData.isSelectionIndicator = true;
+        ring.userData.parentBuilding = buildingModel;
+        
+        this.scene.add(ring);
+        
+        // Store reference for animation
+        if (!buildingModel.userData.selectionIndicators) {
+            buildingModel.userData.selectionIndicators = [];
+        }
+        buildingModel.userData.selectionIndicators.push(ring);
+    }
+    
+    // Update method to animate selection indicators (called from Game.js animate loop)
+    updateSelectionAnimations(deltaTime) {
+        this.scene.traverse((child) => {
+            if (child.userData.isSelectionIndicator) {
+                // Animate the ring indicator
+                const time = Date.now() * 0.002;
+                const pulseFactor = 0.3 + 0.2 * Math.sin(time * 2);
+                child.material.opacity = 0.3 + pulseFactor * 0.3;
+                
+                // Subtle scale animation
+                const scale = 1.0 + 0.1 * Math.sin(time * 1.5);
+                child.scale.setScalar(scale);
+            }
+            
+            // Animate selected building models with subtle glow effect
+            if (child.userData.selectionAnimation && child.userData.selectionAnimation.isSelected) {
+                child.userData.selectionAnimation.pulseTime += deltaTime;
+                const pulseIntensity = 1.0 + 0.15 * Math.sin(child.userData.selectionAnimation.pulseTime * 3);
+                
+                // Apply subtle brightness modulation to building materials
+                child.traverse((subChild) => {
+                    if (subChild.isMesh && subChild.material) {
+                        if (subChild.material.emissive) {
+                            subChild.material.emissive.setRGB(0.05 * pulseIntensity, 0.08 * pulseIntensity, 0.03 * pulseIntensity);
+                        }
+                    }
+                });
+            }
+        });
     }
 }
 

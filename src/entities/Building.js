@@ -62,7 +62,7 @@ class Building {
      * @property {string|null} assignedBuilderId - ID of the serf assigned to construct this building.
      * @property {THREE.Mesh|null} progressBarMesh - The UI mesh for the construction progress bar.
      */
-    constructor(type, gridX, gridZ, gameMap, buildingDataEntry) {
+    constructor(type, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         this.id = `building-${nextBuildingId++}`;
         this.type = type; 
         this.gridX = gridX;
@@ -104,6 +104,7 @@ class Building {
         this.currentProcessingProgress = 0; 
 
         this.resourceManager = null; 
+        this.resourceFlowManager = resourceFlowManager; // Store reference to ResourceFlowManager 
 
         // Initialize new construction properties
         this.constructionRequiredTime = buildingDataEntry.constructionTime === undefined ? 5000 : buildingDataEntry.constructionTime; // Default if not specified
@@ -214,6 +215,20 @@ class Building {
 
         if (amountToAdd > 0) {
             this.inventory[resourceType] = currentAmount + amountToAdd;
+            
+            // Record resource flow for visualization (incoming resources)
+            if (this.resourceFlowManager && this.model?.position) {
+                // This records resources being added to the building from an external source
+                const buildingPosition = this.model.position.clone();
+                this.resourceFlowManager.recordFlow(
+                    null, // No specific source position for direct addition
+                    buildingPosition,
+                    resourceType,
+                    amountToAdd,
+                    'external_to_building'
+                );
+            }
+            
             // console.log(`${this.name} (${this.id}) added ${amountToAdd} of ${resourceType}. New stock: ${this.inventory[resourceType]} / ${maxCap}`);
         } else if (amount > 0 && availableSpace <= 0) {
             // console.log(`${this.name} (${this.id}) cannot add ${resourceType}, stock is full (${currentAmount} / ${maxCap}).`);
@@ -237,6 +252,20 @@ class Building {
 
         if (amountToPickup > 0) {
             this.inventory[resourceType] = currentAmount - amountToPickup;
+            
+            // Record resource flow for visualization (outgoing resources)
+            if (this.resourceFlowManager && this.model?.position) {
+                // This records resources being picked up from the building
+                const buildingPosition = this.model.position.clone();
+                this.resourceFlowManager.recordFlow(
+                    buildingPosition,
+                    null, // No specific destination position for direct pickup
+                    resourceType,
+                    amountToPickup,
+                    'building_to_external'
+                );
+            }
+            
             // console.log(`${this.name} (${this.id}) picked up ${amountToPickup} of ${resourceType}. Remaining stock: ${this.inventory[resourceType]}`);
             if (this.inventory[resourceType] === 0) {
                 // delete this.inventory[resourceType]; // Optional: clean up empty entries

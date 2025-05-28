@@ -3,8 +3,8 @@ import Building from '../Building.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class Mine extends Building {
-    constructor(key, gridX, gridZ, gameMap, buildingDataEntry, oreColor = 0x808080) { // Default ore color: Grey
-        super(key, gridX, gridZ, gameMap, buildingDataEntry);
+    constructor(key, gridX, gridZ, gameMap, buildingDataEntry, oreColor = 0x808080, resourceFlowManager = null) { // Default ore color: Grey
+        super(key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager);
         this.oreColor = oreColor;
         this.model = this.createModel();
     }

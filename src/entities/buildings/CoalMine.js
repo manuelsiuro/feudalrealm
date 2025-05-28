@@ -3,9 +3,9 @@ import Mine from './Mine.js'; // Import the base Mine class
 import { TILE_SIZE } from '../../config/mapConstants.js'; // TILE_SIZE might be needed for custom indicator
 
 class CoalMine extends Mine {
-    constructor(gridX, gridZ, gameMap, buildingDataEntry) {
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         const oreColor = 0x000000; // Black for Coal
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, oreColor);
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, oreColor, resourceFlowManager);
         // Model is created by the base Mine class constructor
     }
 

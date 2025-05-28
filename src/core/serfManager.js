@@ -16,12 +16,13 @@ import { FORESTER_PLANTING_RADIUS } from '../config/unitConstants.js';
 import ReturnToJobBuildingTask from './tasks/ReturnToJobBuildingTask.js'; // Ensure this is imported
 
 class SerfManager {
-    constructor(scene, gameMap, constructionManager, gameElementsGroup, game) {
+    constructor(scene, gameMap, constructionManager, gameElementsGroup, game, resourceFlowManager) {
         this.scene = scene;
         this.gameMap = gameMap;
         this.constructionManager = constructionManager;
         this.gameElementsGroup = gameElementsGroup;
         this.game = game;
+        this.resourceFlowManager = resourceFlowManager;
         this.serfs = [];
         this.maxSerfs = 50;
         this.serfIdCounter = 0;
@@ -184,8 +185,8 @@ class SerfManager {
         this.serfIdCounter++;
         const serfId = `serf-${this.serfIdCounter}`;
         
-        // Pass the game instance (this.game) to the Serf constructor
-        const newSerf = new Units.Serf(serfId, gridX, gridY, type, this.scene, this.gameMap, this.serfVisualsGroup, this.game);
+        // Pass the game instance (this.game) and resourceFlowManager to the Serf constructor
+        const newSerf = new Units.Serf(serfId, gridX, gridY, type, this.scene, this.gameMap, this.serfVisualsGroup, this.game, this.resourceFlowManager);
 
         if (newSerf && newSerf.model) {
             this.serfs.push(newSerf);

@@ -4,9 +4,9 @@ import { BUILDING_DATA } from '../../config/buildingData.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class SiegeWorkshop extends Building {
-    constructor(gridX, gridZ, gameMap) {
-        const buildingDataEntry = BUILDING_DATA.SIEGE_WORKSHOP;
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry);
+    constructor(gridX, gridZ, gameMap, buildingDataEntry = null, resourceFlowManager = null) {
+        const buildingData = buildingDataEntry || BUILDING_DATA.SIEGE_WORKSHOP;
+        super(buildingData.key, gridX, gridZ, gameMap, buildingData, resourceFlowManager);
 
         this.model = this.createModel();
         if (this.model) {

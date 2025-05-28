@@ -100,7 +100,7 @@ export class Unit {
 }
 
 export class Serf extends Unit {
-    constructor(id, x, y, type, scene, mapManager, parentGroup, game) { // Added parentGroup and game
+    constructor(id, x, y, type, scene, mapManager, parentGroup, game, resourceFlowManager) { // Added resourceFlowManager parameter
         super(id, x, y, 'serf', scene, mapManager); // this.model is initially null from Unit constructor
         this.serfType = type;
         this.task = 'idle';
@@ -111,6 +111,7 @@ export class Serf extends Unit {
 
         this.mapManager = mapManager;
         this.game = game;
+        this.resourceFlowManager = resourceFlowManager; // Store ResourceFlowManager reference for Quick Win #3
         
         this.targetNode = null; // General target for movement
         this.taskTimer = 0; // General purpose timer for states
@@ -443,6 +444,14 @@ export class Serf extends Unit {
         const directionZ = targetWorldZ - this.model.position.z;
         const distanceToWaypoint = Math.sqrt(directionX * directionX + directionZ * directionZ);
         const moveDistance = this.speed * TILE_SIZE * deltaTime;
+        
+        // Record movement for trail visualization
+        if (this.resourceFlowManager) {
+            const currentPosition = this.model.position.clone();
+            const carriedResources = Object.keys(this.inventory).filter(type => this.inventory[type] > 0);
+            this.resourceFlowManager.recordSerfMovement(this.id, currentPosition, carriedResources);
+        }
+        
         if (distanceToWaypoint <= moveDistance) {
             this.model.position.x = targetWorldX;
             this.model.position.z = targetWorldZ;

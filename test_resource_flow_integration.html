@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Flow Integration Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .pass { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        #console { 
+            background: #000; 
+            color: #0f0; 
+            padding: 10px; 
+            height: 200px; 
+            overflow-y: auto; 
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resource Flow Integration Test</h1>
+    
+    <div class="test-container">
+        <h2>Quick Win #3: Resource Flow Visualization Integration</h2>
+        <p>Testing ResourceFlowManager integration with buildings and serf movement tracking.</p>
+        
+        <button onclick="runIntegrationTests()">Run Integration Tests</button>
+        <button onclick="clearConsole()">Clear Console</button>
+        
+        <div id="testResults"></div>
+        
+        <h3>Console Output:</h3>
+        <div id="console"></div>
+    </div>
+
+    <script type="module">
+        // Import necessary modules
+        import Game from './src/core/Game.js';
+        import ResourceFlowManager from './src/core/ResourceFlowManager.js';
+        import { BUILDING_DATA } from './src/config/buildingData.js';
+
+        let game;
+        let testResults = [];
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            console.innerHTML += `<div style="color: ${type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#74c0fc'}">[${timestamp}] ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '';
+            
+            testResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result ${result.passed ? 'pass' : 'fail'}`;
+                div.innerHTML = `
+                    <strong>${result.name}</strong><br>
+                    ${result.message}
+                `;
+                resultsDiv.appendChild(div);
+            });
+            
+            const summary = document.createElement('div');
+            const passed = testResults.filter(r => r.passed).length;
+            const total = testResults.length;
+            summary.className = `test-result ${passed === total ? 'pass' : 'fail'}`;
+            summary.innerHTML = `<strong>Summary: ${passed}/${total} tests passed</strong>`;
+            resultsDiv.appendChild(summary);
+        }
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            log(`${name}: ${passed ? 'PASS' : 'FAIL'} - ${message}`, passed ? 'success' : 'error');
+        }
+
+        window.runIntegrationTests = async function() {
+            testResults = [];
+            log('Starting Resource Flow Integration Tests...', 'info');
+            
+            try {
+                // Test 1: Game initialization with ResourceFlowManager
+                log('Test 1: Initializing Game with ResourceFlowManager...', 'info');
+                game = new Game();
+                await game.init();
+                
+                if (game.resourceFlowManager) {
+                    addTestResult('Game ResourceFlowManager', true, 'ResourceFlowManager properly initialized in Game');
+                } else {
+                    addTestResult('Game ResourceFlowManager', false, 'ResourceFlowManager not found in Game');
+                    return;
+                }
+
+                // Test 2: Check if ConstructionManager has ResourceFlowManager
+                log('Test 2: Checking ConstructionManager integration...', 'info');
+                if (game.constructionManager && game.constructionManager.resourceFlowManager) {
+                    addTestResult('ConstructionManager Integration', true, 'ConstructionManager has ResourceFlowManager reference');
+                } else {
+                    addTestResult('ConstructionManager Integration', false, 'ConstructionManager missing ResourceFlowManager reference');
+                }
+
+                // Test 3: Check if SerfManager has ResourceFlowManager
+                log('Test 3: Checking SerfManager integration...', 'info');
+                if (game.serfManager && game.serfManager.resourceFlowManager) {
+                    addTestResult('SerfManager Integration', true, 'SerfManager has ResourceFlowManager reference');
+                } else {
+                    addTestResult('SerfManager Integration', false, 'SerfManager missing ResourceFlowManager reference');
+                }
+
+                // Test 4: Test building creation with ResourceFlowManager
+                log('Test 4: Testing building creation with ResourceFlowManager...', 'info');
+                try {
+                    const buildingDataEntry = BUILDING_DATA.CASTLE;
+                    const building = game.constructionManager.createBuildingInstance('CASTLE', 5, 5, buildingDataEntry);
+                    
+                    if (building && building.resourceFlowManager) {
+                        addTestResult('Building ResourceFlowManager', true, 'Building created with ResourceFlowManager reference');
+                    } else {
+                        addTestResult('Building ResourceFlowManager', false, 'Building missing ResourceFlowManager reference');
+                    }
+                } catch (error) {
+                    addTestResult('Building Creation', false, `Error creating building: ${error.message}`);
+                }
+
+                // Test 5: Test serf creation with ResourceFlowManager
+                log('Test 5: Testing serf creation with ResourceFlowManager...', 'info');
+                try {
+                    const serf = game.serfManager.createSerf(3, 3, 'GENERIC');
+                    
+                    if (serf && serf.resourceFlowManager) {
+                        addTestResult('Serf ResourceFlowManager', true, 'Serf created with ResourceFlowManager reference');
+                    } else {
+                        addTestResult('Serf ResourceFlowManager', false, 'Serf missing ResourceFlowManager reference');
+                    }
+                } catch (error) {
+                    addTestResult('Serf Creation', false, `Error creating serf: ${error.message}`);
+                }
+
+                // Test 6: Test resource flow recording
+                log('Test 6: Testing resource flow recording...', 'info');
+                try {
+                    const initialFlowCount = game.resourceFlowManager.flows.length;
+                    game.resourceFlowManager.recordFlow({
+                        type: 'test',
+                        sourceType: 'building',
+                        sourceId: 'test-building',
+                        targetType: 'building',
+                        targetId: 'test-target',
+                        resourceType: 'WOOD',
+                        amount: 1,
+                        position: { x: 0, y: 0, z: 0 }
+                    });
+                    
+                    const newFlowCount = game.resourceFlowManager.flows.length;
+                    if (newFlowCount > initialFlowCount) {
+                        addTestResult('Resource Flow Recording', true, 'Successfully recorded resource flow');
+                    } else {
+                        addTestResult('Resource Flow Recording', false, 'Failed to record resource flow');
+                    }
+                } catch (error) {
+                    addTestResult('Resource Flow Recording', false, `Error recording flow: ${error.message}`);
+                }
+
+                // Test 7: Check ResourceFlowManager methods
+                log('Test 7: Checking ResourceFlowManager methods...', 'info');
+                const requiredMethods = ['recordFlow', 'recordSerfMovement', 'getFlows', 'clearFlows'];
+                const missingMethods = requiredMethods.filter(method => 
+                    typeof game.resourceFlowManager[method] !== 'function'
+                );
+                
+                if (missingMethods.length === 0) {
+                    addTestResult('ResourceFlowManager Methods', true, 'All required methods present');
+                } else {
+                    addTestResult('ResourceFlowManager Methods', false, `Missing methods: ${missingMethods.join(', ')}`);
+                }
+
+                log('Integration tests completed!', 'success');
+                
+            } catch (error) {
+                log(`Test error: ${error.message}`, 'error');
+                addTestResult('Test Execution', false, `Unexpected error: ${error.message}`);
+            }
+            
+            displayResults();
+        };
+
+        window.clearConsole = function() {
+            document.getElementById('console').innerHTML = '';
+        };
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('Page loaded. Ready to run tests.', 'info');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

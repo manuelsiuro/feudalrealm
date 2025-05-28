@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import Mine from './Mine.js'; // Import the base Mine class
 
 class IronMine extends Mine {
-    constructor(gridX, gridZ, gameMap, buildingDataEntry) {
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         const oreColor = 0xFF0000; // Red for Iron
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, oreColor);
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, oreColor, resourceFlowManager);
         // The model is already created by the Mine constructor, which calls createModel.
         // If IronMine needs a *different* overall structure beyond the ore indicator, 
         // then it would override createModel(). For now, it only customizes the indicator color.

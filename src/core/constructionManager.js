@@ -97,6 +97,7 @@ class ConstructionManager {
         this.activeConstructions = []; // Buildings actively being constructed by a serf
         this.placedBuildings = []; // Fully constructed and operational buildings
         this.serfManager = null; // Added serfManager property
+        this.resourceFlowManager = null; // Added resourceFlowManager property
 
         this.onChangeCallback = null;
 
@@ -105,6 +106,10 @@ class ConstructionManager {
 
     setSerfManager(serfManager) { // Added method to set SerfManager
         this.serfManager = serfManager;
+    }
+
+    setResourceFlowManager(resourceFlowManager) { // Added method to set ResourceFlowManager
+        this.resourceFlowManager = resourceFlowManager;
     }
 
     _setupPlacementIndicator() {
@@ -222,7 +227,7 @@ class ConstructionManager {
         // const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
         // const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
 
-        const newBuilding = new BuildingClass(placedGridX, placedGridZ, this.gameMap, buildingDataEntry);
+        const newBuilding = new BuildingClass(placedGridX, placedGridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
         newBuilding.setResourceManager(resourceManager); // Pass the imported singleton
         console.log(`[CM confirmPlacement] New building ${newBuilding.id} (${newBuilding.name}) created. Initial state: ${newBuilding.currentConstructionState}, Required time: ${newBuilding.constructionRequiredTime}`);
 
@@ -299,7 +304,7 @@ class ConstructionManager {
 
         console.log(`[InitialSetup] Placing and constructing ${buildingDataEntry.name} at grid (${gridX}, ${gridZ})`);
 
-        const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry);
+        const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
         newBuilding.setResourceManager(resourceManager);
 
         // Ensure the map tile is marked as occupied
@@ -595,7 +600,7 @@ class ConstructionManager {
         }
 
         // Create building instance
-        const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry);
+        const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
         newBuilding.setResourceManager(resourceManager);
 
         // Mark map tile as occupied

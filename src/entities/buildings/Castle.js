@@ -4,8 +4,8 @@ import Building from '../Building.js';
 import { TILE_SIZE } from '../../config/mapConstants.js'; // Assuming TILE_SIZE might be useful for scaling
 
 class Castle extends Building {
-    constructor(gridX, gridZ, gameMap, buildingDataEntry) {
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry); // Use buildingDataEntry.key
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Pass resourceFlowManager to parent
         this.model = this.createModel();
     }
 

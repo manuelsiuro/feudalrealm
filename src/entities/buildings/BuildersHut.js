@@ -4,9 +4,8 @@ import { BUILDING_DATA } from '../../config/buildingData.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class BuildersHut extends Building {
-    constructor(gridX, gridZ, gameMap) {
-        const buildingDataEntry = BUILDING_DATA.BUILDERS_HUT;
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry);
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager);
 
         this.model = this.createModel();
         if (this.model) {

@@ -4,8 +4,8 @@ import Building from '../Building.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';
 
 class Blacksmith extends Building {
-    constructor(gridX, gridZ, gameMap, buildingDataEntry) {
-        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry); // Use buildingDataEntry.key
+    constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
+        super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Use buildingDataEntry.key
         this.model = this.createModel();
         this.currentProcessingProgress = 0; // Initialize for this building type
     }
