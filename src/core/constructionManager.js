@@ -108,6 +108,10 @@ class ConstructionManager {
         this.serfManager = serfManager;
     }
 
+    setGame(game) { // Added method to set Game instance
+        this.game = game;
+    }
+
     setResourceFlowManager(resourceFlowManager) { // Added method to set ResourceFlowManager
         this.resourceFlowManager = resourceFlowManager;
     }
@@ -259,6 +263,12 @@ class ConstructionManager {
             // This case is for pre-built things like Castle, or if constructionTime is 0
             this.placedBuildings.push(newBuilding);
             console.log(`[CM confirmPlacement] ${newBuilding.name} (ID: ${newBuilding.id}) is already constructed.`);
+            
+            // Register the building with ProductionChainManager
+            if (this.game && this.game.productionChainManager) {
+                this.game.productionChainManager.registerBuilding(newBuilding);
+                console.log(`[CM confirmPlacement] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
+            }
         }
 
         // SerfManager interaction is now handled by the update loop assigning tasks from the queue
@@ -329,6 +339,12 @@ class ConstructionManager {
         if (newBuilding.currentConstructionState === 'CONSTRUCTED') {
             this.placedBuildings.push(newBuilding);
             console.log(`[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) successfully placed and is operational.`);
+            
+            // Register the initial building with ProductionChainManager
+            if (this.game && this.game.productionChainManager) {
+                this.game.productionChainManager.registerBuilding(newBuilding);
+                console.log(`[InitialSetup] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
+            }
         } else {
             // If an initial building somehow needs construction (e.g. for testing), add it to the queue.
             this.addBuildingToConstructionQueue(newBuilding);
@@ -434,6 +450,12 @@ class ConstructionManager {
                     this.placedBuildings.push(building);
                     this.activeConstructions.splice(i, 1);
                     this._notifyUI();
+                    
+                    // Register the completed building with the ProductionChainManager
+                    if (this.game && this.game.productionChainManager) {
+                        this.game.productionChainManager.registerBuilding(building);
+                        console.log(`[CM Update] Registered ${building.name} (ID: ${building.id}) with ProductionChainManager`);
+                    }
                     
                     // The builder's task will automatically complete and they will return to their hut
                     // through the ConstructBuildingTask completion logic
@@ -622,6 +644,12 @@ class ConstructionManager {
             this.addBuildingToConstructionQueue(newBuilding);
         } else if (newBuilding.currentConstructionState === 'CONSTRUCTED') {
             this.placedBuildings.push(newBuilding);
+            
+            // Register the building with ProductionChainManager
+            if (this.game && this.game.productionChainManager) {
+                this.game.productionChainManager.registerBuilding(newBuilding);
+                console.log(`[queueBuilding] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
+            }
         }
 
         this._notifyUI();

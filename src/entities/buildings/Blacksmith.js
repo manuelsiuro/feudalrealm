@@ -61,60 +61,22 @@ class Blacksmith extends Building {
     update(deltaTime, currentTime) {
         super.update(deltaTime, currentTime); // Base update (handles construction, etc.)
 
-        if (!this.isConstructed || this.workers.length === 0) {
-            return; // Needs to be built and have workers
-        }
+        // Use the enhanced production chain processing from the base class
+        this.updateProductionChain(deltaTime, currentTime);
+    }
 
-        // Handle food consumption
-        this._checkAndConsumeFood(currentTime);
-        if (this.isHaltedByNoFood) {
-            return;
-        }
-
-        // Processing logic (consumes materials, produces materials after a delay)
-        // Ensure buildingDataEntry for BLACKSMITH has 'consumesMaterials', 'producesMaterials', and 'processingTimeMs'
-        if (this.info.consumesMaterials && this.info.consumesMaterials.length > 0 && 
-            this.info.producesMaterials && this.info.producesMaterials.length > 0 && 
-            this.info.processingTime > 0) { // Changed from processingTimeMs to processingTime to match buildingData.js
-
-            if (this.hasResources(this.info.consumesMaterials)) {
-                // Check if there's space for ALL products
-                let canProduceAll = true;
-                for (const product of this.info.producesMaterials) {
-                    if (!this.hasSpaceFor(product.resource, product.quantity)) {
-                        canProduceAll = false;
-                        // console.log(`${this.name} (${this.id}) cannot start/continue processing, not enough space for ${product.resource}.`);
-                        break;
-                    }
-                }
-
-                if (canProduceAll) {
-                    this.currentProcessingProgress += deltaTime * 1000; // Add milliseconds
-
-                    if (this.currentProcessingProgress >= this.info.processingTime) { // Changed from processingTimeMs
-                        // Consume input resources
-                        for (const item of this.info.consumesMaterials) {
-                            this.pickupResource(item.resource, item.quantity); // Use base class method
-                        }
-
-                        // Produce output resources
-                        for (const product of this.info.producesMaterials) {
-                            this.addResource(product.resource, product.quantity); // Use base class method
-                            // console.log(`${this.name} (${this.id}) produced ${product.quantity} ${product.resource}.`);
-                        }
-                        this.currentProcessingProgress = 0; // Reset progress
-                    }
-                } else {
-                    // Not enough space for output, reset or pause progress.
-                    // Resetting for simplicity here.
-                    this.currentProcessingProgress = 0; 
-                }
-            } else {
-                // Not enough input materials, reset progress.
-                this.currentProcessingProgress = 0;
-                // console.log(`${this.name} (${this.id}) waiting for input materials: ${JSON.stringify(this.info.consumesMaterials)}.`);
-            }
-        }
+    /**
+     * Gets the current production status for UI display.
+     * @returns {object} Status information for the blacksmith
+     */
+    getStatus() {
+        const baseStatus = this.getProductionChainStatus();
+        return {
+            ...baseStatus,
+            buildingType: 'Blacksmith',
+            specialty: 'Tool Production',
+            currentProduct: this.producesMaterials.length > 0 ? this.producesMaterials[0].resource : 'None'
+        };
     }
 }
 

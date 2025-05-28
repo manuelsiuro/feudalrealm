@@ -349,364 +349,283 @@ class Building {
     }
 
     /**
-     * Initiates the construction process for this building.
-     * @param {string} builderId - The ID of the serf assigned to build.
-     * @param {THREE.Scene} scene - The main scene to add the progress bar to.
+     * Validates if a complete production cycle can be started.
+     * Checks both input material availability and output storage capacity.
+     * @returns {{canStart: boolean, reason: string}} Result with detailed reason
      */
-    startConstructionProcess(builderId, scene) {
-        console.log(`[Building START_CONSTRUCTION_PROCESS] ${this.id} (${this.name}): Called by builder ${builderId}. Current state: ${this.currentConstructionState}, Required time: ${this.constructionRequiredTime}`);
-        
-        if (this.currentConstructionState !== BUILDING_STATE_NEEDS_CONSTRUCTION) {
-            console.warn(`${this.name} (${this.id}): Construction already started or completed. Current state: ${this.currentConstructionState}`);
-            return;
-        }
-        
-        if (this.assignedBuilderId && this.assignedBuilderId !== builderId) {
-            console.warn(`${this.name} (${this.id}): Already assigned to builder ${this.assignedBuilderId}. Cannot assign to ${builderId}.`);
-            return;
-        }
-        
-        if (this.constructionRequiredTime <= 0) {
-            console.log(`${this.name} (${this.id}): No construction time required. Marking as constructed.`);
-            this.completeConstructionProcess();
-            return;
+    validateProductionCycle() {
+        if (!this.isConstructed) {
+            return { canStart: false, reason: 'Building not constructed' };
         }
 
-        this.currentConstructionState = BUILDING_STATE_UNDER_CONSTRUCTION;
-        this.assignedBuilderId = builderId;
-        this.currentConstructionProgress = 0;
-        
-        if (this.model) {
-            this._setOpacityRecursive(this.model, 0.5);
+        if (this.workers.length === 0) {
+            return { canStart: false, reason: 'No workers assigned' };
         }
 
-        // Create and display progress bar
-        this._createProgressBar(scene);
-
-        console.log(`[Building START_CONSTRUCTION_PROCESS] ${this.name} (${this.id}) construction started by builder ${builderId}. New state: ${this.currentConstructionState}. Required time: ${this.constructionRequiredTime}ms.`);
-    }
-
-    /**
-     * Updates the construction progress.
-     * @param {number} deltaTime - The time elapsed since the last update in milliseconds.
-     * @returns {boolean} True if construction is complete, false otherwise.
-     */
-    updateConstructionProgress(deltaTime) {
-        if (this.currentConstructionState !== BUILDING_STATE_UNDER_CONSTRUCTION) {
-            // console.log(`[Building UPDATE_CONSTRUCTION_PROGRESS] ${this.id} (${this.name}): Not UNDER_CONSTRUCTION. State: ${this.currentConstructionState}. Skipping update.`);
-            return false;
+        if (this.isHaltedByNoFood) {
+            return { canStart: false, reason: 'Halted due to lack of food' };
         }
 
-        this.currentConstructionProgress += deltaTime;
-        // console.log(`[Building UPDATE_CONSTRUCTION_PROGRESS] ${this.id} (${this.name}): deltaTime: ${deltaTime}, progress: ${this.currentConstructionProgress}/${this.constructionRequiredTime}`);
-        this._updateProgressBar();
-
-        if (this.currentConstructionProgress >= this.constructionRequiredTime) {
-            // console.log(`[Building UPDATE_CONSTRUCTION_PROGRESS] ${this.id} (${this.name}): Progress met. Completing construction.`);
-            this.completeConstructionProcess();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Finalizes the construction process for this building.
-     */
-    completeConstructionProcess() {
-        console.log(`[Building COMPLETE_CONSTRUCTION_PROCESS] ${this.id} (${this.name}): Called. Current state before: ${this.currentConstructionState}`);
-        
-        this.currentConstructionState = BUILDING_STATE_CONSTRUCTED;
-        this.isConstructed = true; // Ensure legacy flag is set
-        this.currentConstructionProgress = this.constructionRequiredTime; // Cap progress
-        
-        // Clear builder assignment
-        const previousBuilderId = this.assignedBuilderId;
-        this.assignedBuilderId = null;
-
-        // Restore full opacity
-        if (this.model) {
-            this._setOpacityRecursive(this.model, 1.0);
-        }
-        
-        // Remove progress bar with cleanup
-        this._removeProgressBar();
-
-        // Initialize timing for production buildings
-        this.lastProductionTime = Date.now();
-        this.lastFoodCheckTime = Date.now();
-        
-        console.log(`[Building COMPLETE_CONSTRUCTION_PROCESS] ${this.name} (${this.id}) construction complete! Builder ${previousBuilderId} can return to hut. New state: ${this.currentConstructionState}`);
-    }
-
-    /**
-     * @deprecated Use startConstructionProcess instead.
-     * Initiates the construction process for this building.
-     * @param {number} durationSeconds - The duration of the construction in seconds.
-     */
-    startConstruction(durationSeconds) {
-        console.warn("Building.startConstruction() is deprecated. Use startConstructionProcess(builderId, scene) instead.");
-        // This method is now largely a no-op or could redirect if a scene is available globally
-        // For now, it just sets the old flags for minimal disruption if called by old code.
-        this.isConstructed = false;
-        // this.constructionEndTime = Date.now() + (durationSeconds * 1000); // No longer used
-        if (this.model) {
-            this._setOpacityRecursive(this.model, 0.5);
-        }
-    }
-
-    /**
-     * @deprecated Use completeConstructionProcess instead.
-     * Finalizes the construction process for this building.
-     * Makes the building fully opaque and initializes production/food check timers.
-     */
-    finishConstruction() {
-        console.warn("Building.finishConstruction() is deprecated. Use completeConstructionProcess() instead.");
-        // This method is now largely a no-op or could redirect.
-        // For now, it just sets the old flags for minimal disruption if called by old code.
-        this.isConstructed = true;
-        if (this.model) {
-            this._setOpacityRecursive(this.model, 1.0);
-        }
-        this.lastProductionTime = Date.now();
-        this.lastFoodCheckTime = Date.now();
-    }
-    
-    /**
-     * Sets the opacity of the building's model.
-     * Used to make the building semi-transparent during construction.
-     * @param {number} opacity - The opacity value (0.0 to 1.0).
-     */
-    setOpacity(opacity) {
-        if (this.model) {
-            this._setOpacityRecursive(this.model, opacity);
-        }
-    }
-
-    /**
-     * Recursively sets opacity on all materials of meshes in the object.
-     * @param {THREE.Object3D} object3D
-     * @param {number} opacity
-     * @protected
-     */
-    _setOpacityRecursive(object3D, opacity) {
-        if (!object3D) return;
-        object3D.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.material) {
-                if (Array.isArray(child.material)) {
-                    child.material.forEach(material => {
-                        material.transparent = opacity < 1.0;
-                        material.opacity = opacity;
-                        material.needsUpdate = true;
-                    });
-                } else {
-                    child.material.transparent = opacity < 1.0;
-                    child.material.opacity = opacity;
-                    child.material.needsUpdate = true;
-                }
-            }
-        });
-    }
-
-    /**
-     * @private
-     * Creates and displays a progress bar above the building.
-     * @param {THREE.Scene} scene - The scene to add the progress bar to.
-     */
-    _createProgressBar(scene) {
-        if (!this.model || !scene) return;
-        if (this.progressBarGroup) { // Check for the group
-            this._removeProgressBar();
+        if (!this.consumesMaterials || this.consumesMaterials.length === 0) {
+            return { canStart: false, reason: 'No input materials defined' };
         }
 
-        const barWidth = TILE_SIZE * (this.info.size?.width || 1) * 0.8;
-        const barHeight = TILE_SIZE * 0.1;
-        const barDepth = TILE_SIZE * 0.05; // Very thin bar
-
-        // Background (the empty part of the bar)
-        const backgroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
-        const backgroundMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x333333, 
-            transparent: true, 
-            opacity: 0.8 
-        });
-        const backgroundBar = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
-
-        // Foreground (the filled part of the bar)
-        const foregroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
-        const foregroundMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0xffaa00, // Orange color for construction
-            transparent: true, 
-            opacity: 0.9 
-        });
-        const foregroundBar = new THREE.Mesh(foregroundGeometry, foregroundMaterial);
-        foregroundBar.position.x = -barWidth / 2; // Align left edge
-        
-        // Group them for easier positioning and management
-        this.progressBarGroup = new THREE.Group();
-        this.progressBarGroup.add(backgroundBar);
-        this.progressBarGroup.add(foregroundBar);
-        
-        this.progressBarMesh = foregroundBar; // Store reference to the part that scales
-        this.progressBarMesh.userData.isProgressBar = true;
-        this.progressBarMesh.userData.buildingId = this.id;
-        backgroundBar.userData.isProgressBarBackground = true;
-        backgroundBar.userData.buildingId = this.id;
-        this.progressBarGroup.name = `ProgressBar_${this.id}`;
-
-        // Position the progress bar above the building model
-        const buildingBox = new THREE.Box3().setFromObject(this.model);
-        const buildingHeight = buildingBox.max.y - buildingBox.min.y;
-
-        // Position the group relative to the building's model's world position
-        this.progressBarGroup.position.set(
-            this.model.position.x, 
-            this.model.position.y + buildingHeight + TILE_SIZE * 0.3, // A bit above the building
-            this.model.position.z
-        );
-        
-        scene.add(this.progressBarGroup);
-        this._updateProgressBar(); // Set initial scale
-        
-        console.log(`[Building] Progress bar created for ${this.name} (${this.id})`);
-    }
-
-    /**
-     * @private
-     * Updates the visual state of the progress bar.
-     */
-    _updateProgressBar() {
-        if (!this.progressBarMesh || !this.progressBarGroup || this.constructionRequiredTime <= 0) {
-            return;
+        if (!this.producesMaterials || this.producesMaterials.length === 0) {
+            return { canStart: false, reason: 'No output materials defined' };
         }
 
-        const progressRatio = Math.min(this.currentConstructionProgress / this.constructionRequiredTime, 1);
-        this.progressBarMesh.scale.x = progressRatio;
-        
-        // Adjust position to keep the left edge aligned as it scales
-        const barWidth = TILE_SIZE * (this.info.size?.width || 1) * 0.8;
-        this.progressBarMesh.position.x = - (barWidth * (1 - progressRatio)) / 2;
+        if (this.processingTime <= 0) {
+            return { canStart: false, reason: 'No processing time defined' };
+        }
 
-        // Change color based on progress
-        if (this.progressBarMesh.material) {
-            if (progressRatio < 0.33) {
-                this.progressBarMesh.material.color.setHex(0xff4444); // Red for early progress
-            } else if (progressRatio < 0.66) {
-                this.progressBarMesh.material.color.setHex(0xffaa00); // Orange for mid progress
-            } else {
-                this.progressBarMesh.material.color.setHex(0x44ff44); // Green for near completion
+        // Check input material availability
+        if (!this.hasResources(this.consumesMaterials)) {
+            const missingResources = this.consumesMaterials
+                .filter(item => (this.inventory[item.resource] || 0) < item.quantity)
+                .map(item => `${item.resource}(${(this.inventory[item.resource] || 0)}/${item.quantity})`)
+                .join(', ');
+            return { canStart: false, reason: `Insufficient input materials: ${missingResources}` };
+        }
+
+        // Check output storage capacity
+        for (const product of this.producesMaterials) {
+            if (!this.hasSpaceFor(product.resource, product.quantity)) {
+                return { canStart: false, reason: `Insufficient storage space for ${product.resource}` };
             }
         }
 
-        // Make sure the progress bar is visible only during construction
-        if (this.progressBarGroup) {
-            this.progressBarGroup.visible = this.currentConstructionState === BUILDING_STATE_UNDER_CONSTRUCTION;
-        }
+        return { canStart: true, reason: 'Ready for production' };
     }
 
     /**
-     * @private
-     * Removes the progress bar from the scene.
+     * Executes a complete production cycle, consuming inputs and producing outputs.
+     * Should only be called after validateProductionCycle() returns true.
+     * @returns {{success: boolean, consumed: Array<object>, produced: Array<object>}} Production result
      */
-    _removeProgressBar() {
-        if (this.progressBarGroup && this.progressBarGroup.parent) {
-            this.progressBarGroup.parent.remove(this.progressBarGroup);
-            
-            // Dispose of geometries and materials to free up resources
-            this.progressBarGroup.traverse(child => {
-                if (child instanceof THREE.Mesh) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(m => m.dispose());
-                        } else {
-                            child.material.dispose();
-                        }
-                    }
-                }
-            });
-            
-            console.log(`[Building] Progress bar removed for ${this.name} (${this.id})`);
+    executeProductionCycle() {
+        const validation = this.validateProductionCycle();
+        if (!validation.canStart) {
+            console.warn(`${this.name} (${this.id}): Cannot execute production cycle - ${validation.reason}`);
+            return { success: false, consumed: [], produced: [] };
         }
-        this.progressBarMesh = null;
-        this.progressBarGroup = null;
+
+        const consumed = [];
+        const produced = [];
+
+        // Consume input materials
+        for (const item of this.consumesMaterials) {
+            const actualConsumed = this.pickupResource(item.resource, item.quantity);
+            if (actualConsumed > 0) {
+                consumed.push({ resource: item.resource, quantity: actualConsumed });
+            }
+        }
+
+        // Produce output materials
+        for (const product of this.producesMaterials) {
+            const actualProduced = this.addResource(product.resource, product.quantity);
+            if (actualProduced > 0) {
+                produced.push({ resource: product.resource, quantity: actualProduced });
+                
+                // Record resource flow for visualization
+                if (this.resourceFlowManager && this.model?.position) {
+                    const buildingPosition = this.model.position.clone();
+                    this.resourceFlowManager.recordFlow(
+                        buildingPosition,
+                        buildingPosition.clone().add(new THREE.Vector3(0, 1, 0)), // Slightly above for production flow
+                        product.resource,
+                        actualProduced,
+                        'production'
+                    );
+                }
+            }
+        }
+
+        return { success: true, consumed, produced };
     }
 
     /**
-     * Updates the building's state, e.g., production, food consumption.
-     * Subclasses will override this to add specific behaviors (production, consumption)
+     * Gets the current processing progress as a percentage.
+     * @returns {number} Progress percentage (0.0 to 1.0)
+     */
+    getProcessingProgress() {
+        if (this.processingTime <= 0) return 0;
+        return Math.min(this.currentProcessingProgress / this.processingTime, 1.0);
+    }
+
+    /**
+     * Estimates time remaining for current processing cycle.
+     * @returns {number} Time remaining in milliseconds
+     */
+    getProcessingTimeRemaining() {
+        if (this.processingTime <= 0) return 0;
+        return Math.max(this.processingTime - this.currentProcessingProgress, 0);
+    }
+
+    /**
+     * Gets a summary of the building's production chain status.
+     * @returns {object} Status summary with detailed information
+     */
+    getProductionChainStatus() {
+        const validation = this.validateProductionCycle();
+        const progress = this.getProcessingProgress();
+        const timeRemaining = this.getProcessingTimeRemaining();
+
+        // Calculate input material status
+        const inputStatus = this.consumesMaterials.map(item => ({
+            resource: item.resource,
+            required: item.quantity,
+            available: this.inventory[item.resource] || 0,
+            sufficient: (this.inventory[item.resource] || 0) >= item.quantity
+        }));
+
+        // Calculate output storage status
+        const outputStatus = this.producesMaterials.map(product => {
+            const currentAmount = this.inventory[product.resource] || 0;
+            const maxCap = (this.outputBufferCapacity && this.outputBufferCapacity[product.resource]) 
+                           ? this.outputBufferCapacity[product.resource] 
+                           : (this.maxStock && this.maxStock[product.resource]) 
+                               ? this.maxStock[product.resource]
+                               : (this.maxStock && this.maxStock.default) 
+                                   ? this.maxStock.default 
+                                   : 0;
+            return {
+                resource: product.resource,
+                produced: product.quantity,
+                current: currentAmount,
+                capacity: maxCap,
+                hasSpace: currentAmount + product.quantity <= maxCap
+            };
+        });
+
+        return {
+            canProduce: validation.canStart,
+            reason: validation.reason,
+            isProcessing: this.currentProcessingProgress > 0,
+            progress: progress,
+            timeRemaining: timeRemaining,
+            workers: this.workers.length,
+            maxWorkers: this.jobSlots,
+            isHaltedByNoFood: this.isHaltedByNoFood,
+            inputStatus: inputStatus,
+            outputStatus: outputStatus
+        };
+    }
+
+    /**
+     * Transfers resources to another building if possible.
+     * @param {Building} targetBuilding - The building to transfer resources to
+     * @param {string} resourceType - The type of resource to transfer
+     * @param {number} amount - The amount to transfer
+     * @returns {{transferred: number, reason: string}} Transfer result
+     */
+    transferResourceTo(targetBuilding, resourceType, amount) {
+        if (!this.isConstructed) {
+            return { transferred: 0, reason: 'Source building not constructed' };
+        }
+
+        if (!targetBuilding.isConstructed) {
+            return { transferred: 0, reason: 'Target building not constructed' };
+        }
+
+        const availableAmount = this.inventory[resourceType] || 0;
+        if (availableAmount <= 0) {
+            return { transferred: 0, reason: 'No resources available to transfer' };
+        }
+
+        const amountToTransfer = Math.min(amount, availableAmount);
+        const actualPickedUp = this.pickupResource(resourceType, amountToTransfer);
+        
+        if (actualPickedUp <= 0) {
+            return { transferred: 0, reason: 'Failed to pickup resources from source' };
+        }
+
+        const actualDelivered = targetBuilding.addResource(resourceType, actualPickedUp);
+        
+        // If we couldn't deliver all resources, add the remainder back
+        if (actualDelivered < actualPickedUp) {
+            const remainder = actualPickedUp - actualDelivered;
+            this.addResource(resourceType, remainder);
+        }
+
+        // Record resource flow for visualization
+        if (this.resourceFlowManager && this.model?.position && targetBuilding.model?.position) {
+            this.resourceFlowManager.recordFlow(
+                this.model.position.clone(),
+                targetBuilding.model.position.clone(),
+                resourceType,
+                actualDelivered,
+                'building_to_building'
+            );
+        }
+
+        return { 
+            transferred: actualDelivered, 
+            reason: actualDelivered > 0 ? 'Success' : 'Target building has no space' 
+        };
+    }
+
+    /**
+     * Base update method that subclasses can override or extend.
+     * Provides a standard update implementation that handles production chain processing.
      * @param {number} deltaTime - The time elapsed since the last update in milliseconds.
      * @param {number} currentTime - The current game time (e.g., Date.now()).
      */
     update(deltaTime, currentTime) {
-        if (!this.isConstructed) {
-            // ConstructionManager will handle checking constructionEndTime and calling finishConstruction
-            return; 
-        }
-
-        // Basic update logic (e.g., for passive effects or animations)
-        // Production, consumption, etc., will be handled in subclass update methods.
-        // For example, a subclass might call _checkAndConsumeFood(currentTime) here.
+        // Handle production chain updates for buildings that have production capabilities
+        this.updateProductionChain(deltaTime, currentTime);
     }
 
     /**
-     * Gets the grid coordinates for the building's entry point.
-     * Default is the building's own grid position. Subclasses can override this.
-     * @returns {{x: number, z: number}} The grid coordinates of the entry point.
-     */
-    getEntryPointGridPosition() {
-        return { x: this.gridX, z: this.gridZ };
-    }
-
-    /**
-     * @private
-     * Helper method to check and consume food for workers if applicable.
-     * This is typically called by the `update` method of subclasses that have workers.
+     * Enhanced update method with improved production chain processing.
+     * This provides a base implementation that subclasses can use or override.
+     * @param {number} deltaTime - The time elapsed since the last update in milliseconds.
      * @param {number} currentTime - The current game time (e.g., Date.now()).
      */
-    _checkAndConsumeFood(currentTime) {
-        if (!this.resourceManager) {
-            // console.warn(`${this.name} (${this.id}): ResourceManager not set. Cannot consume food.`);
-            return; // Silently return if RM not set, it might be set later
-        }
-        if (!this.consumesFood || this.consumesFood.length === 0 || this.foodConsumptionRate === 0 || this.workers.length === 0) {
-            this.isHaltedByNoFood = false;
+    updateProductionChain(deltaTime, currentTime) {
+        if (!this.isConstructed || this.workers.length === 0) {
             return;
         }
 
-        if (currentTime >= (this.lastFoodCheckTime || 0) + this.foodCheckIntervalMs) {
-            const foodNeededThisInterval = this.foodConsumptionRate * this.workers.length;
-            let foodSatisfied = 0;
-            let consumedFoodDetails = [];
+        // Handle food consumption
+        this._checkAndConsumeFood(currentTime);
+        if (this.isHaltedByNoFood) {
+            // Reset processing progress if halted by food
+            this.currentProcessingProgress = 0;
+            return;
+        }
 
-            for (const foodType of this.consumesFood) {
-                if (foodSatisfied >= foodNeededThisInterval) break;
+        // Handle processing chain logic
+        if (this.consumesMaterials && this.consumesMaterials.length > 0 && 
+            this.producesMaterials && this.producesMaterials.length > 0 && 
+            this.processingTime > 0) {
 
-                const availableAmount = this.resourceManager.getResourceCount(foodType);
-                const amountToConsumeFromThisType = Math.min(availableAmount, foodNeededThisInterval - foodSatisfied);
+            const validation = this.validateProductionCycle();
+            
+            if (validation.canStart) {
+                // Continue or start processing
+                this.currentProcessingProgress += deltaTime;
 
-                if (amountToConsumeFromThisType > 0) {
-                    if (this.resourceManager.removeResource(foodType, amountToConsumeFromThisType)) {
-                        foodSatisfied += amountToConsumeFromThisType;
-                        consumedFoodDetails.push(`${amountToConsumeFromThisType.toFixed(2)} ${foodType}`);
+                if (this.currentProcessingProgress >= this.processingTime) {
+                    // Complete the production cycle
+                    const result = this.executeProductionCycle();
+                    
+                    if (result.success) {
+                        // Log production result
+                        const consumedStr = result.consumed.map(item => `${item.quantity} ${item.resource}`).join(', ');
+                        const producedStr = result.produced.map(item => `${item.quantity} ${item.resource}`).join(', ');
+                        console.log(`${this.name} (${this.id}) completed production: consumed [${consumedStr}] → produced [${producedStr}]`);
                     }
+                    
+                    // Reset progress for next cycle
+                    this.currentProcessingProgress = 0;
                 }
-            }
-
-            if (foodSatisfied >= foodNeededThisInterval) {
-                if (this.isHaltedByNoFood) {
-                    console.log(`${this.name} (${this.id}) RESUMED production due to food availability.`);
-                }
-                this.isHaltedByNoFood = false;
-                // if (consumedFoodDetails.length > 0) {
-                //      console.log(`${this.name} (${this.id}) consumed ${consumedFoodDetails.join(', ')} for ${this.workers.length} workers.`);
-                // }
             } else {
-                if (!this.isHaltedByNoFood) {
-                   console.warn(`${this.name} (${this.id}) HALTED. Insufficient food for workers. Needed ${foodNeededThisInterval.toFixed(2)}, Got ${foodSatisfied.toFixed(2)}. Tried: ${this.consumesFood.join(', ')}.`);
+                // Cannot start or continue processing, reset progress
+                if (this.currentProcessingProgress > 0) {
+                    console.log(`${this.name} (${this.id}) production halted: ${validation.reason}`);
                 }
-                this.isHaltedByNoFood = true;
+                this.currentProcessingProgress = 0;
             }
-            this.lastFoodCheckTime = currentTime;
         }
     }
 }

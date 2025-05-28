@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main App Debug</title>
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+    <div id="app">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    <script type="module">
+        console.log('Debug: Starting main app test');
+        
+        const appContainer = document.getElementById('app');
+        console.log('Debug: App container:', appContainer);
+        
+        const gameCanvas = document.getElementById('game-canvas');
+        console.log('Debug: Game canvas:', gameCanvas);
+        
+        if (!appContainer) {
+            console.error('Error: Root container #app not found in HTML. Game cannot start.');
+        } else if (!gameCanvas) {
+            console.error('Error: #game-canvas not found. Game cannot start.');
+        } else {
+            console.log('Debug: Both containers found, attempting to import Game');
+            
+            try {
+                const { default: Game } = await import('/src/core/Game.js');
+                console.log('Debug: Game imported successfully');
+                
+                const game = new Game();
+                console.log('Debug: Game instance created');
+                
+                game.init();
+                console.log('Debug: Game initialized');
+                
+                game.start();
+                console.log('Debug: Game started');
+                
+                window.game = game;
+                console.log('Debug: Game exposed on window');
+                
+            } catch (error) {
+                console.error('Debug: Error loading game:', error);
+                console.error('Debug: Error stack:', error.stack);
+            }
+        }
+    </script>
+</body>
+</html>

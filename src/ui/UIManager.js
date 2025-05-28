@@ -1,134 +1,642 @@
 import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // May be needed for UI updates
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
 import { FORESTER_SAPLING_UPGRADE_AMOUNT } from '../config/unitConstants.js';
+import ProductionChainUI from './ProductionChainUI.js';
 
 class UIManager {
-    constructor(uiContainer, resourceManager, constructionManager, serfManager, selectionManager) {
-        this.uiContainer = uiContainer; // Changed from uiOverlay to uiContainer
+    constructor(uiContainer, resourceManager, constructionManager, serfManager, selectionManager, productionChainManager) {
+        this.uiContainer = uiContainer;
         this.resourceManager = resourceManager;
         this.constructionManager = constructionManager;
-        this.serfManager = serfManager; // To get serf data for info panel
-        this.selectionManager = selectionManager; // Store SelectionManager
+        this.serfManager = serfManager;
+        this.selectionManager = selectionManager;
+        this.productionChainManager = productionChainManager;
 
-        this.resourcePanel = null;
-        this.resourceCounterBar = null; // New top resource counter bar
-        this.serfListPanel = null; // New panel for serf list
-        this.buildingListPanel = null; // New panel for building list
-        this.miniMapPanel = null;
-        this.testButtonContainer = null;
-        this.constructionPanel = null;
-        this.selectedBuildingInfoPanel = null;
-        this.selectedUnitInfoPanel = null;
+        // Core UI panels
+        this.topBar = null;
+        this.leftSidebar = null;
+        this.rightSidebar = null;
+        this.bottomPanel = null;
+        this.centerInfoPanel = null;
+        
+        // Specific components
+        this.resourceDisplay = null;
+        this.gameActions = null;
+        this.entityLists = null;
+        this.buildingConstruction = null;
+        this.selectionInfo = null;
+        this.miniMap = null;
+
+        // Production chain components
+        this.productionChainUI = null;
 
         this.buildingButtons = new Map();
-        this.onSerfSelectCallback = null; // Callback for when a serf is selected from the list
-        this.onBuildingSelectCallback = null; // Callback for when a building is selected
+        this.onSerfSelectCallback = null;
+        this.onBuildingSelectCallback = null;
+        this.isDevMode = false; // Toggle for developer features
 
         if (!this.uiContainer) {
             console.error("UIManager: uiContainer element not found. UI will not be initialized.");
             return;
         }
 
-        this.initResourceCounterBar(); // Add the new resource counter bar first
-        this.initResourcePanel();
-        this.initSerfListPanel(); // Initialize the new panel
-        this.initBuildingListPanel(); // Initialize building list panel
-        this.initMiniMapPanel(); // Placeholder
-        this.initTestButtons(); // Cheat buttons
-        this.initConstructionPanel();
-        this.initSelectionInfoPanels(); // Sets up placeholders, actual display is dynamic
+        this.initModernUI();
+        this.setupEventListeners();
+
+        // Initialize ProductionChainUI if productionChainManager is available
+        if (this.productionChainManager) {
+            this.productionChainUI = new ProductionChainUI(this.productionChainManager, this);
+            console.log('ProductionChainUI initialized.');
+        }
 
         this.resourceManager.onChange((stockpiles) => {
-            this.updateResourceUI(stockpiles);
-            this.updateResourceCounterBar(stockpiles); // Add real-time counter bar updates
+            this.updateResourceDisplay(stockpiles);
             this.updateBuildingButtons();
         });
 
         // Initial UI updates
-        this.updateResourceUI(this.resourceManager.getAllStockpiles());
-        this.updateResourceCounterBar(this.resourceManager.getAllStockpiles()); // Initial counter bar update
+        this.updateResourceDisplay(this.resourceManager.getAllStockpiles());
         this.updateBuildingButtons();
+        this.updateEntityLists();
 
-        this._subscribeToSelectionChanges(); // Subscribe to SelectionManager
-
-        // Listen for changes in serf population
-        if (this.serfManager && typeof this.serfManager.onChange === 'function') {
-            this.serfManager.onChange(() => {
-                this.updateSerfListUI();
-            });
-            this.updateSerfListUI(); // Initial update
-        } else {
-            console.warn("UIManager: SerfManager not available or doesn't have onChange method. Serf list will not auto-update.");
-        }
-
-        // Listen for changes in buildings (new listener needed in ConstructionManager)
+        // Auto-update entity lists
         if (this.constructionManager && typeof this.constructionManager.onChange === 'function') {
             this.constructionManager.onChange(() => {
-                this.updateBuildingListUI();
+                this.updateEntityLists();
             });
-            this.updateBuildingListUI(); // Initial update
-        } else {
-            console.warn("UIManager: ConstructionManager not available or doesn't have onChange method. Building list will not auto-update.");
         }
 
-        // Add resize listener for UI elements that need it
+        // Add resize listener
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
-        this.onWindowResize(); // Call once to set initial sizes
+        this.onWindowResize();
     }
 
-    initResourceCounterBar() {
-        // Create a prominent resource counter bar at the top of the screen
-        this.resourceCounterBar = document.createElement('div');
-        this.resourceCounterBar.id = 'resource-counter-bar';
-        this.resourceCounterBar.style.position = 'absolute';
-        this.resourceCounterBar.style.top = '0';
-        this.resourceCounterBar.style.left = '0';
-        this.resourceCounterBar.style.right = '0';
-        this.resourceCounterBar.style.height = '50px';
-        this.resourceCounterBar.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-        this.resourceCounterBar.style.borderBottom = '2px solid rgba(76, 175, 80, 0.8)';
-        this.resourceCounterBar.style.display = 'flex';
-        this.resourceCounterBar.style.alignItems = 'center';
-        this.resourceCounterBar.style.padding = '0 20px';
-        this.resourceCounterBar.style.zIndex = '100';
-        this.resourceCounterBar.style.backdropFilter = 'blur(5px)';
-        this.resourceCounterBar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.3)';
+    initModernUI() {
+        // Create or find the UI overlay container (don't clear the canvas!)
+        let uiOverlay = document.getElementById('ui-overlay');
+        if (!uiOverlay) {
+            uiOverlay = document.createElement('div');
+            uiOverlay.id = 'ui-overlay';
+            uiOverlay.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 10;
+                pointer-events: none;
+                display: grid;
+                grid-template-areas: 
+                    "topbar topbar topbar"
+                    "left center right"
+                    "bottom bottom bottom";
+                grid-template-rows: 60px 1fr 120px;
+                grid-template-columns: 280px 1fr 280px;
+                gap: 8px;
+                padding: 8px;
+                box-sizing: border-box;
+            `;
+            this.uiContainer.appendChild(uiOverlay);
+        } else {
+            // Clear only the UI overlay, not the entire container
+            uiOverlay.innerHTML = '';
+        }
+        
+        // Use the overlay as our UI container
+        this.uiOverlay = uiOverlay;
+        
+        // Create main layout structure
+        this.createTopBar();
+        this.createLeftSidebar();
+        this.createRightSidebar();
+        this.createBottomPanel();
+        this.createCenterInfoPanel();
+    }
 
-        // Add title
-        const title = document.createElement('span');
-        title.textContent = 'Resources:';
-        title.style.color = '#4CAF50';
-        title.style.fontWeight = 'bold';
-        title.style.marginRight = '20px';
-        title.style.fontSize = '14px';
-        title.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.8)';
-        this.resourceCounterBar.appendChild(title);
+    createTopBar() {
+        this.topBar = document.createElement('div');
+        this.topBar.style.cssText = `
+            grid-area: topbar;
+            background: linear-gradient(135deg, rgba(25,35,45,0.95), rgba(35,45,55,0.95));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        `;
 
-        // Container for resource items
-        this.resourceCounterContainer = document.createElement('div');
-        this.resourceCounterContainer.style.display = 'flex';
-        this.resourceCounterContainer.style.gap = '15px';
-        this.resourceCounterContainer.style.alignItems = 'center';
-        this.resourceCounterContainer.style.flexWrap = 'wrap';
-        this.resourceCounterBar.appendChild(this.resourceCounterContainer);
+        // Resource display section
+        this.resourceDisplay = document.createElement('div');
+        this.resourceDisplay.style.cssText = `
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex: 1;
+        `;
 
-        this.uiContainer.appendChild(this.resourceCounterBar);
+        const resourceTitle = document.createElement('span');
+        resourceTitle.textContent = 'Resources';
+        resourceTitle.style.cssText = `
+            color: #4CAF50;
+            font-weight: 600;
+            font-size: 16px;
+            margin-right: 20px;
+        `;
 
-        // Adjust other top panels to account for the new counter bar
-        setTimeout(() => {
-            if (this.resourcePanel) {
-                this.resourcePanel.style.top = '60px'; // 50px bar + 10px gap
+        this.resourceDisplay.appendChild(resourceTitle);
+        this.topBar.appendChild(this.resourceDisplay);
+
+        // Game actions section (right side of top bar)
+        this.gameActions = document.createElement('div');
+        this.gameActions.style.cssText = `
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        `;
+
+        // Toggle dev mode button
+        const devToggle = document.createElement('button');
+        devToggle.textContent = 'DEV';
+        devToggle.style.cssText = `
+            background: rgba(255,193,7,0.2);
+            border: 1px solid rgba(255,193,7,0.5);
+            color: #FFC107;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        `;
+        devToggle.addEventListener('click', () => this.toggleDevMode());
+
+        // Production chains button
+        const productionChainsBtn = document.createElement('button');
+        productionChainsBtn.textContent = 'Production Chains';
+        productionChainsBtn.style.cssText = `
+            background: rgba(76,175,80,0.2);
+            border: 1px solid rgba(76,175,80,0.5);
+            color: #4CAF50;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            margin-left: 8px;
+        `;
+        productionChainsBtn.addEventListener('click', () => this.toggleProductionChains());
+
+        this.gameActions.appendChild(devToggle);
+        this.gameActions.appendChild(productionChainsBtn);
+        this.topBar.appendChild(this.gameActions);
+        this.uiOverlay.appendChild(this.topBar);
+    }
+
+    setupEventListeners() {
+        // Subscribe to selection changes
+        this._subscribeToSelectionChanges();
+        
+        // Listen for serf changes
+        if (this.serfManager && typeof this.serfManager.onChange === 'function') {
+            this.serfManager.onChange(() => {
+                this.updateEntityLists();
+            });
+        }
+    }
+
+    updateResourceDisplay(stockpiles) {
+        if (!this.resourceDisplay) return;
+        
+        // Clear existing resource items (keep title)
+        const existingItems = this.resourceDisplay.querySelectorAll('.resource-item');
+        existingItems.forEach(item => item.remove());
+
+        // Priority resources to display
+        const priorityResources = [
+            RESOURCE_TYPES.WOOD,
+            RESOURCE_TYPES.STONE,
+            RESOURCE_TYPES.GRAIN,
+            RESOURCE_TYPES.IRON_ORE,
+            RESOURCE_TYPES.PLANKS,
+            RESOURCE_TYPES.IRON_BARS
+        ].filter(type => type !== undefined);
+
+        priorityResources.forEach(resourceType => {
+            if (!stockpiles.hasOwnProperty(resourceType)) return;
+
+            const amount = stockpiles[resourceType];
+            const resourceItem = document.createElement('div');
+            resourceItem.className = 'resource-item';
+            
+            resourceItem.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 8px;
+                border: 1px solid rgba(255,255,255,0.2);
+                transition: all 0.3s ease;
+                cursor: pointer;
+            `;
+
+            // Resource icon and amount
+            const resourceIcons = {
+                [RESOURCE_TYPES.WOOD]: '🪵',
+                [RESOURCE_TYPES.STONE]: '🪨',
+                [RESOURCE_TYPES.GRAIN]: '🌾',
+                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
+                [RESOURCE_TYPES.PLANKS]: '📏',
+                [RESOURCE_TYPES.IRON_BARS]: '🔩'
+            };
+
+            const icon = document.createElement('span');
+            icon.textContent = resourceIcons[resourceType] || '📦';
+            icon.style.fontSize = '16px';
+
+            const amountSpan = document.createElement('span');
+            amountSpan.textContent = amount.toString();
+            amountSpan.style.cssText = `
+                color: white;
+                font-weight: 600;
+                font-size: 14px;
+            `;
+
+            // Color coding
+            if (amount === 0) {
+                resourceItem.style.background = 'rgba(244,67,54,0.2)';
+                resourceItem.style.borderColor = 'rgba(244,67,54,0.4)';
+            } else if (amount < 10) {
+                resourceItem.style.background = 'rgba(255,193,7,0.2)';
+                resourceItem.style.borderColor = 'rgba(255,193,7,0.4)';
+            } else {
+                resourceItem.style.background = 'rgba(76,175,80,0.2)';
+                resourceItem.style.borderColor = 'rgba(76,175,80,0.4)';
             }
-            if (this.serfListPanel) {
-                this.serfListPanel.style.top = '60px';
-            }
-            if (this.buildingListPanel) {
-                this.buildingListPanel.style.top = '60px';
-            }
-            if (this.miniMapPanel) {
-                this.miniMapPanel.style.top = '60px';
-            }
-        }, 0);
+
+            resourceItem.appendChild(icon);
+            resourceItem.appendChild(amountSpan);
+            
+            // Hover effects
+            resourceItem.addEventListener('mouseenter', () => {
+                resourceItem.style.transform = 'translateY(-2px)';
+                resourceItem.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+            });
+            
+            resourceItem.addEventListener('mouseleave', () => {
+                resourceItem.style.transform = '';
+                resourceItem.style.boxShadow = '';
+            });
+
+            this.resourceDisplay.appendChild(resourceItem);
+        });
+    }
+
+    updateEntityLists() {
+        this.updateSerfListUI();
+        this.updateBuildingListUI();
+    }
+
+    toggleDevMode() {
+        this.isDevMode = !this.isDevMode;
+        const devPanel = this.bottomPanel?.querySelector('.dev-panel');
+        
+        if (this.isDevMode) {
+            this.showDevPanel();
+        } else {
+            if (devPanel) devPanel.remove();
+        }
+    }
+
+    toggleProductionChains() {
+        if (this.productionChainUI) {
+            this.productionChainUI.toggle();
+        } else {
+            console.warn('UIManager: ProductionChainUI not available');
+        }
+    }
+
+    showDevPanel() {
+        if (!this.bottomPanel) return;
+        
+        // Remove existing dev panel
+        const existingDevPanel = this.bottomPanel.querySelector('.dev-panel');
+        if (existingDevPanel) existingDevPanel.remove();
+        
+        const devPanel = document.createElement('div');
+        devPanel.className = 'dev-panel';
+        devPanel.style.cssText = `
+            background: rgba(255,193,7,0.1);
+            border: 1px solid rgba(255,193,7,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        `;
+
+        const addResourcesBtn = document.createElement('button');
+        addResourcesBtn.textContent = '+50 All Resources';
+        addResourcesBtn.style.cssText = `
+            background: rgba(76,175,80,0.8);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        `;
+        addResourcesBtn.addEventListener('click', () => {
+            Object.values(RESOURCE_TYPES).forEach(type => {
+                if (typeof type === 'string') {
+                    this.resourceManager.addResource(type, 50);
+                }
+            });
+        });
+
+        devPanel.appendChild(addResourcesBtn);
+        this.bottomPanel.appendChild(devPanel);
+    }
+
+    createLeftSidebar() {
+        this.leftSidebar = document.createElement('div');
+        this.leftSidebar.style.cssText = `
+            grid-area: left;
+            background: rgba(25,35,45,0.9);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: auto;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        // Entity lists container
+        this.entityLists = document.createElement('div');
+        this.entityLists.style.cssText = `
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        `;
+
+        this.createSerfList();
+        this.createBuildingList();
+        
+        this.leftSidebar.appendChild(this.entityLists);
+        this.uiOverlay.appendChild(this.leftSidebar);
+    }
+
+    createSerfList() {
+        const serfSection = document.createElement('div');
+        serfSection.style.cssText = `
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+        `;
+
+        const serfTitle = document.createElement('h3');
+        serfTitle.textContent = 'Serfs';
+        serfTitle.style.cssText = `
+            margin: 0 0 12px 0;
+            color: #4CAF50;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        `;
+
+        this.serfListContent = document.createElement('div');
+        this.serfListContent.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        `;
+
+        serfTitle.addEventListener('click', () => {
+            const isHidden = this.serfListContent.style.display === 'none';
+            this.serfListContent.style.display = isHidden ? 'flex' : 'none';
+        });
+
+        serfSection.appendChild(serfTitle);
+        serfSection.appendChild(this.serfListContent);
+        this.entityLists.appendChild(serfSection);
+    }
+
+    createBuildingList() {
+        const buildingSection = document.createElement('div');
+        buildingSection.style.cssText = `
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+        `;
+
+        const buildingTitle = document.createElement('h3');
+        buildingTitle.textContent = 'Buildings';
+        buildingTitle.style.cssText = `
+            margin: 0 0 12px 0;
+            color: #FF9800;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        `;
+
+        this.buildingListContent = document.createElement('div');
+        this.buildingListContent.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        `;
+
+        buildingTitle.addEventListener('click', () => {
+            const isHidden = this.buildingListContent.style.display === 'none';
+            this.buildingListContent.style.display = isHidden ? 'flex' : 'none';
+        });
+
+        buildingSection.appendChild(buildingTitle);
+        buildingSection.appendChild(this.buildingListContent);
+        this.entityLists.appendChild(buildingSection);
+    }
+
+    createRightSidebar() {
+        this.rightSidebar = document.createElement('div');
+        this.rightSidebar.style.cssText = `
+            grid-area: right;
+            background: rgba(25,35,45,0.9);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: auto;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+        `;
+
+        this.createMiniMap();
+        this.createConstructionPanel();
+        
+        this.uiOverlay.appendChild(this.rightSidebar);
+    }
+
+    createMiniMap() {
+        this.miniMap = document.createElement('div');
+        this.miniMap.style.cssText = `
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            border: 1px dashed rgba(255,255,255,0.2);
+        `;
+        this.miniMap.textContent = 'Mini-map (Coming Soon)';
+        this.rightSidebar.appendChild(this.miniMap);
+    }
+
+    createConstructionPanel() {
+        this.buildingConstruction = document.createElement('div');
+        this.buildingConstruction.style.cssText = `
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+        `;
+
+        const constructionTitle = document.createElement('h3');
+        constructionTitle.textContent = 'Build';
+        constructionTitle.style.cssText = `
+            margin: 0 0 16px 0;
+            color: #2196F3;
+            font-size: 16px;
+            font-weight: 600;
+        `;
+
+        const buildingGrid = document.createElement('div');
+        buildingGrid.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        `;
+
+        // Create building buttons
+        const availableBuildings = this.constructionManager.getAvailableBuildings();
+        availableBuildings.forEach(building => {
+            const buildingBtn = document.createElement('button');
+            buildingBtn.style.cssText = `
+                background: rgba(76,175,80,0.8);
+                border: 1px solid rgba(76,175,80,0.6);
+                color: white;
+                padding: 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                text-align: left;
+            `;
+
+            const buildingName = document.createElement('div');
+            buildingName.textContent = building.name;
+            buildingName.style.fontWeight = '600';
+
+            const costDisplay = document.createElement('div');
+            costDisplay.style.cssText = `
+                font-size: 12px;
+                color: rgba(255,255,255,0.8);
+                margin-top: 4px;
+            `;
+            
+            const costText = Object.entries(building.cost || {})
+                .map(([resource, amount]) => `${resource.replace(/_/g, ' ')}: ${amount}`)
+                .join(', ') || 'Free';
+            costDisplay.textContent = costText;
+
+            buildingBtn.appendChild(buildingName);
+            buildingBtn.appendChild(costDisplay);
+
+            buildingBtn.addEventListener('click', () => {
+                this.constructionManager.startPlacement(building.key);
+            });
+
+            buildingBtn.addEventListener('mouseenter', () => {
+                buildingBtn.style.background = 'rgba(76,175,80,1)';
+                buildingBtn.style.transform = 'translateX(4px)';
+            });
+
+            buildingBtn.addEventListener('mouseleave', () => {
+                buildingBtn.style.background = 'rgba(76,175,80,0.8)';
+                buildingBtn.style.transform = '';
+            });
+
+            this.buildingButtons.set(building.key, { 
+                button: buildingBtn, 
+                cost: building.cost || {},
+                costDisplay: costDisplay
+            });
+            
+            buildingGrid.appendChild(buildingBtn);
+        });
+
+        this.buildingConstruction.appendChild(constructionTitle);
+        this.buildingConstruction.appendChild(buildingGrid);
+        this.rightSidebar.appendChild(this.buildingConstruction);
+    }
+
+    createBottomPanel() {
+        this.bottomPanel = document.createElement('div');
+        this.bottomPanel.style.cssText = `
+            grid-area: bottom;
+            background: rgba(25,35,45,0.9);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: auto;
+            padding: 16px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        `;
+
+        this.uiOverlay.appendChild(this.bottomPanel);
+    }
+
+    createCenterInfoPanel() {
+        this.centerInfoPanel = document.createElement('div');
+        this.centerInfoPanel.style.cssText = `
+            grid-area: center;
+            pointer-events: none;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        this.selectionInfo = document.createElement('div');
+        this.selectionInfo.style.cssText = `
+            background: rgba(25,35,45,0.95);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: auto;
+            padding: 20px;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        `;
+
+        this.centerInfoPanel.appendChild(this.selectionInfo);
+        this.uiOverlay.appendChild(this.centerInfoPanel);
     }
 
     setSerfSelectCallback(callback) {
@@ -564,78 +1072,118 @@ class UIManager {
     }
 
     updateSerfListUI() {
-        if (!this.serfListPanel || !this.serfListPanelContent || !this.serfManager || typeof this.serfManager.getSerfsGroupedByProfession !== 'function') {
-            if (this.serfListPanelContent && (!this.serfManager || typeof this.serfManager.getSerfsGroupedByProfession !== 'function')) {
-                this.serfListPanelContent.innerHTML = ''; // Clear content area
+        if (!this.serfListContent || !this.serfManager || typeof this.serfManager.getSerfsGroupedByProfession !== 'function') {
+            if (this.serfListContent) {
+                this.serfListContent.innerHTML = '';
                 const placeholder = document.createElement('p');
                 placeholder.textContent = 'Serf data unavailable.';
-                placeholder.style.padding = '5px';
-                placeholder.style.fontStyle = 'italic';
-                placeholder.style.color = 'rgba(255,255,255,0.7)';
-                this.serfListPanelContent.appendChild(placeholder);
+                placeholder.style.cssText = `
+                    padding: 8px;
+                    font-style: italic;
+                    color: rgba(255,255,255,0.6);
+                    font-size: 12px;
+                `;
+                this.serfListContent.appendChild(placeholder);
             }
             return;
         }
 
-        this.serfListPanelContent.innerHTML = ''; // Clear only the content area
-        // Title is already part of this.serfListPanel
-
+        this.serfListContent.innerHTML = '';
         const serfsByProfession = this.serfManager.getSerfsGroupedByProfession();
 
         if (Object.keys(serfsByProfession).length === 0) {
             const noSerfsMessage = document.createElement('p');
             noSerfsMessage.textContent = 'No serfs active.';
-            noSerfsMessage.style.padding = '5px';
-            noSerfsMessage.style.fontStyle = 'italic';
-            noSerfsMessage.style.color = 'rgba(255,255,255,0.7)';
-            this.serfListPanelContent.appendChild(noSerfsMessage); // Append to content area
+            noSerfsMessage.style.cssText = `
+                padding: 8px;
+                font-style: italic;
+                color: rgba(255,255,255,0.6);
+                font-size: 12px;
+                text-align: center;
+            `;
+            this.serfListContent.appendChild(noSerfsMessage);
             return;
         }
 
         for (const profession in serfsByProfession) {
             const serfs = serfsByProfession[profession];
             if (serfs.length > 0) {
-                const professionHeader = document.createElement('h5');
-                professionHeader.textContent = profession.replace(/([A-Z])/g, ' $1').trim(); // Add space before caps
-                professionHeader.classList.add('serf-list-panel-subheader');
-                this.serfListPanelContent.appendChild(professionHeader);
+                const professionHeader = document.createElement('h4');
+                professionHeader.textContent = `${profession.replace(/([A-Z])/g, ' $1').trim()} (${serfs.length})`;
+                professionHeader.style.cssText = `
+                    margin: 8px 0 4px 0;
+                    color: #81C784;
+                    font-size: 12px;
+                    font-weight: 600;
+                    border-bottom: 1px solid rgba(129,199,132,0.3);
+                    padding-bottom: 2px;
+                `;
+                this.serfListContent.appendChild(professionHeader);
 
-                const ul = document.createElement('ul');
                 serfs.forEach(serf => {
-                    const li = document.createElement('li');
-                    li.textContent = `Serf ${serf.id.substring(0, 6)}`; // Display partial ID
-                    li.classList.add('serf-list-item');
-                    li.dataset.serfId = serf.id; // Store full ID
+                    const serfItem = document.createElement('div');
+                    serfItem.className = 'serf-list-item';
+                    serfItem.dataset.serfId = serf.id;
+                    serfItem.textContent = `${serf.id.substring(0, 6)} - ${serf.state || 'Active'}`;
+                    serfItem.style.cssText = `
+                        padding: 6px 8px;
+                        background: rgba(255,255,255,0.05);
+                        border-radius: 4px;
+                        margin-bottom: 2px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        color: rgba(255,255,255,0.9);
+                        transition: all 0.2s ease;
+                        border: 1px solid transparent;
+                    `;
 
-                    li.addEventListener('click', () => {
+                    serfItem.addEventListener('mouseenter', () => {
+                        serfItem.style.background = 'rgba(76,175,80,0.2)';
+                        serfItem.style.borderColor = 'rgba(76,175,80,0.4)';
+                        serfItem.style.transform = 'translateX(2px)';
+                    });
+
+                    serfItem.addEventListener('mouseleave', () => {
+                        if (!serfItem.classList.contains('selected')) {
+                            serfItem.style.background = 'rgba(255,255,255,0.05)';
+                            serfItem.style.borderColor = 'transparent';
+                            serfItem.style.transform = '';
+                        }
+                    });
+
+                    serfItem.addEventListener('click', () => {
                         if (this.onSerfSelectCallback) {
                             this.onSerfSelectCallback(serf.id);
                         } else {
                             console.warn('UIManager: onSerfSelectCallback not set.');
                         }
                     });
-                    ul.appendChild(li);
+
+                    this.serfListContent.appendChild(serfItem);
                 });
-                this.serfListPanelContent.appendChild(ul); // Append to content area
             }
         }
     }
 
     updateBuildingListUI() {
-        if (!this.buildingListPanel || !this.buildingListPanelContent || !this.constructionManager) {
-            if (this.buildingListPanelContent) {
-                this.buildingListPanelContent.innerHTML = '';
+        if (!this.buildingListContent || !this.constructionManager) {
+            if (this.buildingListContent) {
+                this.buildingListContent.innerHTML = '';
                 const placeholder = document.createElement('p');
                 placeholder.textContent = 'Building data unavailable.';
-                placeholder.style.padding = '5px';
-                placeholder.style.fontStyle = 'italic';
-                placeholder.style.color = 'rgba(255,255,255,0.7)';
-                this.buildingListPanelContent.appendChild(placeholder);
+                placeholder.style.cssText = `
+                    padding: 8px;
+                    font-style: italic;
+                    color: rgba(255,255,255,0.6);
+                    font-size: 12px;
+                `;
+                this.buildingListContent.appendChild(placeholder);
             }
             return;
         }
 
-        this.buildingListPanelContent.innerHTML = '';
+        this.buildingListContent.innerHTML = '';
+        
         // Combine all relevant building lists from ConstructionManager
         const buildings = [
             ...this.constructionManager.placedBuildings,
@@ -646,67 +1194,111 @@ class UIManager {
         if (buildings.length === 0) {
             const noBuildingsMessage = document.createElement('p');
             noBuildingsMessage.textContent = 'No buildings on map.';
-            noBuildingsMessage.style.padding = '5px';
-            noBuildingsMessage.style.fontStyle = 'italic';
-            noBuildingsMessage.style.color = 'rgba(255,255,255,0.7)';
-            this.buildingListPanelContent.appendChild(noBuildingsMessage);
+            noBuildingsMessage.style.cssText = `
+                padding: 8px;
+                font-style: italic;
+                color: rgba(255,255,255,0.6);
+                font-size: 12px;
+                text-align: center;
+            `;
+            this.buildingListContent.appendChild(noBuildingsMessage);
             return;
         }
 
         // Group buildings by type for better display
         const buildingsByType = buildings.reduce((acc, building) => {
-            // Check if building and building.info are defined
+            let typeName = 'Unknown Building';
+            
             if (building && building.info && building.info.name) {
-                const typeName = building.info.name || building.type; // Fallback to building.type if name is somehow missing
-                if (!acc[typeName]) {
-                    acc[typeName] = [];
-                }
-                acc[typeName].push(building);
+                typeName = building.info.name;
             } else if (building && building.type) {
-                // Fallback if info or info.name is missing, but type exists
-                const typeName = building.type;
-                if (!acc[typeName]) {
-                    acc[typeName] = [];
-                }
-                acc[typeName].push(building);
-                console.warn(`UIManager: Building with ID ${building.id || 'N/A'} (Type: ${building.type}) is missing 'info.name'. Grouping by type.`);
-            } else {
-                console.warn("UIManager: Encountered a building object without 'info' or 'type' property.", building);
+                typeName = building.type;
             }
+
+            if (!acc[typeName]) {
+                acc[typeName] = [];
+            }
+            acc[typeName].push(building);
             return acc;
         }, {});
 
         for (const typeName in buildingsByType) {
             const buildingGroup = buildingsByType[typeName];
             if (buildingGroup.length > 0) {
-                const typeHeader = document.createElement('h5');
-                typeHeader.textContent = typeName;
-                typeHeader.classList.add('building-list-panel-subheader');
-                this.buildingListPanelContent.appendChild(typeHeader);
+                const typeHeader = document.createElement('h4');
+                typeHeader.textContent = `${typeName} (${buildingGroup.length})`;
+                typeHeader.style.cssText = `
+                    margin: 8px 0 4px 0;
+                    color: #FFB74D;
+                    font-size: 12px;
+                    font-weight: 600;
+                    border-bottom: 1px solid rgba(255,183,77,0.3);
+                    padding-bottom: 2px;
+                `;
+                this.buildingListContent.appendChild(typeHeader);
 
-                const ul = document.createElement('ul');
                 buildingGroup.forEach(building => {
-                    const li = document.createElement('li');
-                    let status = building.isConstructed ? 'Completed' : 'Constructing';
-                    // Ensure building.info and building.info.name exist before accessing
-                    const displayName = (building.info && building.info.name) ? building.info.name : (building.type || 'Unknown Building');
-                    const displayId = (building.model && building.model.uuid) ? building.model.uuid.substring(0,6) : (building.id || 'N/A');
-                    li.textContent = `${displayName} (ID: ${displayId}) - ${status}`;
-                    li.classList.add('building-list-item');
-                    li.dataset.buildingId = (building.model && building.model.uuid) ? building.model.uuid : '';
+                    const buildingItem = document.createElement('div');
+                    buildingItem.className = 'building-list-item';
+                    
+                    const buildingId = (building.model && building.model.uuid) ? 
+                        building.model.uuid.substring(0,6) : (building.id || 'N/A');
+                    
+                    let status = 'Completed';
+                    if (building.currentConstructionState) {
+                        switch (building.currentConstructionState) {
+                            case 'NEEDS_CONSTRUCTION':
+                                status = '🏗️ Needs Construction';
+                                break;
+                            case 'UNDER_CONSTRUCTION':
+                                status = '🔨 Building';
+                                break;
+                            case 'NEEDS_RESOURCES':
+                                status = '📦 Needs Resources';
+                                break;
+                            default:
+                                status = building.isConstructed ? '✅ Complete' : '⏳ Planning';
+                        }
+                    } else {
+                        status = building.isConstructed ? '✅ Complete' : '⏳ Planning';
+                    }
 
-                    li.addEventListener('click', () => {
-                        // Reuse selectAndFocusSerf logic for focusing, adapt for buildings
-                        // This requires a new method in Game.js: selectAndFocusBuilding(buildingId)
-                        if (this.onBuildingSelectCallback) { // A new callback for buildings
+                    buildingItem.textContent = `${buildingId} - ${status}`;
+                    buildingItem.dataset.buildingId = (building.model && building.model.uuid) ? building.model.uuid : '';
+                    buildingItem.style.cssText = `
+                        padding: 6px 8px;
+                        background: rgba(255,255,255,0.05);
+                        border-radius: 4px;
+                        margin-bottom: 2px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        color: rgba(255,255,255,0.9);
+                        transition: all 0.2s ease;
+                        border: 1px solid transparent;
+                    `;
+
+                    buildingItem.addEventListener('mouseenter', () => {
+                        buildingItem.style.background = 'rgba(255,183,77,0.2)';
+                        buildingItem.style.borderColor = 'rgba(255,183,77,0.4)';
+                        buildingItem.style.transform = 'translateX(2px)';
+                    });
+
+                    buildingItem.addEventListener('mouseleave', () => {
+                        if (!buildingItem.classList.contains('selected')) {
+                            buildingItem.style.background = 'rgba(255,255,255,0.05)';
+                            buildingItem.style.borderColor = 'transparent';
+                            buildingItem.style.transform = '';
+                        }
+                    });
+
+                    buildingItem.addEventListener('click', () => {
+                        if (this.onBuildingSelectCallback && building.model && building.model.uuid) {
                             this.onBuildingSelectCallback(building.model.uuid);
                         }
-                        // Also, directly update selection for immediate feedback if Game doesn't handle it fast enough
-                        // Or rely on Game to call displaySelectedBuildingInfo
                     });
-                    ul.appendChild(li);
+
+                    this.buildingListContent.appendChild(buildingItem);
                 });
-                this.buildingListPanelContent.appendChild(ul);
             }
         }
     }
@@ -878,60 +1470,121 @@ class UIManager {
     // ...existing code...
 
     displayUnitInfo(unit) {
-        if (!this.selectedUnitInfoPanel || !this.selectedUnitInfoContent || !unit) {
+        if (!this.selectionInfo || !unit) {
             this.hideUnitInfo();
             return;
         }
-        this.selectedUnitInfoContent.innerHTML = ''; // Clear previous content
-
-        const details = document.createElement('div');
-        details.innerHTML = `
-            <p><strong>ID:</strong> ${unit.id}</p>
-            <p><strong>Type:</strong> ${unit.serfType || 'N/A'}</p>
-            <p><strong>State:</strong> ${unit.state || 'N/A'}</p>
-            <p><strong>Task:</strong> ${unit.task || 'None'}</p>
-            ${unit.model ? `<p><strong>Position:</strong> X: ${unit.model.position.x.toFixed(1)}, Z: ${unit.model.position.z.toFixed(1)}</p>` : ''}
+        
+        // Create modern header
+        const header = document.createElement('h3');
+        header.textContent = `👤 ${unit.serfType || 'Unit'}`;
+        header.style.cssText = `
+            margin: 0 0 16px 0;
+            color: #4CAF50;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(76,175,80,0.3);
+            padding-bottom: 8px;
         `;
 
+        const details = document.createElement('div');
+        details.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+        `;
+
+        // Basic info with modern styling
+        const basicInfo = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div><strong>🆔 ID:</strong> ${unit.id}</div>
+                <div><strong>⚙️ State:</strong> ${unit.state || 'N/A'}</div>
+                <div><strong>📋 Task:</strong> ${unit.task || 'None'}</div>
+                ${unit.model ? `<div><strong>📍 Position:</strong> (${unit.model.position.x.toFixed(1)}, ${unit.model.position.z.toFixed(1)})</div>` : ''}
+            </div>
+        `;
+        details.innerHTML = basicInfo;
+
+        // Forester-specific features
         if (unit.serfType === SERF_PROFESSIONS.FORESTER) {
             const plantedCount = unit.plantedSaplingsCount !== undefined ? unit.plantedSaplingsCount : 'N/A';
             const maxPlanted = unit.maxPlantedSaplings !== undefined ? unit.maxPlantedSaplings : 'N/A';
-            details.innerHTML += `<p><strong>Saplings Planted:</strong> ${plantedCount} / ${maxPlanted}</p>`;
+            
+            const foresterInfo = document.createElement('div');
+            foresterInfo.style.cssText = `
+                background: rgba(76,175,80,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(76,175,80,0.3);
+            `;
+            foresterInfo.innerHTML = `
+                <div style="margin-bottom: 8px;"><strong>🌱 Saplings Planted:</strong> ${plantedCount} / ${maxPlanted}</div>
+            `;
 
-            const upgradeButton = document.createElement('md-filled-button');
+            const upgradeButton = document.createElement('button');
             upgradeButton.textContent = 'Upgrade Max Saplings';
-            upgradeButton.style.marginTop = '10px';
-            upgradeButton.style.width = '100%';
+            upgradeButton.style.cssText = `
+                background: rgba(76,175,80,0.8);
+                border: 1px solid rgba(76,175,80,0.6);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                width: 100%;
+            `;
+            
+            upgradeButton.addEventListener('mouseenter', () => {
+                upgradeButton.style.background = 'rgba(76,175,80,1)';
+            });
+            upgradeButton.addEventListener('mouseleave', () => {
+                upgradeButton.style.background = 'rgba(76,175,80,0.8)';
+            });
             upgradeButton.addEventListener('click', () => {
                 if (unit.upgradeMaxPlantedSaplings) {
-                    // The FORESTER_SAPLING_UPGRADE_AMOUNT should be available here
-                    // It's imported at the top of UIManager.js
                     unit.upgradeMaxPlantedSaplings(FORESTER_SAPLING_UPGRADE_AMOUNT);
                     this.displayUnitInfo(unit); // Refresh panel
-                    // Resource UI will be updated by the resourceManager's onChange event
                 } else {
                     console.error("Selected unit does not have upgradeMaxPlantedSaplings method.");
                 }
             });
-            details.appendChild(upgradeButton);
+            
+            foresterInfo.appendChild(upgradeButton);
+            details.appendChild(foresterInfo);
         }
         
-        // Display inventory if it exists and is not empty
+        // Inventory display
         if (unit.inventory && Object.keys(unit.inventory).length > 0) {
-            let inventoryHTML = '<p><strong>Inventory:</strong></p><ul>';
+            const inventorySection = document.createElement('div');
+            inventorySection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+            
+            let inventoryHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FFB74D;">📦 Inventory:</div>';
+            inventoryHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 4px;">';
+            
             for (const resource in unit.inventory) {
                 if (unit.inventory[resource] > 0) {
-                    inventoryHTML += `<li>${resource.replace(/_/g, ' ')}: ${unit.inventory[resource]}</li>`;
+                    inventoryHTML += `<div style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px;">${resource.replace(/_/g, ' ')}: ${unit.inventory[resource]}</div>`;
                 }
             }
-            inventoryHTML += '</ul>';
-            details.innerHTML += inventoryHTML;
+            inventoryHTML += '</div>';
+            inventorySection.innerHTML = inventoryHTML;
+            details.appendChild(inventorySection);
         }
 
-
-        this.selectedUnitInfoContent.appendChild(details);
-        this.selectedUnitInfoPanel.style.display = 'block';
-        this.hideBuildingInfo(); // Hide building info when showing unit info
+        // Clear and populate selection info panel
+        this.selectionInfo.innerHTML = '';
+        this.selectionInfo.appendChild(header);
+        this.selectionInfo.appendChild(details);
+        this.selectionInfo.style.display = 'block';
     }
 
     hideUnitInfo() {
@@ -944,23 +1597,41 @@ class UIManager {
     }
 
     displayBuildingInfo(building) {
-        if (!this.selectedBuildingInfoPanel || !this.selectedBuildingInfoContent || !building) {
+        if (!this.selectionInfo || !building) {
             this.hideBuildingInfo();
             return;
         }
-        this.selectedBuildingInfoContent.innerHTML = ''; // Clear previous content
-
-        const details = document.createElement('div');
-        let buildingName = 'N/A';
-        let buildingStatus = 'N/A';
-        let buildingPosition = '';
-
-        // Building name and type
+        
+        // Create modern header
+        const header = document.createElement('h3');
+        let buildingName = 'Unknown Building';
         if (building.info && building.info.name) {
             buildingName = building.info.name;
         } else if (building.type) {
-            buildingName = building.type; // Fallback to type
+            buildingName = building.type;
         }
+        
+        header.textContent = `🏗️ ${buildingName}`;
+        header.style.cssText = `
+            margin: 0 0 16px 0;
+            color: #FF9800;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255,152,0,0.3);
+            padding-bottom: 8px;
+        `;
+
+        const details = document.createElement('div');
+        details.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+        `;
+
+        let buildingStatus = 'N/A';
+        let buildingPosition = '';
         
         // Enhanced status with construction state support
         if (building.currentConstructionState) {
@@ -992,60 +1663,88 @@ class UIManager {
             }
         }
         
-        // Position information
-        if (building.model) {
-            buildingPosition = `<p><strong>📍 Position:</strong> Grid (${building.gridX || 'N/A'}, ${building.gridZ || 'N/A'}) | World (${building.model.position.x.toFixed(1)}, ${building.model.position.z.toFixed(1)})</p>`;
-        } else if (building.gridX !== undefined && building.gridZ !== undefined) {
-            buildingPosition = `<p><strong>📍 Position:</strong> Grid (${building.gridX}, ${building.gridZ})</p>`;
-        }
-
-        details.innerHTML = `
-            <p><strong>🏗️ Name:</strong> ${buildingName}</p>
-            <p><strong>⚙️ Status:</strong> ${buildingStatus}</p>
-            ${buildingPosition}
+        // Basic building info with modern styling
+        const basicInfo = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div><strong>⚙️ Status:</strong> ${buildingStatus}</div>
+                ${buildingPosition ? `<div><strong>📍 Position:</strong> Grid (${building.gridX || 'N/A'}, ${building.gridZ || 'N/A'})</div>` : ''}
+                ${building.model ? `<div><strong>🌍 World:</strong> (${building.model.position.x.toFixed(1)}, ${building.model.position.z.toFixed(1)})</div>` : ''}
+            </div>
         `;
+        details.innerHTML = basicInfo;
 
         // Display health information with visual indicators
         if (building.health !== undefined && building.maxHealth !== undefined) {
             const healthPercent = Math.round((building.health / building.maxHealth) * 100);
-            const healthColor = healthPercent > 75 ? '#32CD32' : healthPercent > 50 ? '#FFD700' : '#FF6347';
-            const healthBar = '█'.repeat(Math.floor(healthPercent / 10)) + '░'.repeat(10 - Math.floor(healthPercent / 10));
-            details.innerHTML += `
-                <p><strong>❤️ Health:</strong> <span style="color: ${healthColor}">${building.health}/${building.maxHealth} (${healthPercent}%)</span></p>
-                <p style="font-family: monospace; font-size: 12px; color: ${healthColor};">${healthBar}</p>
+            const healthColor = healthPercent > 75 ? '#4CAF50' : healthPercent > 50 ? '#FF9800' : '#F44336';
+            
+            const healthSection = document.createElement('div');
+            healthSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid ${healthColor}40;
             `;
+            healthSection.innerHTML = `
+                <div style="margin-bottom: 4px;"><strong>❤️ Health:</strong> <span style="color: ${healthColor}">${building.health}/${building.maxHealth} (${healthPercent}%)</span></div>
+                <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="background: ${healthColor}; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
+                </div>
+            `;
+            details.appendChild(healthSection);
         }
 
         // Enhanced worker information
         if (building.workers && building.workers.length > 0) {
             const maxWorkers = building.info?.jobSlots || 'N/A';
-            const workerIcon = building.workers.length >= maxWorkers ? '👥' : '👤';
-            details.innerHTML += `<p><strong>${workerIcon} Workers:</strong> ${building.workers.length} / ${maxWorkers}</p>`;
+            const workerSection = document.createElement('div');
+            workerSection.style.cssText = `
+                background: rgba(33,150,243,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(33,150,243,0.3);
+            `;
             
-            // List individual workers
+            let workerHTML = `<div style="margin-bottom: 8px; font-weight: 600; color: #2196F3;">👥 Workers: ${building.workers.length} / ${maxWorkers}</div>`;
+            
             building.workers.forEach((worker, index) => {
                 const workerName = worker.id || `Worker ${index + 1}`;
                 const workerStatus = worker.state || 'Active';
-                details.innerHTML += `<p style="margin-left: 20px; font-size: 12px;">• ${workerName} - ${workerStatus}</p>`;
+                workerHTML += `<div style="margin-left: 12px; font-size: 12px; color: rgba(255,255,255,0.8);">• ${workerName} - ${workerStatus}</div>`;
             });
             
-            // Show worker profession requirement
             if (building.jobProfession) {
-                details.innerHTML += `<p><strong>🎓 Required Job:</strong> ${building.jobProfession.replace(/_/g, ' ')}</p>`;
+                workerHTML += `<div style="margin-top: 8px; font-size: 12px;"><strong>🎓 Required:</strong> ${building.jobProfession.replace(/_/g, ' ')}</div>`;
             }
             if (building.requiredTool) {
-                details.innerHTML += `<p><strong>🔧 Required Tool:</strong> ${building.requiredTool.replace(/_/g, ' ')}</p>`;
+                workerHTML += `<div style="font-size: 12px;"><strong>🔧 Tool:</strong> ${building.requiredTool.replace(/_/g, ' ')}</div>`;
             }
+            
+            workerSection.innerHTML = workerHTML;
+            details.appendChild(workerSection);
         } else if (building.info?.jobSlots > 0) {
-            const jobSlotsIcon = building.info.jobSlots > 1 ? '👥' : '👤';
-            details.innerHTML += `<p><strong>${jobSlotsIcon} Workers:</strong> 0 / ${building.info.jobSlots} <span style="color: #FFD700;">(Needs Workers)</span></p>`;
+            const workerSection = document.createElement('div');
+            workerSection.style.cssText = `
+                background: rgba(255,193,7,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(255,193,7,0.3);
+            `;
+            
+            let workerHTML = `<div style="margin-bottom: 8px; font-weight: 600; color: #FFC107;">👤 Workers: 0 / ${building.info.jobSlots} (Needs Workers)</div>`;
             
             if (building.jobProfession) {
-                details.innerHTML += `<p><strong>🎓 Required Job:</strong> ${building.jobProfession.replace(/_/g, ' ')}</p>`;
+                workerHTML += `<div style="font-size: 12px;"><strong>🎓 Required:</strong> ${building.jobProfession.replace(/_/g, ' ')}</div>`;
             }
             if (building.requiredTool) {
-                details.innerHTML += `<p><strong>🔧 Required Tool:</strong> ${building.requiredTool.replace(/_/g, ' ')}</p>`;
+                workerHTML += `<div style="font-size: 12px;"><strong>🔧 Tool:</strong> ${building.requiredTool.replace(/_/g, ' ')}</div>`;
             }
+            
+            workerSection.innerHTML = workerHTML;
+            details.appendChild(workerSection);
         }
 
         // Enhanced production information
@@ -1053,29 +1752,59 @@ class UIManager {
             const producedResource = building.producesResource || building.info.producesResource;
             const productionInterval = building.productionIntervalMs || building.info?.productionIntervalMs || 'N/A';
             const intervalText = productionInterval !== 'N/A' ? `${Math.round(productionInterval / 1000)}s` : 'Unknown';
-            details.innerHTML += `<p><strong>🏭 Produces:</strong> ${producedResource.replace(/_/g, ' ')} (Every ${intervalText})</p>`;
             
-            // Show last production time if available
+            const productionSection = document.createElement('div');
+            productionSection.style.cssText = `
+                background: rgba(76,175,80,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(76,175,80,0.3);
+            `;
+            
+            let productionHTML = `<div style="margin-bottom: 4px; font-weight: 600; color: #4CAF50;">🏭 Produces: ${producedResource.replace(/_/g, ' ')} (Every ${intervalText})</div>`;
+            
             if (building.lastProductionTime) {
                 const timeSinceProduction = Math.round((Date.now() - building.lastProductionTime) / 1000);
-                details.innerHTML += `<p style="font-size: 12px; color: #888;">Last produced: ${timeSinceProduction}s ago</p>`;
+                productionHTML += `<div style="font-size: 12px; color: rgba(255,255,255,0.7);">Last produced: ${timeSinceProduction}s ago</div>`;
             }
-        }
-
-        // Enhanced consumption information
-        if (building.consumesMaterials && building.consumesMaterials.length > 0) {
-            const consumedResources = building.consumesMaterials.map(r => r.replace(/_/g, ' ')).join(', ');
-            details.innerHTML += `<p><strong>📦 Consumes:</strong> ${consumedResources}</p>`;
-        }
-
-        if (building.consumesFood && building.consumesFood.length > 0) {
-            const consumedFood = building.consumesFood.map(f => f.replace(/_/g, ' ')).join(', ');
-            const foodRate = building.foodConsumptionRate || 'N/A';
-            details.innerHTML += `<p><strong>🍞 Food Needs:</strong> ${consumedFood} (Rate: ${foodRate})</p>`;
             
-            if (building.isHaltedByNoFood) {
-                details.innerHTML += `<p style="color: #FF6347; font-weight: bold;">⚠️ Halted: No Food Available</p>`;
+            productionSection.innerHTML = productionHTML;
+            details.appendChild(productionSection);
+        }
+
+        // Enhanced consumption information  
+        if ((building.consumesMaterials && building.consumesMaterials.length > 0) || 
+            (building.consumesFood && building.consumesFood.length > 0)) {
+            
+            const consumptionSection = document.createElement('div');
+            consumptionSection.style.cssText = `
+                background: rgba(255,87,34,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(255,87,34,0.3);
+            `;
+            
+            let consumptionHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FF5722;">📦 Consumption:</div>';
+            
+            if (building.consumesMaterials && building.consumesMaterials.length > 0) {
+                const consumedResources = building.consumesMaterials.map(r => r.replace(/_/g, ' ')).join(', ');
+                consumptionHTML += `<div style="font-size: 12px; margin-bottom: 4px;">Materials: ${consumedResources}</div>`;
             }
+            
+            if (building.consumesFood && building.consumesFood.length > 0) {
+                const consumedFood = building.consumesFood.map(f => f.replace(/_/g, ' ')).join(', ');
+                const foodRate = building.foodConsumptionRate || 'N/A';
+                consumptionHTML += `<div style="font-size: 12px;">Food: ${consumedFood} (Rate: ${foodRate})</div>`;
+                
+                if (building.isHaltedByNoFood) {
+                    consumptionHTML += `<div style="color: #F44336; font-weight: bold; margin-top: 4px;">⚠️ Halted: No Food Available</div>`;
+                }
+            }
+            
+            consumptionSection.innerHTML = consumptionHTML;
+            details.appendChild(consumptionSection);
         }
 
         // Enhanced inventory display with stock limits
@@ -1093,48 +1822,72 @@ class UIManager {
                     
                     const stockDisplay = maxStock !== 'N/A' ? `${amount}/${maxStock}` : amount;
                     const resourceName = resourceType.replace(/_/g, ' ');
-                    inventoryItems.push(`<li>${resourceName}: ${stockDisplay}</li>`);
+                    inventoryItems.push({ name: resourceName, amount: stockDisplay });
                 }
             }
             
             if (inventoryItems.length > 0) {
-                details.innerHTML += `<p><strong>📦 Inventory:</strong></p><ul style="margin-left: 20px;">${inventoryItems.join('')}</ul>`;
-            } else {
-                details.innerHTML += `<p><strong>📦 Inventory:</strong> <span style="color: #888;">Empty</span></p>`;
-            }
-            
-            // Show storage capacity if available
-            if (building.maxStock) {
-                const defaultCapacity = building.maxStock.default;
-                if (defaultCapacity) {
-                    details.innerHTML += `<p style="font-size: 12px; color: #888;">Storage Capacity: ${defaultCapacity} per resource type</p>`;
+                const inventorySection = document.createElement('div');
+                inventorySection.style.cssText = `
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 8px 0;
+                `;
+                
+                let inventoryHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FFB74D;">📦 Inventory:</div>';
+                inventoryHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 4px;">';
+                
+                inventoryItems.forEach(item => {
+                    inventoryHTML += `<div style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px;">${item.name}: ${item.amount}</div>`;
+                });
+                
+                inventoryHTML += '</div>';
+                
+                // Show storage capacity if available
+                if (building.maxStock && building.maxStock.default) {
+                    inventoryHTML += `<div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px;">Capacity: ${building.maxStock.default} per resource type</div>`;
                 }
+                
+                inventorySection.innerHTML = inventoryHTML;
+                details.appendChild(inventorySection);
+            } else {
+                const inventorySection = document.createElement('div');
+                inventorySection.style.cssText = `
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 8px 0;
+                `;
+                inventorySection.innerHTML = '<div style="font-weight: 600; color: #FFB74D;">📦 Inventory: <span style="color: rgba(255,255,255,0.6);">Empty</span></div>';
+                details.appendChild(inventorySection);
             }
         }
 
         // Construction cost information (useful for repair estimates)
         if (building.cost && Object.keys(building.cost).length > 0) {
-            const costItems = [];
-            for (const resourceType in building.cost) {
-                const amount = building.cost[resourceType];
+            const costSection = document.createElement('div');
+            costSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+            
+            const costItems = Object.entries(building.cost).map(([resourceType, amount]) => {
                 const resourceName = resourceType.replace(/_/g, ' ');
-                costItems.push(`${resourceName}: ${amount}`);
-            }
-            details.innerHTML += `<p><strong>💰 Construction Cost:</strong> ${costItems.join(', ')}</p>`;
+                return `${resourceName}: ${amount}`;
+            }).join(', ');
+            
+            costSection.innerHTML = `<div style="font-weight: 600; color: #FFD54F;">💰 Construction Cost: ${costItems}</div>`;
+            details.appendChild(costSection);
         }
 
-        // Additional building-specific information
-        if (building.assignedBuilderId) {
-            details.innerHTML += `<p><strong>👷 Assigned Builder:</strong> ${building.assignedBuilderId}</p>`;
-        }
-
-        if (building.info?.tier) {
-            details.innerHTML += `<p><strong>⭐ Tier:</strong> ${building.info.tier}</p>`;
-        }
-
-        this.selectedBuildingInfoContent.appendChild(details);
-        this.selectedBuildingInfoPanel.style.display = 'block';
-        this.hideUnitInfo(); // Hide unit info when showing building info
+        // Clear and populate selection info panel
+        this.selectionInfo.innerHTML = '';
+        this.selectionInfo.appendChild(header);
+        this.selectionInfo.appendChild(details);
+        this.selectionInfo.style.display = 'block';
     }
 
     hideBuildingInfo() {

@@ -128,6 +128,33 @@ class Sawmill extends Building {
         return modelGroup;
     }
 
+    /**
+     * Update method for the Sawmill using enhanced production chain processing.
+     * @param {number} deltaTime - The time elapsed since the last update in milliseconds.
+     * @param {number} currentTime - The current game time (e.g., Date.now()).
+     */
+    update(deltaTime, currentTime) {
+        super.update(deltaTime, currentTime); // Base update (handles construction, etc.)
+
+        // Use the enhanced production chain processing from the base class
+        this.updateProductionChain(deltaTime, currentTime);
+    }
+
+    /**
+     * Gets the current production status for UI display.
+     * @returns {object} Status information for the sawmill
+     */
+    getStatus() {
+        const baseStatus = this.getProductionChainStatus();
+        return {
+            ...baseStatus,
+            buildingType: 'Sawmill',
+            specialty: 'Wood Processing',
+            currentProduct: this.producesMaterials.length > 0 ? this.producesMaterials[0].resource : 'None',
+            efficiency: this.workers.length > 0 ? (this.workers.length / this.jobSlots) * 100 : 0
+        };
+    }
+
     // ... other methods
 }
 

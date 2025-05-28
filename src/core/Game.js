@@ -12,6 +12,7 @@ import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import InputManager from './InputManager.js'; // Added
 import SelectionManager from './SelectionManager.js'; // Added
 import ResourceFlowManager from './ResourceFlowManager.js'; // Added for Quick Win #3
+import ProductionChainManager from './ProductionChainManager.js'; // Added for production chains
 
 const MAP_WIDTH = 15;
 const MAP_HEIGHT = 15;
@@ -26,6 +27,7 @@ class Game {
         this.natureManager = null; // Added property
         this.resourceManager = resourceManager; // Direct assignment
         this.resourceFlowManager = null; // Added for Quick Win #3
+        this.productionChainManager = null; // Added for production chains
 
         this.scene = null;
         this.camera = null;
@@ -93,6 +95,13 @@ class Game {
         // Pass ResourceFlowManager to ConstructionManager
         this.constructionManager.setResourceFlowManager(this.resourceFlowManager);
 
+        // Initialize ProductionChainManager
+        this.productionChainManager = new ProductionChainManager(this.gameMap, this.resourceManager);
+        console.log('ProductionChainManager initialized for production chains.');
+
+        // Pass Game instance to ConstructionManager for ProductionChainManager access
+        this.constructionManager.setGame(this);
+
         // 4. Initialize SerfManager
         this.serfManager = new SerfManager(this.scene, this.gameMap, this.constructionManager, this.renderer.gameElementsGroup, this, this.resourceFlowManager);
 
@@ -114,7 +123,8 @@ class Game {
             this.resourceManager,
             this.constructionManager,
             this.serfManager,
-            this.selectionManager // NEW: Pass the selectionManager instance
+            this.selectionManager, // NEW: Pass the selectionManager instance
+            this.productionChainManager // NEW: Pass the productionChainManager instance
         );
 
         // Setup callback for when a serf is selected in the UI
@@ -346,6 +356,12 @@ class Game {
         }
         if (this.resourceFlowManager) {
             this.resourceFlowManager.update(deltaTime);
+        }
+        if (this.productionChainManager) {
+            this.productionChainManager.update(deltaTime);
+        }
+        if (this.uiManager && this.uiManager.productionChainUI) {
+            this.uiManager.productionChainUI.update(Date.now());
         }
 
         // Update selection animations

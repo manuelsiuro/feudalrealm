@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Game Debug</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <style>
+        #debug-log {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 400px;
+            max-height: 500px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 10px;
+            overflow-y: auto;
+            z-index: 1000;
+            border-radius: 5px;
+        }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        .warning { color: #ffd43b; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    <div id="debug-log"></div>
+    
+    <script type="module">
+        const debugLog = document.getElementById('debug-log');
+        
+        function log(message, type = 'info') {
+            console.log(message);
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            debugLog.appendChild(div);
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        
+        // Catch all errors
+        window.addEventListener('error', (event) => {
+            log(`Global Error: ${event.error.message}`, 'error');
+            log(`Stack: ${event.error.stack}`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            log(`Unhandled Promise Rejection: ${event.reason}`, 'error');
+        });
+        
+        log('Starting full game debug test...');
+        
+        const appContainer = document.getElementById('app');
+        const gameCanvas = document.getElementById('game-canvas');
+        
+        if (!appContainer) {
+            log('Error: Root container #app not found', 'error');
+        } else if (!gameCanvas) {
+            log('Error: #game-canvas not found', 'error');
+        } else {
+            log('DOM elements found successfully', 'success');
+            
+            try {
+                log('Importing Game module...');
+                const { default: Game } = await import('/src/core/Game.js');
+                log('Game module imported successfully', 'success');
+                
+                log('Creating Game instance...');
+                const game = new Game();
+                log('Game instance created', 'success');
+                
+                log('Initializing game...');
+                game.init();
+                log('Game initialized', 'success');
+                
+                log('Starting game...');
+                game.start();
+                log('Game started', 'success');
+                
+                window.game = game;
+                log('Game exposed on window', 'success');
+                
+            } catch (error) {
+                log(`Error during game setup: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
