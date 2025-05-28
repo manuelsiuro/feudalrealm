@@ -15,7 +15,6 @@ class CoalMine extends Mine {
         const geometry = new THREE.SphereGeometry(indicatorRadius, 16, 16);
         const material = new THREE.MeshStandardMaterial({ color: color });
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
         return mesh;
     }
 }

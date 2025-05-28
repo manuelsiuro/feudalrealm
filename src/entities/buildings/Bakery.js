@@ -23,9 +23,6 @@ class Bakery extends Building {
         const mainGeometry = new THREE.BoxGeometry(mainWidth, mainHeight, mainDepth);
         const mainMaterial = new THREE.MeshStandardMaterial({ color: buildingColor });
         const mainMesh = new THREE.Mesh(mainGeometry, mainMaterial);
-        mainMesh.castShadow = true;
-        mainMesh.receiveShadow = true;
-        // mainMesh.position.y = mainHeight / 2; // Will be handled by group positioning
         group.add(mainMesh);
 
         // Roof: Simple sloped cuboid roof (Dark Brown)
@@ -37,8 +34,6 @@ class Bakery extends Building {
         const roofMaterial = new THREE.MeshStandardMaterial({ color: roofColor });
         const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
         roofMesh.position.y = mainHeight / 2 + roofHeight / 2 - TILE_SIZE * 0.02; // Position on top of the main building
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true;
         group.add(roofMesh);
 
         // Chimney: Taller, thin square cuboid (Dark Grey or Black)
@@ -53,8 +48,6 @@ class Bakery extends Building {
             chimneyHeightAbsolute / 2 - mainHeight/2,  // Base of chimney starts from building's base height
             -mainDepth / 2 + chimneySize / 2 // To the rear
         );
-        chimneyMesh.castShadow = true;
-        chimneyMesh.receiveShadow = true;
         group.add(chimneyMesh);
 
         // Embers: Tiny red cube on top of chimney

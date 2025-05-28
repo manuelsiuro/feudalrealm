@@ -68,8 +68,6 @@ class Marketplace extends Building {
                 new THREE.MeshPhongMaterial({ color: 0xD2B48C }) // Tan wood for stall base
             );
             stallBaseMesh.position.y = stallBaseHeight/2;
-            stallBaseMesh.castShadow = true;
-            stallBaseMesh.receiveShadow = true;
             stallGroup.add(stallBaseMesh);
 
             const stallRoofMesh = new THREE.Mesh(
@@ -78,21 +76,11 @@ class Marketplace extends Building {
             );
             stallRoofMesh.position.y = stallBaseHeight + stallRoofHeight / 2;
             stallRoofMesh.rotation.x = -Math.PI / 12; // Slanted roof
-            stallRoofMesh.castShadow = true;
-            stallRoofMesh.receiveShadow = true;
             stallGroup.add(stallRoofMesh);
             
             stallGroup.position.set(sp.x, 0, sp.z);
             if (sp.x === 0) stallGroup.rotation.y = Math.PI/2; // Rotate side stalls
             modelGroup.add(stallGroup);
-        });
-
-        // Ensure all parts of the model cast and receive shadows
-        modelGroup.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
         });
 
         return modelGroup;

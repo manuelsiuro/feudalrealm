@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import resourceManager from './resourceManager.js';
 // Removed: import * as Buildings from '../entities/buildings.js';
-import { TILE_SIZE } from '../config/mapConstants.js';
+import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js'; // Added TERRAIN_TYPES
 // SERF_PROFESSIONS and RESOURCE_TYPES might not be directly needed here anymore if Building class handles relevant logic
 // import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; 
 // import { RESOURCE_TYPES } from '../config/resourceTypes.js';
@@ -142,8 +142,37 @@ class ConstructionManager {
         const snappedX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
         const snappedZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
         this.placementIndicator.position.set(snappedX, 0.1, snappedZ);
-        // TODO: Color indicator based on validity (e.g., red if not placeable)
-        this.placementIndicator.material.color.set(0x00ff00);
+
+        const gridX = Math.round(snappedX / TILE_SIZE + (this.gameMap.width - 1) / 2);
+        const gridZ = Math.round(snappedZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
+
+        if (this.isBuildable(gridX, gridZ)) {
+            this.placementIndicator.material.color.set(0x00ff00); // Green
+        } else {
+            this.placementIndicator.material.color.set(0xff0000); // Red
+        }
+    }
+
+    isBuildable(gridX, gridZ) {
+        if (gridX < 0 || gridX >= this.gameMap.width || gridZ < 0 || gridZ >= this.gameMap.height) {
+            return false; // Out of bounds
+        }
+        const tile = this.gameMap.getTile(gridX, gridZ);
+        if (!tile) return false; // Should not happen if bounds check is correct
+
+        // Define non-buildable terrain types
+        const nonBuildableTerrains = [TERRAIN_TYPES.MOUNTAIN, TERRAIN_TYPES.WATER, TERRAIN_TYPES.FOREST]; 
+        
+        if (nonBuildableTerrains.includes(tile.terrainType)) {
+            return false;
+        }
+
+        // Check if tile is already occupied by another building
+        if (tile.isOccupied) { // Assuming GameMap.getTile returns a tile object with an isOccupied property
+            return false;
+        }
+
+        return true;
     }
 
     confirmPlacement(worldPosition) {
@@ -151,6 +180,17 @@ class ConstructionManager {
 
         const buildingKey = this.selectedBuildingType;
         const buildingDataEntry = BUILDING_DATA[buildingKey];
+
+        // 0. Check if the location is buildable BEFORE resource checks
+        const snappedWorldX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
+        const snappedWorldZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
+        const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
+        const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
+
+        if (!this.isBuildable(placedGridX, placedGridZ)) {
+            console.warn(`ConstructionManager: Cannot place ${buildingDataEntry.name} at (${placedGridX}, ${placedGridZ}). Location not buildable.`);
+            return false; 
+        }
 
         // 1. Check resource costs
         for (const resourceType in buildingDataEntry.cost) {
@@ -174,13 +214,23 @@ class ConstructionManager {
             return false;
         }
 
-        const snappedWorldX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
-        const snappedWorldZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
-        const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
-        const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
+        // Snapped positions already calculated above
+        // const snappedWorldX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
+        // const snappedWorldZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
+        // const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
+        // const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
 
         const newBuilding = new BuildingClass(placedGridX, placedGridZ, this.gameMap, buildingDataEntry);
         newBuilding.setResourceManager(resourceManager); // Pass the imported singleton
+
+        // Ensure the map tile is marked as occupied immediately
+        const placementSuccessfulOnMap = this.gameMap.placeBuilding(placedGridX, placedGridZ, newBuilding);
+        if (!placementSuccessfulOnMap) {
+            console.warn(`ConstructionManager: GameMap rejected placement for ${buildingDataEntry.name} at (${placedGridX}, ${placedGridZ}) even after isBuildable check. Aborting.`);
+            // Note: Resources were already deducted. Consider rollback logic if this state is critical and frequent.
+            this.cancelPlacement();
+            return false;
+        }
 
         const buildingsGroup = this.gameElementsGroup.getObjectByName("GameBuildings") || new THREE.Group();
         if (!buildingsGroup.parent) {
@@ -241,6 +291,13 @@ class ConstructionManager {
         const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry);
         newBuilding.setResourceManager(resourceManager);
 
+        // Ensure the map tile is marked as occupied
+        const placementSuccessfulOnMap = this.gameMap.placeBuilding(gridX, gridZ, newBuilding);
+        if (!placementSuccessfulOnMap) {
+            console.error(`[InitialSetup] GameMap rejected placement for ${buildingDataEntry.name} at (${gridX}, ${gridZ}). This should not happen for initial setup.`);
+            return null; 
+        }
+
         const buildingsGroup = this.gameElementsGroup.getObjectByName("GameBuildings") || new THREE.Group();
         if (!buildingsGroup.parent) {
             buildingsGroup.name = "GameBuildings";
@@ -273,6 +330,20 @@ class ConstructionManager {
         const hutGridX = mapCenterX + 3;
         const hutGridZ = mapCenterZ;
         this.placeAndConstructInitialBuilding('TRANSPORTER_HUT', hutGridX, hutGridZ);
+
+        // Place a Builder Hut nearby
+        const builderHutGridX = mapCenterX - 3;
+        const builderHutGridZ = mapCenterZ;
+        this.placeAndConstructInitialBuilding('BUILDERS_HUT', builderHutGridX, builderHutGridZ);
+        // Place a Woodcutters Hut nearby
+        const woodcutterHutGridX = mapCenterX - 5;
+        const woodcutterHutGridZ = mapCenterZ;
+        this.placeAndConstructInitialBuilding('WOODCUTTERS_HUT', woodcutterHutGridX, woodcutterHutGridZ);
+        // Place a Foresters Hut nearby
+        const forestersHutGridX = mapCenterX - 7;
+        const forestersHutGridZ = mapCenterZ;
+        this.placeAndConstructInitialBuilding('FORESTERS_HUT', forestersHutGridX, forestersHutGridZ);
+
         console.log("[ConstructionManager] Initial structures setup complete.");
     }
 

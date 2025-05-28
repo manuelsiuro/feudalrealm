@@ -60,13 +60,6 @@ class Slaughterhouse extends Building {
 
         modelGroup.scale.set(0.9, 0.9, 0.9); // Overall scaling
 
-        modelGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-
         return modelGroup;
     }
 

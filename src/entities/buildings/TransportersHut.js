@@ -25,8 +25,7 @@ class TransportersHut extends Building {
         const hutGeometry = new THREE.BoxGeometry(hutWidth, hutHeight, hutDepth);
         const hutMaterial = new THREE.MeshStandardMaterial({ color: lightBrown });
         const hutMesh = new THREE.Mesh(hutGeometry, hutMaterial);
-        hutMesh.castShadow = true;
-        hutMesh.receiveShadow = true;
+        hutMesh.position.y = hutHeight / 2; // Adjust Y to place base at Y=0 of group
         modelGroup.add(hutMesh);
 
         // Roof: Simple flat or slightly sloped cuboid roof (color: Dark Brown).
@@ -36,9 +35,7 @@ class TransportersHut extends Building {
         const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
         const roofMaterial = new THREE.MeshStandardMaterial({ color: darkBrown });
         const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
-        roofMesh.position.y = hutHeight * 0.5 + roofHeight * 0.5; // Position on top of the hut
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true;
+        roofMesh.position.y = hutHeight + roofHeight / 2; // Position on top of the hut (base of hut is now at Y=0 of group)
         modelGroup.add(roofMesh);
 
         return modelGroup;

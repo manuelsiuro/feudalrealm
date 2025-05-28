@@ -24,8 +24,7 @@ class Blacksmith extends Building {
         const buildingGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
         const buildingMaterial = new THREE.MeshStandardMaterial({ color: buildingColor });
         const buildingMesh = new THREE.Mesh(buildingGeometry, buildingMaterial);
-        buildingMesh.castShadow = true;
-        buildingMesh.receiveShadow = true;
+        buildingMesh.position.y = buildingHeight / 2; // ADJUST Y to position correctly in the group
         group.add(buildingMesh);
 
         // Roof: Sloped cuboid roof
@@ -35,9 +34,7 @@ class Blacksmith extends Building {
         const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
         const roofMaterial = new THREE.MeshStandardMaterial({ color: roofColor });
         const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
-        roofMesh.position.y = buildingHeight / 2 + roofHeight / 2 - TILE_SIZE * 0.05; // Position on top of the building
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true;
+        roofMesh.position.y = buildingHeight + roofHeight / 2 - TILE_SIZE * 0.05; // ADJUST (relative to group origin, buildingMesh is already centered)
         group.add(roofMesh);
 
         // Anvil (Optional): A small, T-shaped structure made of two grey cuboids next to the building.
@@ -50,17 +47,14 @@ class Blacksmith extends Building {
         const anvilBaseGeometry = new THREE.BoxGeometry(anvilBaseSize, anvilBaseHeight, anvilBaseSize);
         const anvilMaterial = new THREE.MeshStandardMaterial({ color: anvilColor });
         const anvilBaseMesh = new THREE.Mesh(anvilBaseGeometry, anvilMaterial);
-        anvilBaseMesh.position.set(buildingWidth / 2 + anvilBaseSize / 2 + TILE_SIZE * 0.1, -buildingHeight / 2 + anvilBaseHeight / 2, 0);
-        anvilBaseMesh.castShadow = true;
+        anvilBaseMesh.position.set(buildingWidth / 2 + anvilBaseSize / 2 + TILE_SIZE * 0.1, anvilBaseHeight / 2, 0); // ADJUST Y
         group.add(anvilBaseMesh);
 
         const anvilTopGeometry = new THREE.BoxGeometry(anvilTopWidth, anvilTopHeight, anvilTopDepth);
         const anvilTopMesh = new THREE.Mesh(anvilTopGeometry, anvilMaterial);
-        anvilTopMesh.position.set(anvilBaseMesh.position.x, anvilBaseMesh.position.y + anvilBaseHeight / 2 + anvilTopHeight / 2, 0);
-        anvilTopMesh.castShadow = true;
+        anvilTopMesh.position.set(anvilBaseMesh.position.x, anvilBaseHeight + anvilTopHeight / 2, 0); // ADJUST Y (relative to group origin)
         group.add(anvilTopMesh);
         
-        group.position.y = buildingHeight / 2; // Adjust group pivot to be at the base
         return group;
     }
 

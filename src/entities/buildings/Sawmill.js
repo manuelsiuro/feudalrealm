@@ -118,12 +118,12 @@ class Sawmill extends Building {
         }
         
         modelGroup.scale.set(0.8, 0.8, 0.8); // Overall scaling if needed, can be adjusted
-        modelGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
+        // modelGroup.traverse((child) => {
+        //     if (child.isMesh) {
+        //         child.castShadow = true;
+        //         child.receiveShadow = true;
+        //     }
+        // });
 
         return modelGroup;
     }

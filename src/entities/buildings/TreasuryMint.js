@@ -37,8 +37,6 @@ class TreasuryMint extends Building {
         const buildingMaterial = new THREE.MeshPhongMaterial({ color: buildingColor });
         const buildingMesh = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth), buildingMaterial);
         buildingMesh.position.y = buildingHeight / 2;
-        buildingMesh.castShadow = true;
-        buildingMesh.receiveShadow = true;
         modelGroup.add(buildingMesh);
 
         // Roof: Reinforced flat roof
@@ -49,8 +47,6 @@ class TreasuryMint extends Building {
             roofMaterial
         );
         roofMesh.position.y = buildingHeight + roofThickness / 2;
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true; // Flat roof can receive shadows from other objects or parts of itself if complex
         modelGroup.add(roofMesh);
 
         // Reinforced Door
@@ -60,8 +56,6 @@ class TreasuryMint extends Building {
         const doorMaterial = new THREE.MeshPhongMaterial({ color: doorColor });
         const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, doorHeight, doorThickness), doorMaterial);
         doorMesh.position.set(0, doorHeight / 2, buildingDepth / 2 - doorThickness / 2 + 0.01); // Slightly inset on front face
-        doorMesh.castShadow = true;
-        doorMesh.receiveShadow = true;
         modelGroup.add(doorMesh);
 
         // Small, barred windows (dark rectangles on sides) - simplified as indentations or dark planes
@@ -72,16 +66,11 @@ class TreasuryMint extends Building {
         const window1 = new THREE.Mesh(new THREE.PlaneGeometry(windowWidth, windowHeight), windowMaterial);
         window1.position.set(buildingWidth / 2 + 0.01, buildingHeight * 0.65, 0); // Right side
         window1.rotation.y = Math.PI / 2;
-        // Windows are planes, they won't cast shadows but can be marked to not interfere with shadow calcs if needed
-        // window1.castShadow = false; 
-        // window1.receiveShadow = false; // Typically false for simple planes unless they should show shadows from other objects
         modelGroup.add(window1);
 
         const window2 = new THREE.Mesh(new THREE.PlaneGeometry(windowWidth, windowHeight), windowMaterial);
         window2.position.set(-buildingWidth / 2 - 0.01, buildingHeight * 0.65, 0); // Left side
         window2.rotation.y = -Math.PI / 2;
-        // window2.castShadow = false;
-        // window2.receiveShadow = false;
         modelGroup.add(window2);
 
         // Accent: Gold pyramid on the roof (as per buildings.md suggestion for Goldsmith/Mint)
@@ -90,8 +79,6 @@ class TreasuryMint extends Building {
         const accentMaterial = new THREE.MeshPhongMaterial({ color: accentColor, emissive: 0xAA8C00 });
         const accentMesh = new THREE.Mesh(accentGeometry, accentMaterial);
         accentMesh.position.set(0, buildingHeight + roofThickness + (accentSize * 1.2) / 2, 0); // Centered on roof
-        accentMesh.castShadow = true;
-        accentMesh.receiveShadow = true; // Accent should also receive shadows
         modelGroup.add(accentMesh);
 
         return modelGroup;

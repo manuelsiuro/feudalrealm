@@ -46,8 +46,7 @@ class WoodcuttersHut extends Building {
         const hutGeometry = new THREE.BoxGeometry(hutWidth, hutHeight, hutDepth);
         const hutMaterial = new THREE.MeshStandardMaterial({ color: brown });
         const hutMesh = new THREE.Mesh(hutGeometry, hutMaterial);
-        hutMesh.castShadow = true;
-        hutMesh.receiveShadow = true;
+        hutMesh.position.y = hutHeight / 2; // Adjust Y to place base at Y=0 of group
         modelGroup.add(hutMesh);
 
         // Roof: A slightly larger, shallow-angled cuboid placed on top, creating eaves (color: Dark Brown).
@@ -57,9 +56,7 @@ class WoodcuttersHut extends Building {
         const roofGeometry = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
         const roofMaterial = new THREE.MeshStandardMaterial({ color: darkBrown });
         const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
-        roofMesh.position.y = hutHeight * 0.5 + roofHeight * 0.5; // Position on top of the hut
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true;
+        roofMesh.position.y = hutHeight + roofHeight / 2; // Position on top of the hut (base of hut is now at Y=0 of group)
         modelGroup.add(roofMesh);
 
         // Logs: A small stack of 2-3 short cylinders beside the hut (color: Light Brown).
@@ -72,24 +69,18 @@ class WoodcuttersHut extends Building {
 
         const log1 = new THREE.Mesh(logGeometry, logMaterial);
         log1.rotation.z = Math.PI / 2; // Lay logs on their side
-        log1.position.set(logStackOffset, -hutHeight * 0.5 + logRadius, 0);
-        log1.castShadow = true;
-        log1.receiveShadow = true;
+        log1.position.set(logStackOffset, logRadius, 0); // Base of log at Y=0 of group
         modelGroup.add(log1);
 
         const log2 = new THREE.Mesh(logGeometry, logMaterial);
         log2.rotation.z = Math.PI / 2;
-        log2.position.set(logStackOffset, -hutHeight * 0.5 + logRadius * 3, 0); // Stack on top
-        log2.castShadow = true;
-        log2.receiveShadow = true;
+        log2.position.set(logStackOffset, logRadius * 3, 0); // Stack on top
         modelGroup.add(log2);
         
         // Optional 3rd log
         const log3 = new THREE.Mesh(logGeometry, logMaterial);
         log3.rotation.z = Math.PI / 2;
-        log3.position.set(logStackOffset + logRadius * 0.1, -hutHeight * 0.5 + logRadius * 2, logLength * 0.1); // Slightly offset
-        log3.castShadow = true;
-        log3.receiveShadow = true;
+        log3.position.set(logStackOffset + logRadius * 0.1, logRadius * 2, logLength * 0.1); // Slightly offset
         // modelGroup.add(log3); // Uncomment to add a third log
 
         return modelGroup;

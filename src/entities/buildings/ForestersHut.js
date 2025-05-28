@@ -24,8 +24,7 @@ class ForestersHut extends Building {
         const hutGeometry = new THREE.BoxGeometry(hutWidth, hutHeight, hutDepth);
         const hutMaterial = new THREE.MeshStandardMaterial({ color: brown });
         const hutMesh = new THREE.Mesh(hutGeometry, hutMaterial);
-        hutMesh.castShadow = true;
-        hutMesh.receiveShadow = true;
+        hutMesh.position.y = hutHeight / 2; // Position base at y=0
         modelGroup.add(hutMesh); // Add to group
 
         // Roof: A simple pyramid roof (color: Dark Green).
@@ -36,10 +35,8 @@ class ForestersHut extends Building {
         const roofMaterial = new THREE.MeshStandardMaterial({ color: darkGreen });
         const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
         // Position on top of the hut body
-        roofMesh.position.y = hutHeight * 0.5 + roofHeight * 0.5; 
+        roofMesh.position.y = hutHeight + roofHeight / 2; 
         roofMesh.rotation.y = Math.PI / 4; // Align pyramid faces
-        roofMesh.castShadow = true;
-        roofMesh.receiveShadow = true;
         modelGroup.add(roofMesh); // Add to group
         
         // Sapling: A tiny green cone next to the hut.
@@ -48,10 +45,8 @@ class ForestersHut extends Building {
         const saplingGeometry = new THREE.ConeGeometry(saplingRadius, saplingHeight, 8);
         const saplingMaterial = new THREE.MeshStandardMaterial({ color: green });
         const saplingMesh = new THREE.Mesh(saplingGeometry, saplingMaterial);
-        // Position next to the hut
-        saplingMesh.position.set(hutWidth * 0.5 + saplingRadius * 1.5, -hutHeight * 0.5 + saplingHeight * 0.5, 0);
-        saplingMesh.castShadow = true;
-        saplingMesh.receiveShadow = true;
+        // Position next to the hut, base at y=0
+        saplingMesh.position.set(hutWidth * 0.5 + saplingRadius * 1.5, saplingHeight / 2, 0);
         modelGroup.add(saplingMesh); // Add to group
         
         return modelGroup; // Return the group

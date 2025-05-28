@@ -18,8 +18,7 @@ class GeologistsHut extends Building {
         const hutGeometry = new THREE.BoxGeometry(hutWidth, hutHeight, hutDepth);
         const hutMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 }); // Dark Brown
         const hutMesh = new THREE.Mesh(hutGeometry, hutMaterial);
-        hutMesh.castShadow = true;
-        hutMesh.receiveShadow = true;
+        hutMesh.position.y = hutHeight / 2; // Position base at y=0 of the group
         group.add(hutMesh);
 
         // Roof: Flat roof (using the top of the hut cuboid)
@@ -30,8 +29,7 @@ class GeologistsHut extends Building {
         const markerGeometry = new THREE.ConeGeometry(markerRadius, markerHeight, 4); // Cone as marker
         const markerMaterial = new THREE.MeshStandardMaterial({ color: 0xFFFF00 }); // Yellow
         const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-        markerMesh.position.y = hutHeight / 2 + markerHeight / 2; // Position on top of the hut
-        markerMesh.castShadow = true;
+        markerMesh.position.y = hutHeight + markerHeight / 2; // Position on top of the hut
         group.add(markerMesh);
         
         return group;

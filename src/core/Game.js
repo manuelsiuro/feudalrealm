@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { GameMap } from './MapManager.js';
+import { GameMap } from '../map/map.js'; // Corrected import path
 import { TILE_SIZE, TERRAIN_COLORS, TERRAIN_TYPES } from '../config/mapConstants.js'; // Corrected import path, Added TERRAIN_COLORS, TERRAIN_TYPES
 import resourceManager from './resourceManager.js';
 import ConstructionManager from './constructionManager.js';
@@ -58,8 +58,9 @@ class Game {
 
         // 2. Initialize GameMap
         this.gameMap = new GameMap(MAP_WIDTH, MAP_HEIGHT);
+        this.gameMap.generateMapFeatures(); // Call to generate varied terrain
         this.renderer.gameElementsGroup.add(this.gameMap.tileMeshes);
-        console.log('GameMap created and added to scene via Game.js.');
+        console.log('GameMap created, features generated, and added to scene via Game.js.');
 
         // Initialize NatureManager
         this.natureManager = new NatureManager(this.gameMap, this.scene);
@@ -91,6 +92,8 @@ class Game {
         this.constructionManager.setSerfManager(this.serfManager); // New method call
         this.constructionManager.setupInitialStructures(); // Call after SerfManager is set, if it needs it.
 
+        // Add serf to start the game, should be removed later
+        this.serfManager.spawnInitialSerfs();
 
         // Configure SelectionManager with selectable groups
         const buildingsGroup = this.renderer.gameElementsGroup.getObjectByName("GameBuildings");

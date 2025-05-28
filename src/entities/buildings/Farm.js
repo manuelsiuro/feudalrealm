@@ -20,9 +20,6 @@ class Farm extends Building {
         const houseGeometry = new THREE.BoxGeometry(houseWidth, houseHeight, houseDepth);
         const houseMaterial = new THREE.MeshStandardMaterial({ color: houseColor });
         const houseMesh = new THREE.Mesh(houseGeometry, houseMaterial);
-        houseMesh.castShadow = true;
-        houseMesh.receiveShadow = true;
-        // houseMesh.position.y = houseHeight / 2; // Handled by group
         group.add(houseMesh);
 
         // Roof: Simple sloped cuboid roof
@@ -36,8 +33,6 @@ class Farm extends Building {
         const roofMaterial = new THREE.MeshStandardMaterial({ color: roofColor });
         const roofBaseMesh = new THREE.Mesh(roofBaseGeometry, roofMaterial);
         roofBaseMesh.position.y = houseHeight / 2 + roofBaseHeight / 2 - TILE_SIZE * 0.02;
-        roofBaseMesh.castShadow = true;
-        roofBaseMesh.receiveShadow = true;
         group.add(roofBaseMesh);
 
         // Add two sloped parts for a gabled roof effect
@@ -47,15 +42,11 @@ class Farm extends Building {
         const roofSlope1 = new THREE.Mesh(roofSlopeGeometry, roofMaterial);
         roofSlope1.position.set(0, roofBaseMesh.position.y + roofBaseHeight/2 + roofSlopeHeight*0.2, houseDepth * 0.25 / 2);
         roofSlope1.rotation.x = Math.PI / 6; // Angle for slope
-        roofSlope1.castShadow = true;
-        roofSlope1.receiveShadow = true;
         group.add(roofSlope1);
 
         const roofSlope2 = new THREE.Mesh(roofSlopeGeometry, roofMaterial);
         roofSlope2.position.set(0, roofBaseMesh.position.y + roofBaseHeight/2 + roofSlopeHeight*0.2, -houseDepth * 0.25 / 2);
         roofSlope2.rotation.x = -Math.PI / 6; // Angle for slope (opposite direction)
-        roofSlope2.castShadow = true;
-        roofSlope2.receiveShadow = true;
         group.add(roofSlope2);
 
         // Fields are not part of the building model itself, they are a terrain feature or separate entities.

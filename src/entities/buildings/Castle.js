@@ -26,8 +26,9 @@ class Castle extends Building {
         const baseGeometry = new THREE.BoxGeometry(baseWidth, baseHeight, baseDepth);
         const baseMaterial = new THREE.MeshStandardMaterial({ color: mediumGrey });
         const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
-        baseMesh.castShadow = true;
-        baseMesh.receiveShadow = true;
+        baseMesh.position.y = baseHeight / 2; // Shift base up so its bottom is at y=0
+        // baseMesh.castShadow = true; // Handled by Building.js
+        // baseMesh.receiveShadow = true; // Handled by Building.js
         modelGroup.add(baseMesh);
 
         // Keep: Centered on the base, a taller, slightly narrower square cuboid (color: Dark Grey).
@@ -37,9 +38,10 @@ class Castle extends Building {
         const keepGeometry = new THREE.BoxGeometry(keepWidth, keepHeight, keepDepth);
         const keepMaterial = new THREE.MeshStandardMaterial({ color: darkGrey });
         const keepMesh = new THREE.Mesh(keepGeometry, keepMaterial);
-        keepMesh.position.y = baseHeight * 0.5 + keepHeight * 0.5; // Stack on top of base
-        keepMesh.castShadow = true;
-        keepMesh.receiveShadow = true;
+        // Stack on top of the now correctly positioned base
+        keepMesh.position.y = baseHeight + keepHeight / 2; 
+        // keepMesh.castShadow = true; // Handled by Building.js
+        // keepMesh.receiveShadow = true; // Handled by Building.js
         modelGroup.add(keepMesh);
 
         // Towers: Four smaller square cuboids at each corner of the base, 
@@ -49,11 +51,14 @@ class Castle extends Building {
         const towerHeight = baseHeight * 1.2; // Slightly taller than base
         const pyramidHeight = TILE_SIZE * 0.2;
 
+        // Adjusted tower positions to be at the outer corners of the base
+        const towerOffset = baseWidth / 2; // Place tower center at the edge of the base
+
         const towerPositions = [
-            { x: baseWidth * 0.5 - towerSize * 0.5, z: baseDepth * 0.5 - towerSize * 0.5 },
-            { x: -baseWidth * 0.5 + towerSize * 0.5, z: baseDepth * 0.5 - towerSize * 0.5 },
-            { x: baseWidth * 0.5 - towerSize * 0.5, z: -baseDepth * 0.5 + towerSize * 0.5 },
-            { x: -baseWidth * 0.5 + towerSize * 0.5, z: -baseDepth * 0.5 + towerSize * 0.5 },
+            { x: towerOffset, z: towerOffset },
+            { x: -towerOffset, z: towerOffset },
+            { x: towerOffset, z: -towerOffset },
+            { x: -towerOffset, z: -towerOffset },
         ];
 
         towerPositions.forEach(pos => {
@@ -62,21 +67,24 @@ class Castle extends Building {
             const towerGeometry = new THREE.BoxGeometry(towerSize, towerHeight, towerSize);
             const towerMaterial = new THREE.MeshStandardMaterial({ color: lightGrey });
             const towerMesh = new THREE.Mesh(towerGeometry, towerMaterial);
-            towerMesh.position.y = baseHeight * 0.5; // Align bottom with base top
-            towerMesh.castShadow = true;
-            towerMesh.receiveShadow = true;
+            // Position tower so its base is at y=0 of the modelGroup (on the ground)
+            towerMesh.position.y = towerHeight / 2; 
+            // towerMesh.castShadow = true; // Handled by Building.js
+            // towerMesh.receiveShadow = true; // Handled by Building.js
             towerGroup.add(towerMesh);
 
             const pyramidGeometry = new THREE.ConeGeometry(towerSize * 0.7, pyramidHeight, 4); // Sharp pyramid
             const pyramidMaterial = new THREE.MeshStandardMaterial({ color: red });
             const pyramidMesh = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
-            pyramidMesh.position.y = baseHeight * 0.5 + towerHeight * 0.5 + pyramidHeight * 0.5;
+            // Position pyramid on top of the tower
+            pyramidMesh.position.y = towerHeight + pyramidHeight / 2;
             pyramidMesh.rotation.y = Math.PI / 4; // Align flat sides
-            pyramidMesh.castShadow = true;
-            pyramidMesh.receiveShadow = true;
+            // pyramidMesh.castShadow = true; // Handled by Building.js
+            // pyramidMesh.receiveShadow = true; // Handled by Building.js
             towerGroup.add(pyramidMesh);
             
-            towerGroup.position.set(pos.x, 0, pos.z); // Position the group, Y is relative to baseMesh center
+            // The towerGroup's y position should be 0 as its children are positioned relative to the castle's base height.
+            towerGroup.position.set(pos.x, 0, pos.z); 
             modelGroup.add(towerGroup);
         });
         
@@ -88,9 +96,9 @@ class Castle extends Building {
         // Use a slightly darker shade of medium grey for indentation
         const entranceMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(mediumGrey).multiplyScalar(0.7).getHex() });
         const entranceMesh = new THREE.Mesh(entranceGeometry, entranceMaterial);
-        // Position on the front face of the base, slightly indented
-        entranceMesh.position.set(0, -baseHeight * 0.25 + entranceHeight * 0.5, baseDepth * 0.5 - entranceDepth * 0.4);
-        entranceMesh.receiveShadow = true; // Indentation would receive shadow
+        // Position on the front face of the base, adjusted for new base y-position
+        entranceMesh.position.set(0, baseHeight * 0.25 + entranceHeight * 0.5, baseDepth * 0.5 - entranceDepth * 0.4);
+        // entranceMesh.receiveShadow = true; // Handled by Building.js
         modelGroup.add(entranceMesh);
 
 

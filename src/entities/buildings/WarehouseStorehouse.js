@@ -28,8 +28,6 @@ class WarehouseStorehouse extends Building {
             buildingMaterial
         );
         buildingMesh.position.y = buildingHeight / 2;
-        buildingMesh.castShadow = true;
-        buildingMesh.receiveShadow = true;
         modelGroup.add(buildingMesh);
 
         // Roof: A simple, large, slightly sloped cuboid roof (Darker Brown or Grey)
@@ -45,16 +43,12 @@ class WarehouseStorehouse extends Building {
         // Position and rotate the first slope
         roofSlope1Mesh.position.set(0, buildingHeight + roofSlopeHeight * 0.4, buildingDepth / 4);
         roofSlope1Mesh.rotation.x = -Math.atan2(roofSlopeHeight, buildingDepth / 2); 
-        roofSlope1Mesh.castShadow = true;
-        roofSlope1Mesh.receiveShadow = true;
         modelGroup.add(roofSlope1Mesh);
 
         const roofSlope2Mesh = new THREE.Mesh(roofSlopeGeometry, roofMaterial);
         // Position and rotate the second slope
         roofSlope2Mesh.position.set(0, buildingHeight + roofSlopeHeight * 0.4, -buildingDepth / 4);
         roofSlope2Mesh.rotation.x = Math.atan2(roofSlopeHeight, buildingDepth / 2);
-        roofSlope2Mesh.castShadow = true;
-        roofSlope2Mesh.receiveShadow = true;
         modelGroup.add(roofSlope2Mesh);
 
         // Doors: Several wide, darker rectangular indentations
@@ -73,8 +67,6 @@ class WarehouseStorehouse extends Building {
         doorPositions.forEach(pos => {
             const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, doorHeight, doorDepth), doorMaterial);
             doorMesh.position.copy(pos);
-            doorMesh.castShadow = true; // Doors don't typically cast significant shadows but can receive
-            doorMesh.receiveShadow = true;
             modelGroup.add(doorMesh);
         });
 

@@ -23,10 +23,11 @@ class Quarry extends Building {
         const shelterGeometry = new THREE.BoxGeometry(shelterWidth, shelterHeight, shelterDepth);
         const shelterMaterial = new THREE.MeshStandardMaterial({ color: grey });
         const shelterMesh = new THREE.Mesh(shelterGeometry, shelterMaterial);
-        shelterMesh.castShadow = true;
-        shelterMesh.receiveShadow = true;
+        // shelterMesh.castShadow = true;
+        // shelterMesh.receiveShadow = true;
         // Position shelter slightly back to make space for terrain and stones
         shelterMesh.position.z = TILE_SIZE * 0.1;
+        shelterMesh.position.y = shelterHeight / 2; // Corrected Y position
         modelGroup.add(shelterMesh);
 
         // Represent a patch of rough terrain (several jagged light grey cuboids)
@@ -34,20 +35,20 @@ class Quarry extends Building {
         const terrainPiece1Geometry = new THREE.BoxGeometry(TILE_SIZE * 0.3, TILE_SIZE * 0.4, TILE_SIZE * 0.3);
         const terrainMaterial = new THREE.MeshStandardMaterial({ color: lightGrey });
         const terrainPiece1 = new THREE.Mesh(terrainPiece1Geometry, terrainMaterial);
-        terrainPiece1.position.set(-shelterWidth * 0.2, -shelterHeight * 0.5 + (TILE_SIZE * 0.4) * 0.5, shelterDepth * 0.5 + TILE_SIZE * 0.05);
+        terrainPiece1.position.set(-shelterWidth * 0.2, (TILE_SIZE * 0.4) / 2, shelterDepth * 0.5 + TILE_SIZE * 0.05); // Corrected Y position
         terrainPiece1.rotation.y = Math.PI / 7;
         terrainPiece1.rotation.x = Math.PI / 11;
-        terrainPiece1.castShadow = true;
-        terrainPiece1.receiveShadow = true;
+        // terrainPiece1.castShadow = true;
+        // terrainPiece1.receiveShadow = true;
         modelGroup.add(terrainPiece1);
 
         const terrainPiece2Geometry = new THREE.BoxGeometry(TILE_SIZE * 0.25, TILE_SIZE * 0.5, TILE_SIZE * 0.25);
         const terrainPiece2 = new THREE.Mesh(terrainPiece2Geometry, terrainMaterial);
-        terrainPiece2.position.set(shelterWidth * 0.15, -shelterHeight * 0.5 + (TILE_SIZE * 0.5) * 0.5, shelterDepth * 0.5 + TILE_SIZE * 0.1);
+        terrainPiece2.position.set(shelterWidth * 0.15, (TILE_SIZE * 0.5) / 2, shelterDepth * 0.5 + TILE_SIZE * 0.1); // Corrected Y position
         terrainPiece2.rotation.y = -Math.PI / 5;
         terrainPiece2.rotation.z = Math.PI / 13;
-        terrainPiece2.castShadow = true;
-        terrainPiece2.receiveShadow = true;
+        // terrainPiece2.castShadow = true;
+        // terrainPiece2.receiveShadow = true;
         modelGroup.add(terrainPiece2);
         
         // Output: A few loose medium-sized cubes (stone blocks) outside (color: Light Grey)
@@ -57,16 +58,16 @@ class Quarry extends Building {
         
         const stone1 = new THREE.Mesh(stoneGeometry, stoneMaterial);
         // Position in front of the shelter opening
-        stone1.position.set(shelterWidth * 0.2, -shelterHeight * 0.5 + stoneSize * 0.5, -shelterDepth * 0.5 - TILE_SIZE * 0.05);
-        stone1.castShadow = true;
-        stone1.receiveShadow = true;
+        stone1.position.set(shelterWidth * 0.2, stoneSize / 2, -shelterDepth * 0.5 - TILE_SIZE * 0.05); // Corrected Y position
+        // stone1.castShadow = true;
+        // stone1.receiveShadow = true;
         modelGroup.add(stone1);
 
         const stone2 = new THREE.Mesh(stoneGeometry, stoneMaterial);
-        stone2.position.set(-shelterWidth * 0.1, -shelterHeight * 0.5 + stoneSize * 0.5, -shelterDepth * 0.5 - TILE_SIZE * 0.1);
+        stone2.position.set(-shelterWidth * 0.1, stoneSize / 2, -shelterDepth * 0.5 - TILE_SIZE * 0.1); // Corrected Y position
         stone2.rotation.y = Math.PI / 6;
-        stone2.castShadow = true;
-        stone2.receiveShadow = true;
+        // stone2.castShadow = true;
+        // stone2.receiveShadow = true;
         modelGroup.add(stone2);
 
         return modelGroup;

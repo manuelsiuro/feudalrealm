@@ -76,20 +76,14 @@ class Windmill extends Building {
 
         modelGroup.scale.set(0.9, 0.9, 0.9); // Adjust overall scale if needed
 
-        modelGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-
         return modelGroup;
     }
 
     update(deltaTime) {
         super.update(deltaTime);
-        if (this.sails) {
-            this.sails.rotation.z += 0.5 * deltaTime; // Rotate sails around Z-axis of the sailsGroup
+        const sails = this.model ? this.model.getObjectByName('sailsGroup') : null;
+        if (sails) {
+            sails.rotation.z += 0.5 * deltaTime; // Rotate sails around Z-axis of the sailsGroup
         }
     }
 }

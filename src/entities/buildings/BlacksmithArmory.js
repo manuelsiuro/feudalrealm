@@ -20,9 +20,9 @@ class BlacksmithArmory extends Building {
         const modelGroup = new THREE.Group();
 
         // Building: A dark grey or black cuboid
-        const buildingWidth = TILE_SIZE * 1.25;
-        const buildingHeight = TILE_SIZE * 0.85;
-        const buildingDepth = TILE_SIZE * 1.0;
+        const buildingWidth = TILE_SIZE * 1.0; // Was 1.25
+        const buildingHeight = TILE_SIZE * 0.65; // Was 0.85
+        const buildingDepth = TILE_SIZE * 0.8; // Was 1.0
         const buildingMaterial = new THREE.MeshPhongMaterial({ color: 0x36454F }); // Dark Grey (Charcoal)
         const buildingMesh = new THREE.Mesh(
             new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth),
@@ -77,9 +77,6 @@ class BlacksmithArmory extends Building {
         glowMesh.position.set(0, buildingHeight * 0.4, buildingDepth / 2 - openingDepth - glowSize / 2 + TILE_SIZE * 0.05);
         modelGroup.add(glowMesh);
         
-        // Apply overall scaling if needed, though TILE_SIZE usage should make it consistent
-        // modelGroup.scale.set(this.scale, this.scale, this.scale); // this.scale is TILE_SIZE / default_size, so direct TILE_SIZE usage is better
-
         return modelGroup;
     }
 }

@@ -30,18 +30,18 @@ class BarracksFortress extends Building {
         const mainMaterial = new THREE.MeshPhongMaterial({ color: 0x303030 }); // Very Dark Grey / Blackish
         const mainGeometry = new THREE.BoxGeometry(mainWidth, mainHeight, mainDepth);
         const mainMesh = new THREE.Mesh(mainGeometry, mainMaterial);
-        mainMesh.position.y = mainHeight / 2;
-        mainMesh.castShadow = true;
-        mainMesh.receiveShadow = true;
+        mainMesh.position.y = mainHeight / 2; // Base of mesh at y=0
+        // mainMesh.castShadow = true; // Handled by Building.js
+        // mainMesh.receiveShadow = true; // Handled by Building.js
         modelGroup.add(mainMesh);
 
         // Roof (simple flat or slightly sloped)
         const roofMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(mainWidth + TILE_SIZE * 0.02, TILE_SIZE * 0.05, mainDepth + TILE_SIZE * 0.02), // Smaller overhang
-            new THREE.MeshPhongMaterial({ color: 0x202020 }) // Even Darker Grey / Black
+            new THREE.BoxGeometry(mainWidth + TILE_SIZE * 0.02, TILE_SIZE * 0.05, mainDepth + TILE_SIZE * 0.02),
+            new THREE.MeshPhongMaterial({ color: 0x202020 }) 
         );
-        roofMesh.position.y = mainHeight + (TILE_SIZE * 0.05) / 2;
-        roofMesh.castShadow = true;
+        roofMesh.position.y = mainHeight + (TILE_SIZE * 0.05) / 2; // Stack on main building
+        // roofMesh.castShadow = true; // Handled by Building.js
         modelGroup.add(roofMesh);
 
         // Towers (Optional): Smaller square cuboids at the corners, slightly taller than the main structure
@@ -70,25 +70,27 @@ class BarracksFortress extends Building {
         towerPositions.forEach(pos => {
             const towerMesh = new THREE.Mesh(towerGeometry, towerMaterial);
             towerMesh.position.copy(pos);
-            towerMesh.castShadow = true;
-            towerMesh.receiveShadow = true;
+            // towerMesh.castShadow = true; // Handled by Building.js
+            // towerMesh.receiveShadow = true; // Handled by Building.js
             modelGroup.add(towerMesh);
 
             // Accents: Red pyramidal flags on any towers
             const flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
             // Position flag on top of tower, relative to tower's local origin (which is its center)
+            // The towerMesh's y position is already towerHeight / 2, so the flag needs to be placed
+            // relative to the tower's top surface.
             flagMesh.position.set(0, towerHeight / 2 + flagHeight / 2, 0); 
             flagMesh.rotation.y = Math.PI / 4;
             towerMesh.add(flagMesh); // Add flag as a child of the tower mesh
         });
         
-        // Ensure all children have shadows enabled
-        modelGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
+        // Ensure all children have shadows enabled // This traverse call is now redundant
+        // modelGroup.traverse((child) => { // Handled by Building.js _setShadowsRecursive
+        //     if (child.isMesh) {
+        //         child.castShadow = true;
+        //         child.receiveShadow = true;
+        //     }
+        // });
 
         return modelGroup;
     }

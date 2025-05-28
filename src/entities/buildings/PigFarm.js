@@ -21,9 +21,6 @@ class PigFarm extends Building {
         const styGeometry = new THREE.BoxGeometry(styWidth, styHeight, styDepth);
         const styMaterial = new THREE.MeshStandardMaterial({ color: styColor });
         const styMesh = new THREE.Mesh(styGeometry, styMaterial);
-        styMesh.castShadow = true;
-        styMesh.receiveShadow = true;
-        // styMesh.position.y = styHeight / 2; // Will be handled by group
         group.add(styMesh);
 
         // Pen: Adjacent area enclosed by thin vertical cuboids (fence posts)
@@ -58,7 +55,6 @@ class PigFarm extends Building {
             const postGeometry = new THREE.BoxGeometry(postSize, fenceHeight, postSize);
             const post = new THREE.Mesh(postGeometry, fenceMaterial);
             post.position.set(pos.x, fenceHeight / 2, pos.z); // Position post relative to penGroup center, base at y=0
-            post.castShadow = true;
             penGroup.add(post);
         });
         group.add(penGroup);
@@ -75,7 +71,6 @@ class PigFarm extends Building {
                 pigRadius,                             // On the ground of the pen
                 (Math.random() - 0.5) * penDepth * 0.6  // Randomly within pen z
             );
-            pig.castShadow = true;
             penGroup.add(pig); // Add pigs to the penGroup
         }
 

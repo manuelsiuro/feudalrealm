@@ -1,6 +1,14 @@
+import * as THREE from 'three';
+
 /**
  * @fileoverview Defines the data structures and core logic for the game map.
  */
+
+// Simple RNG for now, can be replaced with a seeded one later
+const simpleRNG = {
+    nextFloat: () => Math.random(),
+    nextInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+};
 
 /**
  * Represents a single tile on the game map.
@@ -37,6 +45,9 @@ class GameMap {
         this.width = width;
         this.height = height;
         this.grid = []; // 2D array of MapTile objects
+        this.tileMeshes = new THREE.Group();
+        this.tileMeshes.name = "MapTileMeshes";
+        this.rng = simpleRNG; // Initialize rng property
         this.initializeGrid();
     }
 

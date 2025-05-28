@@ -45,7 +45,6 @@ class BuildersHut extends Building {
         for (let i = 0; i < 3; i++) {
             const plankMesh = new THREE.Mesh(new THREE.BoxGeometry(plankLength, plankThickness, plankWidthStacked), plankMaterial);
             plankMesh.position.set(hutWidth / 2 + TILE_SIZE * 0.075, plankThickness * i + plankThickness / 2, -TILE_SIZE * 0.05);
-            // plankMesh.rotation.z = Math.PI / 2; // Laying flat - original was XZY, now XYZ
             modelGroup.add(plankMesh);
         }
 

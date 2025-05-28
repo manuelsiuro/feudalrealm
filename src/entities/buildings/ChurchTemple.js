@@ -85,14 +85,6 @@ class ChurchTemple extends Building {
         steepleTopMesh.add(verticalBar);
         steepleTopMesh.add(horizontalBar);
 
-        // Ensure all children cast and receive shadows
-        modelGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-
         return modelGroup;
     }
 }

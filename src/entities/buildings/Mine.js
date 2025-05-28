@@ -21,8 +21,6 @@ class Mine extends Building {
         const entranceGeometry = new THREE.BoxGeometry(entranceWidth, entranceHeight, entranceDepth);
         const entranceMaterial = new THREE.MeshStandardMaterial({ color: entranceColor });
         const entranceMesh = new THREE.Mesh(entranceGeometry, entranceMaterial);
-        entranceMesh.castShadow = true;
-        entranceMesh.receiveShadow = true;
         group.add(entranceMesh);
 
         // Opening: Darker, smaller square/rectangle on the front face
@@ -37,14 +35,12 @@ class Mine extends Building {
 
         // Ore Indicator: A small, distinctively colored shape near the entrance
         // This will be customized by subclasses (IronMine, CoalMine, GoldMine)
-        const indicatorSize = TILE_SIZE * 0.15;
-        // Default shape is a cube, subclasses can override createOreIndicatorModel if needed
-        const indicatorGeometry = new THREE.BoxGeometry(indicatorSize, indicatorSize, indicatorSize);
-        const indicatorMaterial = new THREE.MeshStandardMaterial({ color: this.oreColor });
-        const indicatorMesh = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+        const indicatorMesh = this.createOreIndicatorModel(this.oreColor);
+        
         // Position it to the side of the entrance
-        indicatorMesh.position.set(entranceWidth / 2 + indicatorSize / 2 + TILE_SIZE * 0.05, -entranceHeight / 2 + indicatorSize / 2, entranceDepth / 2 - indicatorSize / 2);
-        indicatorMesh.castShadow = true;
+        const indicatorBoundingBox = new THREE.Box3().setFromObject(indicatorMesh);
+        const indicatorHeight = indicatorBoundingBox.max.y - indicatorBoundingBox.min.y;
+        indicatorMesh.position.set(entranceWidth / 2 + (indicatorBoundingBox.max.x - indicatorBoundingBox.min.x) / 2 + TILE_SIZE * 0.05, -entranceHeight / 2 + indicatorHeight / 2, entranceDepth / 2 - (indicatorBoundingBox.max.z - indicatorBoundingBox.min.z) / 2);
         group.add(indicatorMesh);
         
         group.position.y = entranceHeight / 2; // Adjust group pivot to be at the base
@@ -57,7 +53,6 @@ class Mine extends Building {
         const geometry = new THREE.BoxGeometry(indicatorSize, indicatorSize, indicatorSize);
         const material = new THREE.MeshStandardMaterial({ color: color });
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
         return mesh;
     }
 }

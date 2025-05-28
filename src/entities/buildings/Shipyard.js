@@ -32,11 +32,11 @@ class Shipyard extends Building {
         // Side walls
         const wallGeometry = new THREE.BoxGeometry(wallThickness, shedWallHeight, shedLength);
         const wall1Mesh = new THREE.Mesh(wallGeometry, wallMaterial);
-        wall1Mesh.position.set(shedWidth / 2 - wallThickness / 2, shedWallHeight / 2, 0);
+        wall1Mesh.position.set(shedWidth / 2 - wallThickness / 2, shedWallHeight / 2, 0); // Base of wall at y=0
         modelGroup.add(wall1Mesh);
 
         const wall2Mesh = new THREE.Mesh(wallGeometry, wallMaterial);
-        wall2Mesh.position.set(-shedWidth / 2 + wallThickness / 2, shedWallHeight / 2, 0);
+        wall2Mesh.position.set(-shedWidth / 2 + wallThickness / 2, shedWallHeight / 2, 0); // Base of wall at y=0
         modelGroup.add(wall2Mesh);
 
         // Roof: Large sloped roof
@@ -53,50 +53,50 @@ class Shipyard extends Building {
         roofSlopePanelGeometry.translate(roofSlopePanelWidth / 2, 0, 0); 
 
         const roofSlope1 = new THREE.Mesh(roofSlopePanelGeometry, roofMaterial);
-        roofSlope1.position.set(0, roofRidgeY, 0); // Position at ridge peak
-        // Calculate angle based on new dimensions
+        roofSlope1.position.set(0, roofRidgeY, 0); 
         const roofRise = roofRidgeY - shedWallHeight;
         const roofRun = shedWidth / 2;
         roofSlope1.rotation.z = Math.atan2(roofRise, roofRun);
         modelGroup.add(roofSlope1);
 
         const roofSlope2 = new THREE.Mesh(roofSlopePanelGeometry, roofMaterial);
-        roofSlope2.position.set(0, roofRidgeY, 0); // Position at ridge peak
+        roofSlope2.position.set(0, roofRidgeY, 0); 
         roofSlope2.rotation.z = -Math.atan2(roofRise, roofRun);
-        roofSlope2.scale.x = -1; // Flip geometry for the other side
+        roofSlope2.scale.x = -1; 
         modelGroup.add(roofSlope2);
 
         // Slipway/Ramp (optional): Sloping cuboid into water area
-        const slipwayWidth = shedWidth * 0.6; // Adjusted from 0.7
-        const slipwayLength = TILE_SIZE * 0.4; // Adjusted from TILE_SIZE * 1.0
-        const slipwayHeight = TILE_SIZE * 0.08; // Adjusted from TILE_SIZE * 0.15
+        const slipwayWidth = shedWidth * 0.6; 
+        const slipwayLength = TILE_SIZE * 0.4; 
+        const slipwayHeight = TILE_SIZE * 0.08; 
         const slipwayMesh = new THREE.Mesh(
             new THREE.BoxGeometry(slipwayWidth, slipwayHeight, slipwayLength),
-            new THREE.MeshPhongMaterial({ color: 0x696969 }) // DarkGrey stone/wood
+            new THREE.MeshPhongMaterial({ color: 0x696969 }) 
         );
-        // Position it extending from the front of the shed, sloping down
-        slipwayMesh.position.set(0, slipwayHeight / 2 - TILE_SIZE * 0.05, shedLength / 2 + slipwayLength / 2 - TILE_SIZE * 0.1);
-        slipwayMesh.rotation.x = Math.PI / 16; // Gentler slope for smaller ramp
+        // Position it extending from the front of the shed, its top surface starting near ground level and sloping down.
+        // The center of the mesh is (slipwayHeight / 2) above its bottom.
+        // To make its top align with y=0 (approx), position.y = -slipwayHeight/2. 
+        // Adding a slight positive offset to make it sit on ground before sloping.
+        // Or, if it should start from the shed floor (y=0), its center y is slipwayHeight/2.
+        // The original code: slipwayHeight / 2 - TILE_SIZE * 0.05 makes it slightly submerged at start.
+        // Let's assume it starts at ground level (y=0 for its top back edge).
+        // For a BoxGeometry, position.y is its center. If its top back edge is at y=0 and it slopes down,
+        // its center y will be negative. This is complex with rotation.
+        // Let's keep its base slightly below ground as intended for a slipway into water.
+        slipwayMesh.position.set(0, (slipwayHeight / 2) - (TILE_SIZE * 0.02) , shedLength / 2 + slipwayLength / 2 - TILE_SIZE * 0.1);
+        slipwayMesh.rotation.x = Math.PI / 16; 
         modelGroup.add(slipwayMesh);
 
         // Ship under construction (simplified hull shape - elongated cuboid)
-        const hullLength = shedLength * 0.7; // Adjusted from 0.8
-        const hullWidth = shedWidth * 0.3; // Adjusted from 0.4
-        const hullHeight = TILE_SIZE * 0.2; // Adjusted from TILE_SIZE * 0.4
+        const hullLength = shedLength * 0.7; 
+        const hullWidth = shedWidth * 0.3; 
+        const hullHeight = TILE_SIZE * 0.2; 
         const hullMesh = new THREE.Mesh(
             new THREE.BoxGeometry(hullWidth, hullHeight, hullLength),
-            new THREE.MeshPhongMaterial({ color: 0xDEB887 }) // BurlyWood (Planks)
+            new THREE.MeshPhongMaterial({ color: 0xDEB887 }) 
         );
-        hullMesh.position.set(0, hullHeight / 2, 0); // Centered in the shed
+        hullMesh.position.set(0, hullHeight / 2, 0); // Base of hull at y=0
         modelGroup.add(hullMesh);
-
-        // Ensure all children cast and receive shadows
-        modelGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
 
         return modelGroup;
     }

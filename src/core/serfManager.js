@@ -35,7 +35,7 @@ class SerfManager {
         // Ensure initial structures are set up before spawning serfs that might depend on them
         // this.constructionManager.setupInitialStructures(); // Assuming this is called elsewhere or before SerfManager instantiation
         
-        this.spawnInitialSerfs();
+        //this.spawnInitialSerfs();
     }
 
     addConstructionTask(buildingInstance) {
@@ -86,8 +86,20 @@ class SerfManager {
             console.log(`Initial Woodcutter serf ${woodcutterSerf.id} spawned at (${woodcutterSpawnX}, ${woodcutterSpawnZ}).`);
         }
 
-        // Spawn 5 Transporter serfs
-        for (let i = 0; i < 5; i++) {
+        // Spawn 1 Builder serf
+        let builderSpawnX = spawnX - 1;
+        let builderSpawnZ = spawnZ - 1;
+        // Ensure spawn position is within map bounds
+        builderSpawnX = Math.max(0, Math.min(builderSpawnX, this.gameMap.width - 1));
+        builderSpawnZ = Math.max(0, Math.min(builderSpawnZ, this.gameMap.height - 1));
+        // Create the Builder serf
+        // Note: Builder serfs are now handled by the ConstructBuildingTask system, but we still spawn one for initial setup.
+        console.log(`Spawning initial Builder serf at (${builderSpawnX}, ${builderSpawnZ})`);
+        const builderSerf = this.createSerf(SERF_PROFESSIONS.BUILDER, builderSpawnX, builderSpawnZ);
+
+        // Spawn X Transporter serfs
+        const amountOfTransporters = 1; // Number of Transporter serfs to spawn
+        for (let i = 0; i < amountOfTransporters; i++) {
             // Offset them slightly so they don't all spawn on the exact same spot
             const offsetX = i % 2 === 0 ? Math.floor(i / 2) : -Math.floor((i + 1) / 2);
             const offsetZ = i % 3 === 0 ? 0 : (i % 3 === 1 ? 1 : -1);
@@ -110,11 +122,6 @@ class SerfManager {
                 console.log(`Initial Transporter serf ${newSerf.id} spawned at (${finalSpawnX}, ${finalSpawnZ}) (no hut found).`);
             }
         }
-
-        // Remove the old single Woodcutter spawn
-        // const serfTypeToSpawn = 'Woodcutter'; 
-        // console.log(`Spawning a single ${serfTypeToSpawn} at grid center (${centerX}, ${centerZ})`);
-        // this.createSerf(serfTypeToSpawn, centerX, centerZ);
     }
 
     createSerf(type, gridX, gridY) {
