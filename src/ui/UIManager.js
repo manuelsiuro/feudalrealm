@@ -2,15 +2,17 @@ import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // May be needed fo
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
 import { FORESTER_SAPLING_UPGRADE_AMOUNT } from '../config/unitConstants.js';
 import ProductionChainUI from './ProductionChainUI.js';
+import FlowControlPanel from './FlowControlPanel.js';
 
 class UIManager {
-    constructor(uiContainer, resourceManager, constructionManager, serfManager, selectionManager, productionChainManager) {
+    constructor(uiContainer, resourceManager, constructionManager, serfManager, selectionManager, productionChainManager, resourceFlowManager = null) {
         this.uiContainer = uiContainer;
         this.resourceManager = resourceManager;
         this.constructionManager = constructionManager;
         this.serfManager = serfManager;
         this.selectionManager = selectionManager;
         this.productionChainManager = productionChainManager;
+        this.resourceFlowManager = resourceFlowManager;
 
         // Core UI panels
         this.topBar = null;
@@ -47,6 +49,12 @@ class UIManager {
         if (this.productionChainManager) {
             this.productionChainUI = new ProductionChainUI(this.productionChainManager, this);
             console.log('ProductionChainUI initialized.');
+        }
+
+        // Initialize FlowControlPanel if resourceFlowManager is available
+        if (this.resourceFlowManager) {
+            this.flowControlPanel = new FlowControlPanel(this.resourceFlowManager);
+            console.log('FlowControlPanel initialized.');
         }
 
         this.resourceManager.onChange((stockpiles) => {
@@ -188,8 +196,25 @@ class UIManager {
         `;
         productionChainsBtn.addEventListener('click', () => this.toggleProductionChains());
 
+        // Flow visualization button
+        const flowControlBtn = document.createElement('button');
+        flowControlBtn.textContent = 'Flow Controls';
+        flowControlBtn.style.cssText = `
+            background: rgba(33,150,243,0.2);
+            border: 1px solid rgba(33,150,243,0.5);
+            color: #2196F3;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            margin-left: 8px;
+        `;
+        flowControlBtn.addEventListener('click', () => this.toggleFlowControls());
+
         this.gameActions.appendChild(devToggle);
         this.gameActions.appendChild(productionChainsBtn);
+        this.gameActions.appendChild(flowControlBtn);
         this.topBar.appendChild(this.gameActions);
         this.uiOverlay.appendChild(this.topBar);
     }
@@ -315,6 +340,14 @@ class UIManager {
             this.productionChainUI.toggle();
         } else {
             console.warn('UIManager: ProductionChainUI not available');
+        }
+    }
+
+    toggleFlowControls() {
+        if (this.flowControlPanel) {
+            this.flowControlPanel.toggle();
+        } else {
+            console.warn('UIManager: FlowControlPanel not available');
         }
     }
 
@@ -1824,7 +1857,7 @@ class UIManager {
         });
         
         closeButton.onclick = () => {
-            if (customHandler) {
+                       if (customHandler) {
                 customHandler();
             } else if (targetPanel) {
                 targetPanel.style.display = 'none';
@@ -1880,7 +1913,7 @@ _subscribeToSelectionChanges() {
     } else {
         console.warn("UIManager: SelectionManager not provided or 'onSelectionChange' is not available. UI will not update on selection.");
     }
-    }
+}
 
 // Removed handleCanvasClick method
 // Removed handleOverlayClick method

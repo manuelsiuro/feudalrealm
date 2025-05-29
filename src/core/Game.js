@@ -125,7 +125,8 @@ class Game {
             this.constructionManager,
             this.serfManager,
             this.selectionManager, // NEW: Pass the selectionManager instance
-            this.productionChainManager // NEW: Pass the productionChainManager instance
+            this.productionChainManager, // NEW: Pass the productionChainManager instance
+            this.resourceFlowManager // NEW: Pass the resourceFlowManager instance
         );
 
         // Setup callback for when a serf is selected in the UI
