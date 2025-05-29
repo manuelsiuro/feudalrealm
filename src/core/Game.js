@@ -118,8 +118,9 @@ class Game {
         this.selectionManager.setSelectableGroups(buildingsGroup, serfsGroup);
 
         // 5. Initialize UIManager
+        const uiContainer = document.getElementById('ui-container') || document.body;
         this.uiManager = new UIManager(
-            document.body,
+            uiContainer,
             this.resourceManager,
             this.constructionManager,
             this.serfManager,

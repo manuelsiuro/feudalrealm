@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug UI State</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        .debug-panel {
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .status {
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .success { background: rgba(76,175,80,0.3); }
+        .error { background: rgba(244,67,54,0.3); }
+        .warning { background: rgba(255,193,7,0.3); }
+    </style>
+</head>
+<body>
+    <h1>UI Integration Debug</h1>
+    
+    <div class="debug-panel">
+        <h2>Canvas Status</h2>
+        <div id="canvas-status"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h2>UI Elements Status</h2>
+        <div id="ui-status"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h2>Game State</h2>
+        <div id="game-status"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h2>Console Errors</h2>
+        <div id="console-errors"></div>
+    </div>
+
+    <script type="module">
+        const debugInfo = {
+            canvas: null,
+            uiContainer: null,
+            uiOverlay: null,
+            errors: []
+        };
+
+        // Capture console errors
+        const originalError = console.error;
+        console.error = function(...args) {
+            debugInfo.errors.push(args.join(' '));
+            originalError.apply(console, args);
+            updateErrorDisplay();
+        };
+
+        function checkElements() {
+            debugInfo.canvas = document.getElementById('game-canvas');
+            debugInfo.uiContainer = document.getElementById('ui-container');
+            debugInfo.uiOverlay = document.getElementById('ui-overlay');
+            
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const canvasStatus = document.getElementById('canvas-status');
+            const uiStatus = document.getElementById('ui-status');
+            const gameStatus = document.getElementById('game-status');
+
+            // Canvas status
+            if (debugInfo.canvas) {
+                canvasStatus.innerHTML = `<div class="status success">✓ Canvas found: ${debugInfo.canvas.width}x${debugInfo.canvas.height}</div>`;
+            } else {
+                canvasStatus.innerHTML = `<div class="status error">✗ Canvas not found</div>`;
+            }
+
+            // UI status
+            let uiHtml = '';
+            if (debugInfo.uiContainer) {
+                uiHtml += `<div class="status success">✓ UI Container found</div>`;
+            } else {
+                uiHtml += `<div class="status error">✗ UI Container not found</div>`;
+            }
+            
+            if (debugInfo.uiOverlay) {
+                uiHtml += `<div class="status success">✓ UI Overlay found</div>`;
+            } else {
+                uiHtml += `<div class="status warning">⚠ UI Overlay not found (may not be created yet)</div>`;
+            }
+            uiStatus.innerHTML = uiHtml;
+
+            // Game status
+            if (window.game) {
+                gameStatus.innerHTML = `<div class="status success">✓ Game instance found</div>`;
+                if (window.game.uiManager) {
+                    gameStatus.innerHTML += `<div class="status success">✓ UIManager found</div>`;
+                    if (window.game.uiManager.productionChainUI) {
+                        gameStatus.innerHTML += `<div class="status success">✓ ProductionChainUI found</div>`;
+                    } else {
+                        gameStatus.innerHTML += `<div class="status error">✗ ProductionChainUI not found</div>`;
+                    }
+                } else {
+                    gameStatus.innerHTML += `<div class="status error">✗ UIManager not found</div>`;
+                }
+            } else {
+                gameStatus.innerHTML = `<div class="status error">✗ Game instance not found</div>`;
+            }
+        }
+
+        function updateErrorDisplay() {
+            const errorDiv = document.getElementById('console-errors');
+            if (debugInfo.errors.length === 0) {
+                errorDiv.innerHTML = '<div class="status success">✓ No console errors</div>';
+            } else {
+                errorDiv.innerHTML = debugInfo.errors.map(error => 
+                    `<div class="status error">✗ ${error}</div>`
+                ).join('');
+            }
+        }
+
+        // Initial check
+        checkElements();
+        updateErrorDisplay();
+
+        // Periodic checks
+        setInterval(checkElements, 1000);
+
+        // Try to load the main game after a delay
+        setTimeout(async () => {
+            try {
+                console.log('Attempting to load main game...');
+                const gameModule = await import('./src/main.js');
+                console.log('Main game loaded successfully');
+            } catch (error) {
+                console.error('Failed to load main game:', error);
+            }
+        }, 2000);
+    </script>
+    
+    <!-- Add the game canvas container -->
+    <div id="ui-container" style="position: relative; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; z-index: 1;">
+        <canvas id="game-canvas" style="display: block; width: 100%; height: 100%;"></canvas>
+    </div>
+</body>
+</html>

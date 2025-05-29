@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Fix Validation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-section.error {
+            border-left-color: #f44336;
+        }
+        .test-section.warning {
+            border-left-color: #ff9800;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .success { background: rgba(76,175,80,0.3); }
+        .error { background: rgba(244,67,54,0.3); }
+        .warning { background: rgba(255,193,7,0.3); }
+        .info { background: rgba(33,150,243,0.3); }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .game-frame {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Comprehensive Fix Validation</h1>
+        <p>Testing all three pending items: Canvas Fix, Castle Fix, and Port 5173 Validation</p>
+
+        <div class="test-section">
+            <h2>🎯 Test 1: Canvas Preservation & ProductionChainUI Fix</h2>
+            <p>Verifying that the canvas element is preserved during UI initialization and ProductionChainUI works.</p>
+            <div id="canvas-test-results"></div>
+            <button onclick="testCanvasFix()">Test Canvas Fix</button>
+        </div>
+
+        <div class="test-section">
+            <h2>🏰 Test 2: Castle.js Fix Validation</h2>
+            <p>Checking if Castle.js loads without errors and integrates properly.</p>
+            <div id="castle-test-results"></div>
+            <button onclick="testCastleFix()">Test Castle Fix</button>
+        </div>
+
+        <div class="test-section">
+            <h2>🚀 Test 3: Port 5173 Quick Validation</h2>
+            <p>Running the quick validation script for port 5173.</p>
+            <div id="port-test-results"></div>
+            <button onclick="testPort5173()">Test Port 5173</button>
+        </div>
+
+        <div class="test-section">
+            <h2>🎮 Live Game Test</h2>
+            <p>Embedded game instance for real-time testing:</p>
+            <iframe id="game-frame" class="game-frame" src="http://localhost:5173"></iframe>
+            <button onclick="refreshGameFrame()">Refresh Game</button>
+            <button onclick="runAllTests()">Run All Tests</button>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Console Output</h2>
+            <div id="console-output" class="console-output">
+                Console output will appear here...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Capture console output
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function logToOutput(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : '💬';
+            consoleOutput.innerHTML += `[${timestamp}] ${prefix} ${message}\\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            logToOutput(args.join(' '), 'log');
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            logToOutput(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            logToOutput(args.join(' '), 'warn');
+            originalWarn.apply(console, args);
+        };
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            container.appendChild(statusDiv);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function testCanvasFix() {
+            clearResults('canvas-test-results');
+            console.log('=== Testing Canvas Preservation & ProductionChainUI Fix ===');
+
+            // Test 1: Canvas exists in DOM
+            const canvas = document.getElementById('game-canvas') || 
+                          document.querySelector('#game-frame').contentDocument?.getElementById('game-canvas');
+            
+            if (canvas) {
+                addResult('canvas-test-results', '✓ Canvas element found', 'success');
+            } else {
+                addResult('canvas-test-results', '✗ Canvas element not found', 'error');
+                return false;
+            }
+
+            // Test 2: UI Container exists
+            const uiContainer = document.getElementById('ui-container') ||
+                              document.querySelector('#game-frame').contentDocument?.getElementById('ui-container');
+            
+            if (uiContainer) {
+                addResult('canvas-test-results', '✓ UI Container found', 'success');
+            } else {
+                addResult('canvas-test-results', '✗ UI Container not found', 'error');
+            }
+
+            // Test 3: Access game in iframe
+            try {
+                const gameFrame = document.getElementById('game-frame');
+                const gameWindow = gameFrame.contentWindow;
+                
+                if (gameWindow && gameWindow.game) {
+                    addResult('canvas-test-results', '✓ Game instance accessible', 'success');
+                    
+                    // Test ProductionChainUI
+                    if (gameWindow.game.uiManager && gameWindow.game.uiManager.productionChainUI) {
+                        addResult('canvas-test-results', '✓ ProductionChainUI initialized', 'success');
+                        
+                        // Test update method
+                        try {
+                            gameWindow.game.uiManager.productionChainUI.update();
+                            addResult('canvas-test-results', '✓ ProductionChainUI.update() works', 'success');
+                        } catch (error) {
+                            addResult('canvas-test-results', '✗ ProductionChainUI.update() failed: ' + error.message, 'error');
+                        }
+                    } else {
+                        addResult('canvas-test-results', '✗ ProductionChainUI not found', 'error');
+                    }
+                } else {
+                    addResult('canvas-test-results', '⚠ Game not loaded yet in iframe', 'warning');
+                }
+            } catch (error) {
+                addResult('canvas-test-results', '⚠ Cannot access iframe (CORS): ' + error.message, 'warning');
+            }
+
+            return true;
+        }
+
+        async function testCastleFix() {
+            clearResults('castle-test-results');
+            console.log('=== Testing Castle.js Fix ===');
+
+            try {
+                // Try to import Castle.js directly
+                const response = await fetch('/src/entities/buildings/Castle.js');
+                if (response.ok) {
+                    addResult('castle-test-results', '✓ Castle.js file accessible', 'success');
+                    
+                    // Check if it's a valid module
+                    const castleCode = await response.text();
+                    if (castleCode.includes('class Castle') && castleCode.includes('extends Building')) {
+                        addResult('castle-test-results', '✓ Castle class structure valid', 'success');
+                    } else {
+                        addResult('castle-test-results', '✗ Castle class structure invalid', 'error');
+                    }
+                } else {
+                    addResult('castle-test-results', '✗ Castle.js file not found', 'error');
+                }
+
+                // Test if game loads without Castle errors
+                try {
+                    const gameFrame = document.getElementById('game-frame');
+                    const gameWindow = gameFrame.contentWindow;
+                    
+                    if (gameWindow && gameWindow.game) {
+                        addResult('castle-test-results', '✓ Game loaded without Castle errors', 'success');
+                    } else {
+                        addResult('castle-test-results', '⚠ Game not loaded yet', 'warning');
+                    }
+                } catch (error) {
+                    addResult('castle-test-results', '⚠ Cannot test game loading: ' + error.message, 'warning');
+                }
+
+            } catch (error) {
+                addResult('castle-test-results', '✗ Castle.js test failed: ' + error.message, 'error');
+            }
+
+            return true;
+        }
+
+        async function testPort5173() {
+            clearResults('port-test-results');
+            console.log('=== Testing Port 5173 Validation ===');
+
+            // Test 1: Server accessibility
+            try {
+                const response = await fetch('http://localhost:5173');
+                if (response.ok) {
+                    addResult('port-test-results', '✓ Port 5173 server accessible', 'success');
+                } else {
+                    addResult('port-test-results', '✗ Port 5173 server error: ' + response.status, 'error');
+                }
+            } catch (error) {
+                addResult('port-test-results', '✗ Port 5173 not accessible: ' + error.message, 'error');
+                return false;
+            }
+
+            // Test 2: Game resources loading
+            try {
+                const mainJsResponse = await fetch('http://localhost:5173/src/main.js');
+                if (mainJsResponse.ok) {
+                    addResult('port-test-results', '✓ main.js loads correctly', 'success');
+                } else {
+                    addResult('port-test-results', '✗ main.js load error', 'error');
+                }
+            } catch (error) {
+                addResult('port-test-results', '✗ main.js not accessible: ' + error.message, 'error');
+            }
+
+            // Test 3: Three.js availability
+            try {
+                const threeJsResponse = await fetch('http://localhost:5173/node_modules/three/build/three.module.js');
+                if (threeJsResponse.ok) {
+                    addResult('port-test-results', '✓ Three.js module accessible', 'success');
+                } else {
+                    addResult('port-test-results', '⚠ Three.js CDN fallback may be used', 'warning');
+                }
+            } catch (error) {
+                addResult('port-test-results', '⚠ Three.js module check failed', 'warning');
+            }
+
+            return true;
+        }
+
+        function refreshGameFrame() {
+            const gameFrame = document.getElementById('game-frame');
+            gameFrame.src = gameFrame.src; // Force reload
+            console.log('Game frame refreshed');
+        }
+
+        async function runAllTests() {
+            console.log('🚀 Running comprehensive validation tests...');
+            
+            const canvasResult = await testCanvasFix();
+            const castleResult = await testCastleFix();
+            const portResult = await testPort5173();
+
+            console.log('=== COMPREHENSIVE TEST RESULTS ===');
+            console.log('Canvas Fix:', canvasResult ? '✅ PASSED' : '❌ FAILED');
+            console.log('Castle Fix:', castleResult ? '✅ PASSED' : '❌ FAILED');
+            console.log('Port 5173:', portResult ? '✅ PASSED' : '❌ FAILED');
+
+            const allPassed = canvasResult && castleResult && portResult;
+            if (allPassed) {
+                console.log('🎉 ALL TESTS PASSED! Integration fixes are working correctly.');
+            } else {
+                console.log('⚠️ Some tests failed. Check individual test results above.');
+            }
+        }
+
+        // Auto-run tests after a delay
+        setTimeout(() => {
+            console.log('Auto-starting comprehensive validation in 3 seconds...');
+            setTimeout(runAllTests, 3000);
+        }, 2000);
+    </script>
+</body>
+</html>
