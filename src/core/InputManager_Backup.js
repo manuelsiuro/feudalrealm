@@ -55,8 +55,6 @@ class InputManager {
         
         // For clicks, use a delayed approach to avoid interfering with camera controls
         this.gameCanvas.addEventListener('click', this._handleCanvasClick.bind(this), true);
-        
-        console.log("InputManager: Initialized with intelligent click/drag detection");
     }
 
     /**

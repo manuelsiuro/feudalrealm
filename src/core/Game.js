@@ -361,6 +361,7 @@ class Game {
         if (this.productionChainManager) {
             this.productionChainManager.update(deltaTime);
         }
+        
         if (this.uiManager && this.uiManager.productionChainUI) {
             this.uiManager.productionChainUI.update(Date.now());
         }

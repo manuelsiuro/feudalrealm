@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Map Controls - Feudal Realm Manager</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        .debug-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .game-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ccc;
+            position: relative;
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            background: #007acc;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005999;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        .warning {
+            color: orange;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-panel">
+        <h1>Map Controls Debug</h1>
+        <p>Testing map rotation, zoom, and building placement functionality</p>
+        
+        <div class="game-container">
+            <iframe 
+                id="game-frame" 
+                src="/" 
+                width="100%" 
+                height="100%"
+                style="border: none;">
+            </iframe>
+        </div>
+        
+        <div class="controls">
+            <button onclick="testMapRotation()">Test Map Rotation</button>
+            <button onclick="testMapZoom()">Test Map Zoom</button>
+            <button onclick="testBuildingPlacement()">Test Building Placement</button>
+            <button onclick="checkGameState()">Check Game State</button>
+            <button onclick="checkControls()">Check Controls</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div id="status" class="status">
+            Ready to test map controls...<br>
+        </div>
+    </div>
+
+    <script>
+        let gameFrame;
+        let gameWindow;
+        let logDiv;
+        
+        window.addEventListener('load', () => {
+            gameFrame = document.getElementById('game-frame');
+            logDiv = document.getElementById('status');
+            
+            gameFrame.addEventListener('load', () => {
+                gameWindow = gameFrame.contentWindow;
+                log('Game frame loaded', 'success');
+                setTimeout(checkGameState, 1000);
+            });
+        });
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : 
+                             type === 'success' ? 'success' : 
+                             type === 'warning' ? 'warning' : '';
+            logDiv.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span><br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            logDiv.innerHTML = 'Log cleared...<br>';
+        }
+        
+        async function checkGameState() {
+            try {
+                if (!gameWindow) {
+                    log('Game window not available', 'error');
+                    return;
+                }
+                
+                // Check if game object exists
+                const hasGame = !!gameWindow.game;
+                log(`Game object exists: ${hasGame}`, hasGame ? 'success' : 'error');
+                
+                if (hasGame) {
+                    const game = gameWindow.game;
+                    
+                    // Check camera
+                    const hasCamera = !!game.camera;
+                    log(`Camera exists: ${hasCamera}`, hasCamera ? 'success' : 'error');
+                    
+                    // Check scene
+                    const hasScene = !!game.scene;
+                    log(`Scene exists: ${hasScene}`, hasScene ? 'success' : 'error');
+                    
+                    // Check renderer
+                    const hasRenderer = !!game.renderer;
+                    log(`Renderer exists: ${hasRenderer}`, hasRenderer ? 'success' : 'error');
+                    
+                    // Check controls
+                    const hasControls = !!game.controls;
+                    log(`Controls exists: ${hasControls}`, hasControls ? 'success' : 'error');
+                    
+                    if (hasControls) {
+                        const controls = game.controls;
+                        log(`Controls type: ${controls.constructor.name}`, 'info');
+                        log(`Controls enabled: ${controls.enabled}`, controls.enabled ? 'success' : 'warning');
+                    }
+                    
+                    // Check map
+                    const hasMap = !!game.map;
+                    log(`Map exists: ${hasMap}`, hasMap ? 'success' : 'error');
+                    
+                    // Check building manager
+                    const hasBuildingManager = !!game.buildingManager;
+                    log(`BuildingManager exists: ${hasBuildingManager}`, hasBuildingManager ? 'success' : 'error');
+                    
+                    // Check UI manager
+                    const hasUIManager = !!game.uiManager;
+                    log(`UIManager exists: ${hasUIManager}`, hasUIManager ? 'success' : 'error');
+                }
+                
+            } catch (error) {
+                log(`Error checking game state: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkControls() {
+            try {
+                if (!gameWindow || !gameWindow.game) {
+                    log('Game not available', 'error');
+                    return;
+                }
+                
+                const game = gameWindow.game;
+                const controls = game.controls;
+                
+                if (!controls) {
+                    log('No controls found', 'error');
+                    return;
+                }
+                
+                log(`Controls constructor: ${controls.constructor.name}`, 'info');
+                log(`Controls enabled: ${controls.enabled}`, 'info');
+                log(`Controls enableRotate: ${controls.enableRotate}`, 'info');
+                log(`Controls enableZoom: ${controls.enableZoom}`, 'info');
+                log(`Controls enablePan: ${controls.enablePan}`, 'info');
+                
+                // Check if controls are attached to proper element
+                if (controls.domElement) {
+                    log(`Controls domElement: ${controls.domElement.tagName}`, 'info');
+                    log(`Controls domElement id: ${controls.domElement.id}`, 'info');
+                } else {
+                    log('Controls domElement not set', 'warning');
+                }
+                
+            } catch (error) {
+                log(`Error checking controls: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testMapRotation() {
+            try {
+                if (!gameWindow || !gameWindow.game) {
+                    log('Game not available', 'error');
+                    return;
+                }
+                
+                const game = gameWindow.game;
+                const controls = game.controls;
+                
+                if (!controls) {
+                    log('No controls found for rotation test', 'error');
+                    return;
+                }
+                
+                log('Testing map rotation...', 'info');
+                
+                // Get initial rotation
+                const initialAzimuth = controls.getAzimuthalAngle ? controls.getAzimuthalAngle() : 'N/A';
+                log(`Initial azimuthal angle: ${initialAzimuth}`, 'info');
+                
+                // Try to rotate programmatically
+                if (controls.rotate) {
+                    controls.rotate(0.1, 0);
+                    log('Programmatic rotation attempted', 'info');
+                } else if (controls.rotateLeft) {
+                    controls.rotateLeft(0.1);
+                    log('Programmatic rotateLeft attempted', 'info');
+                } else {
+                    log('No rotation methods found', 'warning');
+                }
+                
+                // Check if rotation changed
+                setTimeout(() => {
+                    const newAzimuth = controls.getAzimuthalAngle ? controls.getAzimuthalAngle() : 'N/A';
+                    log(`New azimuthal angle: ${newAzimuth}`, 'info');
+                    
+                    if (initialAzimuth !== 'N/A' && newAzimuth !== 'N/A' && initialAzimuth !== newAzimuth) {
+                        log('Rotation test: SUCCESS', 'success');
+                    } else {
+                        log('Rotation test: FAILED', 'error');
+                    }
+                }, 100);
+                
+            } catch (error) {
+                log(`Rotation test error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testMapZoom() {
+            try {
+                if (!gameWindow || !gameWindow.game) {
+                    log('Game not available', 'error');
+                    return;
+                }
+                
+                const game = gameWindow.game;
+                const controls = game.controls;
+                
+                if (!controls) {
+                    log('No controls found for zoom test', 'error');
+                    return;
+                }
+                
+                log('Testing map zoom...', 'info');
+                
+                // Get initial distance
+                const camera = game.camera;
+                const initialDistance = controls.getDistance ? controls.getDistance() : camera.position.length();
+                log(`Initial camera distance: ${initialDistance}`, 'info');
+                
+                // Try to zoom
+                if (controls.dollyIn) {
+                    controls.dollyIn(1.1);
+                    log('Programmatic dollyIn attempted', 'info');
+                } else if (controls.scale) {
+                    controls.scale = 1.1;
+                    log('Programmatic scale attempted', 'info');
+                } else {
+                    log('No zoom methods found', 'warning');
+                }
+                
+                // Check if zoom changed
+                setTimeout(() => {
+                    const newDistance = controls.getDistance ? controls.getDistance() : camera.position.length();
+                    log(`New camera distance: ${newDistance}`, 'info');
+                    
+                    if (Math.abs(initialDistance - newDistance) > 0.01) {
+                        log('Zoom test: SUCCESS', 'success');
+                    } else {
+                        log('Zoom test: FAILED', 'error');
+                    }
+                }, 100);
+                
+            } catch (error) {
+                log(`Zoom test error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBuildingPlacement() {
+            try {
+                if (!gameWindow || !gameWindow.game) {
+                    log('Game not available', 'error');
+                    return;
+                }
+                
+                const game = gameWindow.game;
+                const buildingManager = game.buildingManager;
+                
+                if (!buildingManager) {
+                    log('No buildingManager found', 'error');
+                    return;
+                }
+                
+                log('Testing building placement...', 'info');
+                
+                // Check if we can place a building
+                const testX = 5;
+                const testZ = 5;
+                const buildingType = 'house';
+                
+                log(`Attempting to place ${buildingType} at (${testX}, ${testZ})`, 'info');
+                
+                // Check if position is valid
+                if (buildingManager.canPlaceBuilding) {
+                    const canPlace = buildingManager.canPlaceBuilding(testX, testZ, buildingType);
+                    log(`Can place building: ${canPlace}`, canPlace ? 'success' : 'warning');
+                    
+                    if (canPlace && buildingManager.addBuilding) {
+                        buildingManager.addBuilding(testX, testZ, buildingType);
+                        log('Building placement attempted', 'info');
+                        
+                        // Check if building was added
+                        setTimeout(() => {
+                            const buildings = buildingManager.buildings || [];
+                            const newBuilding = buildings.find(b => b.x === testX && b.z === testZ);
+                            if (newBuilding) {
+                                log('Building placement: SUCCESS', 'success');
+                            } else {
+                                log('Building placement: FAILED', 'error');
+                            }
+                        }, 100);
+                    } else {
+                        log('Cannot place building at test location', 'warning');
+                    }
+                } else {
+                    log('canPlaceBuilding method not found', 'error');
+                }
+                
+            } catch (error) {
+                log(`Building placement test error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

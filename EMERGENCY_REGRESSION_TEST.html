@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 EMERGENCY REGRESSION TEST - Feudal Realm Manager</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #1a1a1a; 
+            color: #fff;
+        }
+        .test-box { 
+            background: #2a2a2a; 
+            padding: 20px; 
+            margin: 10px 0; 
+            border-left: 5px solid #ff6b6b; 
+            border-radius: 5px;
+        }
+        .success { border-left-color: #51cf66; }
+        .warning { border-left-color: #ffd43b; }
+        h1 { color: #ff6b6b; }
+        h2 { color: #4ecdc4; }
+        .game-link { 
+            display: inline-block; 
+            padding: 15px 30px; 
+            background: #4ecdc4; 
+            color: #1a1a1a; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            margin: 20px 0;
+        }
+        .test-steps {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .test-steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚨 EMERGENCY REGRESSION TEST</h1>
+    <h2>Feudal Realm Manager - Camera Controls Fix Verification</h2>
+    
+    <div class="test-box warning">
+        <h3>⚠️ CRITICAL TESTING PHASE</h3>
+        <p><strong>STATUS:</strong> Emergency InputManager fix has been deployed.</p>
+        <p><strong>ISSUE:</strong> Camera rotation, zoom, and building placement were completely broken.</p>
+        <p><strong>FIX:</strong> Minimal interference InputManager to restore OrbitControls functionality.</p>
+    </div>
+
+    <a href="http://localhost:5173" class="game-link" target="_blank">
+        🎮 OPEN GAME FOR TESTING
+    </a>
+
+    <div class="test-box">
+        <h3>🔄 TEST 1: Camera Rotation</h3>
+        <div class="test-steps">
+            <ol>
+                <li>Open the game using the link above</li>
+                <li>Hold RIGHT MOUSE BUTTON and drag to rotate the camera</li>
+                <li>The map should rotate smoothly around the center</li>
+                <li><strong>EXPECTED:</strong> Smooth camera rotation</li>
+                <li><strong>FAIL CONDITION:</strong> Camera doesn't move or jerky movement</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-box">
+        <h3>🔍 TEST 2: Camera Zoom</h3>
+        <div class="test-steps">
+            <ol>
+                <li>Use MOUSE WHEEL to scroll up/down</li>
+                <li>Camera should zoom in and out smoothly</li>
+                <li>Zoom should be toward mouse cursor position</li>
+                <li><strong>EXPECTED:</strong> Smooth zoom in/out</li>
+                <li><strong>FAIL CONDITION:</strong> No zoom response or erratic behavior</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-box">
+        <h3>🏠 TEST 3: Building Placement</h3>
+        <div class="test-steps">
+            <ol>
+                <li>Click any building button (House, Woodcutter, etc.) in the UI</li>
+                <li>Move mouse over the map (should see building preview)</li>
+                <li>LEFT CLICK on the map to place the building</li>
+                <li>Camera should NOT move during building placement</li>
+                <li><strong>EXPECTED:</strong> Building places, camera stays still</li>
+                <li><strong>FAIL CONDITION:</strong> Camera moves when placing building</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-box success">
+        <h3>✅ IF ALL TESTS PASS</h3>
+        <p><strong>SUCCESS!</strong> The emergency fix has resolved the regression.</p>
+        <p>You can now continue with normal development.</p>
+    </div>
+
+    <div class="test-box">
+        <h3>❌ IF ANY TEST FAILS</h3>
+        <p><strong>REPORT IMMEDIATELY:</strong> Describe which test failed and what behavior you observed.</p>
+        <p>Additional fixes may be needed.</p>
+    </div>
+
+    <script>
+        console.log("🚨 EMERGENCY REGRESSION TEST PAGE LOADED");
+        console.log("Please follow the test steps above and report results.");
+        console.log("Game URL: http://localhost:5173");
+    </script>
+</body>
+</html>

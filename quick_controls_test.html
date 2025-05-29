@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Controls Test</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; background: #222; color: white; }
+        #test-container { position: relative; width: 100vw; height: 100vh; }
+        #controls-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #005999; }
+        .status { margin: 10px 0; padding: 10px; background: #333; border-radius: 4px; font-family: monospace; font-size: 12px; }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        .warning { color: #ffd43b; }
+    </style>
+</head>
+<body>
+    <div id="test-container">
+        <div id="controls-panel">
+            <h3>Controls Quick Test</h3>
+            <div>
+                <button onclick="testCanvasEvents()">Test Canvas Events</button>
+                <button onclick="testOrbitControls()">Test OrbitControls</button>
+                <button onclick="fixControls()">Fix Controls</button>
+                <button onclick="clearLog()">Clear Log</button>
+            </div>
+            <div id="log" class="status">Ready to test...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        let logDiv;
+        
+        window.addEventListener('load', () => {
+            logDiv = document.getElementById('log');
+            
+            // Wait for game to load
+            setTimeout(() => {
+                if (window.game) {
+                    log('✅ Game detected', 'success');
+                    testCanvasEvents();
+                } else {
+                    log('❌ Game not found - loading main game...', 'warning');
+                    loadMainGame();
+                }
+            }, 1000);
+        });
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function loadMainGame() {
+            const iframe = document.createElement('iframe');
+            iframe.src = '/';
+            iframe.style.cssText = 'width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 1;';
+            document.getElementById('test-container').appendChild(iframe);
+            
+            iframe.onload = () => {
+                log('✅ Main game loaded in iframe', 'success');
+                
+                setTimeout(() => {
+                    const gameWindow = iframe.contentWindow;
+                    if (gameWindow.game) {
+                        window.game = gameWindow.game;
+                        log('✅ Game reference obtained', 'success');
+                        testCanvasEvents();
+                    } else {
+                        log('❌ Game still not accessible', 'error');
+                    }
+                }, 2000);
+            };
+        }
+
+        window.testCanvasEvents = () => {
+            log('Testing canvas events...', 'info');
+            
+            try {
+                const canvas = document.getElementById('game-canvas') || 
+                              (window.game && window.game.renderer && window.game.renderer.domElement);
+                
+                if (!canvas) {
+                    log('❌ Canvas not found', 'error');
+                    return;
+                }
+                
+                log(`✅ Canvas found: ${canvas.tagName}#${canvas.id}`, 'success');
+                log(`Canvas size: ${canvas.clientWidth}x${canvas.clientHeight}`, 'info');
+                log(`Canvas pointer-events: ${getComputedStyle(canvas).pointerEvents}`, 'info');
+                
+                // Test if canvas receives events
+                const testHandler = (e) => {
+                    log(`✅ Canvas click received at ${e.clientX}, ${e.clientY}`, 'success');
+                    canvas.removeEventListener('click', testHandler);
+                };
+                
+                canvas.addEventListener('click', testHandler);
+                log('Click on the game area to test canvas events...', 'warning');
+                
+                setTimeout(() => {
+                    canvas.removeEventListener('click', testHandler);
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ Canvas test error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testOrbitControls = () => {
+            log('Testing OrbitControls...', 'info');
+            
+            try {
+                if (!window.game) {
+                    log('❌ Game not found', 'error');
+                    return;
+                }
+                
+                const controls = window.game.controls;
+                if (!controls) {
+                    log('❌ Controls not found', 'error');
+                    return;
+                }
+                
+                log(`✅ Controls found: ${controls.constructor.name}`, 'success');
+                log(`Enabled: ${controls.enabled}`, controls.enabled ? 'success' : 'error');
+                log(`EnableRotate: ${controls.enableRotate}`, controls.enableRotate ? 'success' : 'error');
+                log(`EnableZoom: ${controls.enableZoom}`, controls.enableZoom ? 'success' : 'error');
+                log(`EnablePan: ${controls.enablePan}`, controls.enablePan ? 'success' : 'error');
+                
+                if (controls.domElement) {
+                    log(`DOM element: ${controls.domElement.tagName}#${controls.domElement.id}`, 'info');
+                    log(`DOM pointer-events: ${getComputedStyle(controls.domElement).pointerEvents}`, 'info');
+                } else {
+                    log('❌ Controls DOM element not set', 'error');
+                }
+                
+                // Test programmatic rotation
+                const initialAzimuth = controls.getAzimuthalAngle();
+                log(`Initial azimuth: ${initialAzimuth}`, 'info');
+                
+                if (controls.rotateLeft) {
+                    controls.rotateLeft(0.1);
+                    controls.update();
+                    
+                    setTimeout(() => {
+                        const newAzimuth = controls.getAzimuthalAngle();
+                        log(`New azimuth: ${newAzimuth}`, 'info');
+                        if (Math.abs(initialAzimuth - newAzimuth) > 0.01) {
+                            log('✅ Programmatic rotation works', 'success');
+                        } else {
+                            log('❌ Programmatic rotation failed', 'error');
+                        }
+                    }, 100);
+                }
+                
+            } catch (error) {
+                log(`❌ Controls test error: ${error.message}`, 'error');
+            }
+        };
+
+        window.fixControls = () => {
+            log('Attempting to fix controls...', 'info');
+            
+            try {
+                if (!window.game) {
+                    log('❌ Game not found', 'error');
+                    return;
+                }
+                
+                const canvas = window.game.renderer.domElement;
+                const controls = window.game.controls;
+                
+                // Ensure canvas can receive events
+                canvas.style.pointerEvents = 'auto';
+                
+                // Re-enable all controls
+                controls.enabled = true;
+                controls.enableRotate = true;
+                controls.enableZoom = true;
+                controls.enablePan = true;
+                
+                // Force update
+                controls.update();
+                
+                log('✅ Controls fix applied', 'success');
+                log('Try rotating/zooming the map now...', 'warning');
+                
+            } catch (error) {
+                log(`❌ Fix error: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearLog = () => {
+            logDiv.innerHTML = 'Log cleared...';
+        };
+    </script>
+</body>
+</html>
