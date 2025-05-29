@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Element Diagnostic Tool</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial; 
+            background: #222; 
+            color: #fff;
+            padding: 20px;
+        }
+        .diagnostic-output {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .success { color: #4ecdc4; }
+        .error { color: #ff6b6b; }
+        .warning { color: #ffa500; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Element Diagnostic Tool</h1>
+    <p>This tool will inspect the exact DOM structure and CSS to find what's blocking camera controls.</p>
+    
+    <button onclick="diagnoseElements()" style="background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">🔍 Run Diagnostic</button>
+    <button onclick="fixCanvasAccess()" style="background: #ff9800; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">🛠️ Try Canvas Fix</button>
+    
+    <div id="diagnostic-output" class="diagnostic-output">
+        Click "Run Diagnostic" to analyze the DOM structure...
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('diagnostic-output');
+            const colors = {
+                error: '#ff6b6b',
+                success: '#4ecdc4', 
+                warning: '#ffa500',
+                info: '#95e1d3'
+            };
+            
+            const div = document.createElement('div');
+            div.style.color = colors[type];
+            div.textContent = message;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function diagnoseElements() {
+            // Open the main game in a new window for inspection
+            const gameWindow = window.open('http://localhost:5173', 'gameWindow', 'width=1200,height=800');
+            
+            setTimeout(() => {
+                try {
+                    const gameDoc = gameWindow.document;
+                    
+                    log('=== DOM STRUCTURE ANALYSIS ===', 'info');
+                    
+                    // Check canvas
+                    const canvas = gameDoc.getElementById('game-canvas');
+                    if (canvas) {
+                        log('✅ Canvas found', 'success');
+                        log(`Canvas size: ${canvas.clientWidth}x${canvas.clientHeight}`, 'info');
+                        
+                        const canvasStyle = gameWindow.getComputedStyle(canvas);
+                        log(`Canvas pointer-events: ${canvasStyle.pointerEvents}`, canvasStyle.pointerEvents === 'auto' ? 'success' : 'error');
+                        log(`Canvas z-index: ${canvasStyle.zIndex}`, 'info');
+                        log(`Canvas position: ${canvasStyle.position}`, 'info');
+                    } else {
+                        log('❌ Canvas not found!', 'error');
+                    }
+                    
+                    // Check UI container
+                    const uiContainer = gameDoc.getElementById('ui-container');
+                    if (uiContainer) {
+                        log('✅ UI container found', 'success');
+                        
+                        const uiStyle = gameWindow.getComputedStyle(uiContainer);
+                        log(`UI container pointer-events: ${uiStyle.pointerEvents}`, uiStyle.pointerEvents === 'none' ? 'success' : 'error');
+                        log(`UI container z-index: ${uiStyle.zIndex}`, 'info');
+                        log(`UI container position: ${uiStyle.position}`, 'info');
+                    }
+                    
+                    // Check what element is at the center of the screen
+                    log('\\n=== CENTER POINT TEST ===', 'info');
+                    const centerX = gameWindow.innerWidth / 2;
+                    const centerY = gameWindow.innerHeight / 2;
+                    const elementAtCenter = gameDoc.elementFromPoint(centerX, centerY);
+                    
+                    if (elementAtCenter === canvas) {
+                        log('✅ Canvas is accessible at center point', 'success');
+                    } else if (elementAtCenter) {
+                        log(`❌ Element blocking center: ${elementAtCenter.tagName}#${elementAtCenter.id} .${elementAtCenter.className}`, 'error');
+                        
+                        const blockingStyle = gameWindow.getComputedStyle(elementAtCenter);
+                        log(`Blocking element pointer-events: ${blockingStyle.pointerEvents}`, 'warning');
+                        log(`Blocking element z-index: ${blockingStyle.zIndex}`, 'warning');
+                    }
+                    
+                    // Check all elements with high z-index
+                    log('\\n=== HIGH Z-INDEX ELEMENTS ===', 'info');
+                    const allElements = gameDoc.querySelectorAll('*');
+                    const highZElements = [];
+                    
+                    allElements.forEach(el => {
+                        const style = gameWindow.getComputedStyle(el);
+                        const zIndex = parseInt(style.zIndex);
+                        if (zIndex > 5) {
+                            highZElements.push({
+                                element: el,
+                                zIndex: zIndex,
+                                pointerEvents: style.pointerEvents
+                            });
+                        }
+                    });
+                    
+                    highZElements.sort((a, b) => b.zIndex - a.zIndex);
+                    highZElements.slice(0, 10).forEach(item => {
+                        log(`Z-index ${item.zIndex}: ${item.element.tagName}#${item.element.id} (pointer-events: ${item.pointerEvents})`, 
+                            item.pointerEvents === 'none' ? 'success' : 'warning');
+                    });
+                    
+                } catch (error) {
+                    log(`❌ Analysis error: ${error.message}`, 'error');
+                    log('Note: Cross-origin restrictions may apply', 'warning');
+                }
+            }, 2000);
+        }
+        
+        function fixCanvasAccess() {
+            log('\\n=== ATTEMPTING CANVAS FIX ===', 'info');
+            
+            // Open the main game for fixing
+            const gameWindow = window.open('http://localhost:5173', 'gameWindow', 'width=1200,height=800');
+            
+            setTimeout(() => {
+                try {
+                    const gameDoc = gameWindow.document;
+                    const canvas = gameDoc.getElementById('game-canvas');
+                    
+                    if (canvas) {
+                        // Force canvas to receive pointer events
+                        canvas.style.pointerEvents = 'auto';
+                        canvas.style.zIndex = '100';
+                        
+                        log('✅ Applied canvas pointer-events: auto', 'success');
+                        log('✅ Applied canvas z-index: 100', 'success');
+                        
+                        // Remove any potentially blocking elements
+                        const uiContainer = gameDoc.getElementById('ui-container');
+                        if (uiContainer) {
+                            uiContainer.style.pointerEvents = 'none';
+                            log('✅ Ensured UI container pointer-events: none', 'success');
+                        }
+                        
+                        log('\\n🎮 Try camera controls now:', 'info');
+                        log('- Right-click + drag to rotate', 'info');
+                        log('- Mouse wheel to zoom', 'info');
+                        
+                    } else {
+                        log('❌ Canvas not found for fixing', 'error');
+                    }
+                    
+                } catch (error) {
+                    log(`❌ Fix error: ${error.message}`, 'error');
+                }
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

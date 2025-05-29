@@ -39,53 +39,10 @@ class InputManager {
             return;
         }
 
-        // Track mouse state for click vs drag detection
-        this.mouseDownTime = 0;
-        this.mouseDownPosition = { x: 0, y: 0 };
-        this.isDragging = false;
-        
-        // CRITICAL FIX: Only listen to specific events, don't interfere with OrbitControls
-        // Use capture phase (true) to detect events before OrbitControls, but don't prevent them
-        this.gameCanvas.addEventListener('mousedown', this._handleMouseDown.bind(this), true);
-        this.gameCanvas.addEventListener('mouseup', this._handleMouseUp.bind(this), true);
-        
-        // ONLY listen to window-level mousemove for drag detection, not canvas
+        this.gameCanvas.addEventListener('click', this._handleCanvasClick.bind(this), false);
         window.addEventListener('mousemove', this._handleMouseMove.bind(this), false);
         window.addEventListener('keydown', this._handleKeyDown.bind(this), false);
-        
-        // For clicks, use a delayed approach to avoid interfering with camera controls
-        this.gameCanvas.addEventListener('click', this._handleCanvasClick.bind(this), true);
-        
-        console.log("InputManager: Initialized with intelligent click/drag detection");
-    }
-
-    /**
-     * @private
-     * Handles canvas mousedown events.
-     * @param {MouseEvent} event - The raw mouse event.
-     */
-    _handleMouseDown(event) {
-        // Record mouse down for drag detection, but DON'T prevent default or stop propagation
-        this.mouseDownTime = Date.now();
-        const rect = this.gameCanvas.getBoundingClientRect();
-        this.mouseDownPosition = {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
-        };
-        this.isDragging = false;
-        
-        // Let the event continue to OrbitControls - do NOT call preventDefault or stopPropagation
-    }
-
-    /**
-     * @private
-     * Handles canvas mouseup events.
-     * @param {MouseEvent} event - The raw mouse event.
-     */
-    _handleMouseUp(event) {
-        // Reset dragging state, but don't interfere with OrbitControls
-        // Let the event continue to OrbitControls
-        this.isDragging = false;
+        // Add other event listeners as needed (e.g., mousedown, mouseup)
     }
 
     /**
@@ -94,27 +51,7 @@ class InputManager {
      * @param {MouseEvent} event - The raw mouse event.
      */
     _handleCanvasClick(event) {
-        // CRITICAL: Only process clicks if they are definitely building placement clicks
-        // Check if we were dragging - if so, this is a camera control, ignore it
-        if (this.isDragging) {
-            console.log("InputManager: Ignoring click - camera drag detected");
-            return;
-        }
-
-        // Check timing - if very quick, might be a camera control double-click
-        const timeDiff = Date.now() - this.mouseDownTime;
-        if (timeDiff < 50) {
-            console.log("InputManager: Ignoring very quick click - likely camera control");
-            return;
-        }
-
-        // Only process if we have click callbacks registered (building placement mode)
-        if (this.clickCallbacks.length === 0) {
-            console.log("InputManager: No click callbacks - letting event pass through");
-            return;
-        }
-
-        // Process as genuine building placement click
+        // Basic click position, might need adjustment based on canvas offset
         const rect = this.gameCanvas.getBoundingClientRect();
         const clickData = {
             rawEvent: event,
@@ -123,8 +60,6 @@ class InputManager {
             normalizedX: (event.clientX - rect.left) / rect.width * 2 - 1,
             normalizedY: -((event.clientY - rect.top) / rect.height) * 2 + 1,
         };
-        
-        console.log("InputManager: Processing building placement click", clickData);
         this.clickCallbacks.forEach(callback => callback(clickData));
     }
 
@@ -134,46 +69,17 @@ class InputManager {
      * @param {MouseEvent} event - The raw mouse event.
      */
     _handleMouseMove(event) {
-        // Track dragging for click detection
-        if (this.mouseDownTime > 0) {
-            const rect = this.gameCanvas.getBoundingClientRect();
-            const currentPosition = {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top
-            };
-            
-            const distance = Math.sqrt(
-                Math.pow(currentPosition.x - this.mouseDownPosition.x, 2) +
-                Math.pow(currentPosition.y - this.mouseDownPosition.y, 2)
-            );
-            
-            // If mouse moved more than 5 pixels, consider it dragging
-            if (distance > 5) {
-                this.isDragging = true;
-            }
-        }
-
-        // Only process mouse move callbacks if mouse is over the canvas
-        if (!this.gameCanvas) return;
-        
         const rect = this.gameCanvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        
-        // Check if mouse is within canvas bounds
-        if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
-            this.mousePosition.x = x;
-            this.mousePosition.y = y;
-            
-            const moveData = {
-                rawEvent: event,
-                x: this.mousePosition.x,
-                y: this.mousePosition.y,
-                normalizedX: x / rect.width * 2 - 1,
-                normalizedY: -(y / rect.height) * 2 + 1,
-            };
-            this.mouseMoveCallbacks.forEach(callback => callback(moveData));
-        }
+        this.mousePosition.x = event.clientX - rect.left;
+        this.mousePosition.y = event.clientY - rect.top;
+        const moveData = {
+            rawEvent: event,
+            x: this.mousePosition.x,
+            y: this.mousePosition.y,
+            normalizedX: (event.clientX - rect.left) / rect.width * 2 - 1,
+            normalizedY: -((event.clientY - rect.top) / rect.height) * 2 + 1,
+        };
+        this.mouseMoveCallbacks.forEach(callback => callback(moveData));
     }
 
     /**
