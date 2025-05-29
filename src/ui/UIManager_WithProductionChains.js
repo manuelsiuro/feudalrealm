@@ -877,6 +877,10 @@ class UIManager {
         unitInfoTitle.classList.add('themed-panel-title');
         this.selectedUnitInfoPanel.appendChild(unitInfoTitle);
 
+        // Add close button to unit info panel
+        const unitCloseButton = this.createCloseButton();
+        this.selectedUnitInfoPanel.appendChild(unitCloseButton);
+
         this.selectedUnitInfoContent = document.createElement('div');
         this.selectedUnitInfoContent.classList.add('panel-content-area');
         this.selectedUnitInfoPanel.appendChild(this.selectedUnitInfoContent);
@@ -903,6 +907,10 @@ class UIManager {
         buildingInfoTitle.textContent = 'Selected Building';
         buildingInfoTitle.classList.add('themed-panel-title');
         this.selectedBuildingInfoPanel.appendChild(buildingInfoTitle);
+
+        // Add close button to building info panel
+        const buildingCloseButton = this.createCloseButton();
+        this.selectedBuildingInfoPanel.appendChild(buildingCloseButton);
 
         this.selectedBuildingInfoContent = document.createElement('div');
         this.selectedBuildingInfoContent.classList.add('panel-content-area');
@@ -1371,19 +1379,27 @@ class UIManager {
 
     // Enhanced selection feedback methods
     clearSelectionHighlights() {
-        // Remove selection classes from all list items
-        document.querySelectorAll('.building-list-item.selected, .serf-list-item.selected').forEach(item => {
+        // Clear all visual selection highlights
+        const selectedItems = document.querySelectorAll('.building-list-item.selected, .serf-list-item.selected');
+        selectedItems.forEach(item => {
             item.classList.remove('selected', 'selection-pulse');
+            item.style.background = 'rgba(255,255,255,0.05)';
+            item.style.borderColor = 'transparent';
+            item.style.transform = '';
         });
         
-        // Remove selection classes from info panels
-        document.querySelectorAll('.themed-panel.entity-selected').forEach(panel => {
-            panel.classList.remove('entity-selected');
-        });
+        // Clear panel highlights
+        if (this.selectedBuildingInfoPanel) {
+            this.selectedBuildingInfoPanel.classList.remove('entity-selected');
+            const title = this.selectedBuildingInfoPanel.querySelector('.themed-panel-title');
+            if (title) title.classList.remove('entity-selected');
+        }
         
-        document.querySelectorAll('.themed-panel-title.entity-selected').forEach(title => {
-            title.classList.remove('entity-selected');
-        });
+        if (this.selectedUnitInfoPanel) {
+            this.selectedUnitInfoPanel.classList.remove('entity-selected');
+            const title = this.selectedUnitInfoPanel.querySelector('.themed-panel-title');
+            if (title) title.classList.remove('entity-selected');
+        }
     }
     
     highlightSelectedBuilding(building) {
@@ -1408,66 +1424,1212 @@ class UIManager {
     }
     
     highlightSelectedSerf(serf) {
-        if (!serf || !serf.id) return;
+        if (!serf || !serf.model) return;
         
         // Find and highlight the serf in the serf list
         const serfItems = document.querySelectorAll('.serf-list-item');
         serfItems.forEach(item => {
-            if (item.dataset.serfId === serf.id) {
+            if (item.dataset.serfId === serf.model.uuid) {
                 item.classList.add('selected', 'selection-pulse');
                 // Scroll item into view if needed
                 item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         });
         
-        // Enhance serf info panel appearance
-        if (this.selectedSerfInfoPanel) {
-            this.selectedSerfInfoPanel.classList.add('entity-selected');
-            const title = this.selectedSerfInfoPanel.querySelector('.themed-panel-title');
+        // Enhance unit info panel appearance
+        if (this.selectedUnitInfoPanel) {
+            this.selectedUnitInfoPanel.classList.add('entity-selected');
+            const title = this.selectedUnitInfoPanel.querySelector('.themed-panel-title');
             if (title) title.classList.add('entity-selected');
         }
     }
     
     showSelectionStatus(entity) {
-        // Create or update selection status indicator
-        let statusElement = document.getElementById('selection-status');
-        if (!statusElement) {
-            statusElement = document.createElement('div');
-            statusElement.id = 'selection-status';
-            statusElement.className = 'selection-status';
-            document.body.appendChild(statusElement);
-        }
-        
-        let statusText = '';
-        if (entity.info && entity.info.name) {
-            const state = entity.isConstructed ? 'Ready' : 'Building';
-            statusText = `🏗️ ${entity.info.name} - ${state}`;
-        } else if (entity.serfType) {
-            const state = entity.currentTask ? 'Working' : 'Idle';
-            statusText = `👷 ${entity.serfType} - ${state}`;
-        }
-        
-        statusElement.textContent = statusText;
-        statusElement.classList.add('visible');
-        
-        // Auto-hide after 3 seconds
-        clearTimeout(this.selectionStatusTimeout);
-        this.selectionStatusTimeout = setTimeout(() => {
-            this.hideSelectionStatus();
-        }, 3000);
+        // This could show a temporary status indicator for selection feedback
+        // For now, handled by the highlight methods above
     }
     
     hideSelectionStatus() {
-        const statusElement = document.getElementById('selection-status');
-        if (statusElement) {
-            statusElement.classList.remove('visible');
+        // Hide any temporary selection status indicators
+        this.clearSelectionHighlights();
+    }
+
+    // Helper method to create a professional close button for info panels
+    createCloseButton() {
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(244, 67, 54, 0.8);
+            border: none;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        `;
+        
+        // Add hover effects
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 1)';
+            closeButton.style.transform = 'scale(1.1)';
+            closeButton.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.4)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 0.8)';
+            closeButton.style.transform = 'scale(1)';
+            closeButton.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+        });
+        
+        closeButton.onclick = () => {
+            this.hideUnitInfo();
+            this.hideBuildingInfo();
+            // Also clear the selection if the selectionManager is available
+            if (this.selectionManager && typeof this.selectionManager.clearSelection === 'function') {
+                this.selectionManager.clearSelection();
+            }
+        };
+        
+        return closeButton;
+    }
+
+    initResourcePanel() {
+        this.resourcePanel = document.createElement('div');
+        this.resourcePanel.id = 'resource-panel';
+        this.resourcePanel.classList.add('themed-panel');
+        this.resourcePanel.style.top = '50px';
+        this.resourcePanel.style.left = '10px';
+        this.resourcePanel.style.minWidth = '230px';
+        this.resourcePanel.style.maxHeight = 'calc(100vh - 60px)'; // Max height for the panel itself
+        this.resourcePanel.style.overflowY = 'auto'; // Scroll for the panel when content overflows
+
+        const resourceTitle = document.createElement('h3');
+        resourceTitle.textContent = 'Resources';
+        resourceTitle.classList.add('themed-panel-title');
+        this.resourcePanel.appendChild(resourceTitle);
+
+        // Create content area
+        this.resourcePanelContent = document.createElement('div');
+        this.resourcePanelContent.classList.add('panel-content-area');
+        this.resourcePanel.appendChild(this.resourcePanelContent);
+
+        resourceTitle.addEventListener('click', () => {
+            const isHidden = this.resourcePanelContent.style.display === 'none';
+            this.resourcePanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiContainer.appendChild(this.resourcePanel);
+    }
+
+    initSerfListPanel() {
+        this.serfListPanel = document.createElement('div');
+        this.serfListPanel.id = 'serf-list-panel';
+        this.serfListPanel.classList.add('themed-panel');
+        this.serfListPanel.style.top = '10px';
+        // Position it to the right of the resource panel.
+        // Assuming resourcePanel is ~230px wide + 10px padding + 10px gap = 250px
+        this.serfListPanel.style.left = '250px'; 
+        this.serfListPanel.style.minWidth = '200px';
+        this.serfListPanel.style.maxHeight = 'calc(100vh - 20px)'; // Same height as resource panel
+        this.serfListPanel.style.overflowY = 'auto'; // Scroll for the panel
+
+        const serfListTitle = document.createElement('h3');
+        serfListTitle.textContent = 'Serfs';
+        serfListTitle.classList.add('themed-panel-title');
+        this.serfListPanel.appendChild(serfListTitle);
+
+        // Create content area
+        this.serfListPanelContent = document.createElement('div');
+        this.serfListPanelContent.classList.add('panel-content-area');
+        this.serfListPanel.appendChild(this.serfListPanelContent);
+        
+        serfListTitle.addEventListener('click', () => {
+            const isHidden = this.serfListPanelContent.style.display === 'none';
+            this.serfListPanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiContainer.appendChild(this.serfListPanel);
+    }
+
+    initBuildingListPanel() {
+        this.buildingListPanel = document.createElement('div');
+        this.buildingListPanel.id = 'building-list-panel';
+        this.buildingListPanel.classList.add('themed-panel');
+        this.buildingListPanel.style.top = '10px';
+        // Position it to the right of the serf list panel.
+        // serfListPanel.left (250px) + serfListPanel.minWidth (200px) + 10px gap = 460px
+        this.buildingListPanel.style.left = '460px'; 
+        this.buildingListPanel.style.minWidth = '220px';
+        this.buildingListPanel.style.maxHeight = 'calc(100vh - 20px)';
+        this.buildingListPanel.style.overflowY = 'auto';
+
+        const buildingListTitle = document.createElement('h3');
+        buildingListTitle.textContent = 'Buildings on Map';
+        buildingListTitle.classList.add('themed-panel-title');
+        this.buildingListPanel.appendChild(buildingListTitle);
+
+        this.buildingListPanelContent = document.createElement('div');
+        this.buildingListPanelContent.classList.add('panel-content-area');
+        this.buildingListPanel.appendChild(this.buildingListPanelContent);
+
+        buildingListTitle.addEventListener('click', () => {
+            const isHidden = this.buildingListPanelContent.style.display === 'none';
+            this.buildingListPanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiContainer.appendChild(this.buildingListPanel);
+    }
+
+    initMiniMapPanel() {
+        this.miniMapPanel = document.createElement('div');
+        this.miniMapPanel.id = 'mini-map-panel';
+        this.miniMapPanel.style.position = 'absolute';
+        this.miniMapPanel.style.top = '10px';
+        this.miniMapPanel.style.right = '10px';
+        this.miniMapPanel.style.width = '150px';
+        this.miniMapPanel.style.height = '150px';
+        this.miniMapPanel.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        this.miniMapPanel.style.border = '1px solid #fff';
+        this.miniMapPanel.style.borderRadius = '4px';
+        this.miniMapPanel.style.color = 'white';
+        this.miniMapPanel.style.display = 'flex';
+        this.miniMapPanel.style.alignItems = 'center';
+        this.miniMapPanel.style.justifyContent = 'center';
+        this.miniMapPanel.textContent = 'Mini-map';
+        this.uiContainer.appendChild(this.miniMapPanel);
+    }
+
+    initTestButtons() {
+        this.testButtonContainer = document.createElement('div');
+        this.testButtonContainer.style.position = 'absolute';
+        this.testButtonContainer.style.bottom = '10px';
+        this.testButtonContainer.style.left = '10px';
+        this.testButtonContainer.style.display = 'flex';
+        this.testButtonContainer.style.gap = '8px';
+        this.testButtonContainer.style.zIndex = '50';
+
+        const addCheatButton = document.createElement('md-filled-button');
+        addCheatButton.textContent = '+50 All';
+        addCheatButton.style.borderRadius = '4px';
+        addCheatButton.addEventListener('click', () => {
+            console.log('UI: "+50 All" button clicked.');
+            Object.values(RESOURCE_TYPES).forEach(type => {
+                if (typeof type === 'string') {
+                    this.resourceManager.addResource(type, 50);
+                }
+            });
+        });
+        this.testButtonContainer.appendChild(addCheatButton);
+        this.uiContainer.appendChild(this.testButtonContainer);
+    }
+
+    initConstructionPanel() {
+        this.constructionPanel = document.createElement('div');
+        this.constructionPanel.id = 'construction-panel';
+        this.constructionPanel.classList.add('themed-panel');
+        this.constructionPanel.style.bottom = '10px';
+        this.constructionPanel.style.right = '10px';
+        this.constructionPanel.style.display = 'flex';
+        this.constructionPanel.style.flexDirection = 'column';
+        this.constructionPanel.style.gap = '8px';
+        this.constructionPanel.style.maxHeight = '450px';
+        this.constructionPanel.style.minWidth = '220px';
+        this.constructionPanel.style.overflowY = 'auto';
+        this.constructionPanel.style.overflowX = 'hidden';
+
+        const buildingsTitle = document.createElement('h3');
+        buildingsTitle.textContent = 'Buildings';
+        buildingsTitle.classList.add('themed-panel-title');
+        this.constructionPanel.appendChild(buildingsTitle);
+
+        const availableBuildings = this.constructionManager.getAvailableBuildings();
+        availableBuildings.forEach(building => {
+            const button = document.createElement('md-filled-button');
+            const costString = this.buildCostDisplay(building.cost);
+            button.innerHTML = `
+                <div class="building-button-content">
+                    <div class="building-button-name">${building.name}</div>
+                    <div class="building-button-cost-section">
+                        ${costString}
+                    </div>
+                </div>
+            `;
+            button.style.setProperty('--md-filled-button-container-height', 'auto');
+            button.style.setProperty('--md-filled-button-container-width', '100%');
+            button.style.setProperty('--md-filled-button-container-shape', '8px');
+            button.style.setProperty('--md-filled-button-disabled-container-opacity', '0.9');
+            button.style.setProperty('--md-filled-button-disabled-label-text-color', 'rgba(255, 255, 255, 0.95)');
+            button.style.setProperty('--md-filled-button-disabled-label-text-opacity', '0.95');
+            button.style.padding = '12px 10px';
+            button.style.borderRadius = '8px';
+            button.style.margin = '0 0 12px 0';
+            button.style.width = '100%';
+            button.style.minWidth = '200px';
+            button.style.maxWidth = '100%';
+            button.style.boxSizing = 'border-box';
+            button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
+            button.style.transition = 'all 0.2s ease-in-out';
+            button.style.border = '1px solid rgba(255,255,255,0.15)';
+            button.style.letterSpacing = '0.3px';
+            button.style.setProperty('--md-sys-color-primary', '#4CAF50');
+            button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF');
+
+            button.addEventListener('mouseover', () => {
+                if (!button.disabled) {
+                    button.style.transform = 'translateY(-2px)';
+                    button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.4)';
+                    button.style.setProperty('--md-sys-color-primary', '#5DBF60');
+                }
+            });
+            button.addEventListener('mouseout', () => {
+                if (!button.disabled) {
+                    button.style.transform = '';
+                    button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
+                    button.style.setProperty('--md-sys-color-primary', '#4CAF50');
+                }
+            });
+            button.addEventListener('click', () => {
+                console.log(`UI: Construction button clicked for building key: ${building.key}, name: ${building.name}`);
+                this.constructionManager.startPlacement(building.key);
+            });
+
+            this.buildingButtons.set(building.key, { button, cost: building.cost });
+            this.constructionPanel.appendChild(button);
+        });
+        this.uiContainer.appendChild(this.constructionPanel);
+    }
+
+    initSelectionInfoPanels() {
+        // Selected Unit Info Panel
+        this.selectedUnitInfoPanel = document.createElement('div');
+        this.selectedUnitInfoPanel.id = 'selected-unit-info-panel';
+        this.selectedUnitInfoPanel.classList.add('themed-panel');
+        this.selectedUnitInfoPanel.style.position = 'absolute';
+        this.selectedUnitInfoPanel.style.bottom = '10px';
+        // Position it to the left of the construction panel
+        // Assuming construction panel is ~220px wide + 10px gap = 230px from right
+        this.selectedUnitInfoPanel.style.right = '240px'; 
+        this.selectedUnitInfoPanel.style.width = '250px'; // Adjusted width
+        this.selectedUnitInfoPanel.style.minHeight = '100px';
+        this.selectedUnitInfoPanel.style.maxHeight = '300px';
+        this.selectedUnitInfoPanel.style.overflowY = 'auto';
+        this.selectedUnitInfoPanel.style.display = 'none'; // Hidden by default
+        this.selectedUnitInfoPanel.style.padding = '10px';
+        this.selectedUnitInfoPanel.style.boxSizing = 'border-box';
+
+        const unitInfoTitle = document.createElement('h3');
+        unitInfoTitle.textContent = 'Selected Unit';
+        unitInfoTitle.classList.add('themed-panel-title');
+        this.selectedUnitInfoPanel.appendChild(unitInfoTitle);
+
+        // Add close button to unit info panel
+        const unitCloseButton = this.createCloseButton();
+        this.selectedUnitInfoPanel.appendChild(unitCloseButton);
+
+        this.selectedUnitInfoContent = document.createElement('div');
+        this.selectedUnitInfoContent.classList.add('panel-content-area');
+        this.selectedUnitInfoPanel.appendChild(this.selectedUnitInfoContent);
+        
+        this.uiContainer.appendChild(this.selectedUnitInfoPanel);
+
+        // Selected Building Info Panel
+        this.selectedBuildingInfoPanel = document.createElement('div');
+        this.selectedBuildingInfoPanel.id = 'selected-building-info-panel';
+        this.selectedBuildingInfoPanel.classList.add('themed-panel');
+        this.selectedBuildingInfoPanel.style.position = 'absolute';
+        this.selectedBuildingInfoPanel.style.bottom = '10px';
+        // Position it to the left of the construction panel, same as unit info or adjust as needed
+        this.selectedBuildingInfoPanel.style.right = '240px'; 
+        this.selectedBuildingInfoPanel.style.width = '250px'; 
+        this.selectedBuildingInfoPanel.style.minHeight = '100px';
+        this.selectedBuildingInfoPanel.style.maxHeight = '300px';
+        this.selectedBuildingInfoPanel.style.overflowY = 'auto';
+        this.selectedBuildingInfoPanel.style.display = 'none'; // Hidden by default
+        this.selectedBuildingInfoPanel.style.padding = '10px';
+        this.selectedBuildingInfoPanel.style.boxSizing = 'border-box';
+
+        const buildingInfoTitle = document.createElement('h3');
+        buildingInfoTitle.textContent = 'Selected Building';
+        buildingInfoTitle.classList.add('themed-panel-title');
+        this.selectedBuildingInfoPanel.appendChild(buildingInfoTitle);
+
+        // Add close button to building info panel
+        const buildingCloseButton = this.createCloseButton();
+        this.selectedBuildingInfoPanel.appendChild(buildingCloseButton);
+
+        this.selectedBuildingInfoContent = document.createElement('div');
+        this.selectedBuildingInfoContent.classList.add('panel-content-area');
+        this.selectedBuildingInfoPanel.appendChild(this.selectedBuildingInfoContent);
+
+        this.uiContainer.appendChild(this.selectedBuildingInfoPanel); // Add to UI container
+    }
+
+    updateResourceUI(stockpiles) {
+        if (!this.resourcePanel || !this.resourcePanelContent) return; // Check for content area
+        this.resourcePanelContent.innerHTML = ''; // Clear only the content area
+
+        // Title is already part of this.resourcePanel, no need to re-add here
+
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+
+        for (const type in stockpiles) {
+            const row = table.insertRow();
+            const resourceName = type.split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+
+            const labelCell = row.insertCell(0);
+            labelCell.textContent = resourceName;
+            labelCell.style.textAlign = 'left';
+            labelCell.style.padding = '4px 2px';
+            labelCell.style.color = 'rgba(255,255,255,0.9)';
+
+            const valueCell = row.insertCell(1);
+            valueCell.textContent = stockpiles[type];
+            valueCell.style.textAlign = 'right';
+            valueCell.style.fontWeight = 'bold';
+            valueCell.style.padding = '4px 2px';
+            valueCell.style.color = 'white';
         }
-        if (this.selectionStatusTimeout) {
-            clearTimeout(this.selectionStatusTimeout);
+        this.resourcePanelContent.appendChild(table); // Append table to content area
+    }
+
+    updateResourceCounterBar(stockpiles) {
+        if (!this.resourceCounterContainer) return;
+        
+        // Store previous values for change detection
+        if (!this.previousResourceValues) {
+            this.previousResourceValues = {};
+        }
+        
+        this.resourceCounterContainer.innerHTML = ''; // Clear previous content
+
+        // Define the most important resources to display in the counter bar
+        const priorityResources = [
+            RESOURCE_TYPES.WOOD,
+            RESOURCE_TYPES.STONE, 
+            RESOURCE_TYPES.GRAIN,
+            RESOURCE_TYPES.IRON_ORE,
+            RESOURCE_TYPES.COAL_ORE,
+            RESOURCE_TYPES.GOLD_ORE,
+            RESOURCE_TYPES.PLANKS,
+            RESOURCE_TYPES.IRON_BARS,
+            RESOURCE_TYPES.TOOL_AXE,
+            RESOURCE_TYPES.TOOL_PICKAXE
+        ].filter(type => type !== undefined); // Filter out any undefined types
+
+        priorityResources.forEach(resourceType => {
+            if (!stockpiles.hasOwnProperty(resourceType)) return;
+
+            const amount = stockpiles[resourceType];
+            const previousAmount = this.previousResourceValues[resourceType] || 0;
+            const hasChanged = amount !== previousAmount;
+            
+            const resourceItem = document.createElement('div');
+            resourceItem.className = 'resource-item';
+            if (hasChanged && previousAmount > 0) {
+                resourceItem.classList.add('resource-item-updated');
+            }
+            
+            resourceItem.style.display = 'flex';
+            resourceItem.style.alignItems = 'center';
+            resourceItem.style.gap = '6px';
+            resourceItem.style.padding = '4px 8px';
+            resourceItem.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            resourceItem.style.borderRadius = '6px';
+            resourceItem.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+            resourceItem.style.minWidth = '70px';
+            resourceItem.style.justifyContent = 'center';
+
+            // Add a subtle animation for resource changes
+            resourceItem.style.transition = 'all 0.3s ease-in-out';
+
+            // Resource icon (using emoji as placeholder for now)
+            const icon = document.createElement('span');
+            icon.style.fontSize = '16px';
+            icon.style.lineHeight = '1';
+            
+            // Map resource types to icons
+            const resourceIcons = {
+                [RESOURCE_TYPES.WOOD]: '🪵',
+                [RESOURCE_TYPES.STONE]: '🪨', 
+                [RESOURCE_TYPES.GRAIN]: '🌾',
+                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
+                [RESOURCE_TYPES.COAL_ORE]: '⚫',
+                [RESOURCE_TYPES.GOLD_ORE]: '💰',
+                [RESOURCE_TYPES.PLANKS]: '📏',
+                [RESOURCE_TYPES.IRON_BARS]: '🔩',
+                [RESOURCE_TYPES.TOOL_AXE]: '🪓',
+                [RESOURCE_TYPES.TOOL_PICKAXE]: '⛏️'
+            };
+            
+            icon.textContent = resourceIcons[resourceType] || '📦';
+            resourceItem.appendChild(icon);
+
+            // Resource amount
+            const amountSpan = document.createElement('span');
+            amountSpan.textContent = amount.toString();
+            amountSpan.style.color = 'white';
+            amountSpan.style.fontWeight = 'bold';
+            amountSpan.style.fontSize = '14px';
+            amountSpan.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.8)';
+            
+            // Color coding based on amount
+            if (amount === 0) {
+                amountSpan.style.color = '#FF6B6B'; // Red for empty
+                resourceItem.style.backgroundColor = 'rgba(255, 107, 107, 0.2)';
+                resourceItem.style.borderColor = 'rgba(255, 107, 107, 0.4)';
+            } else if (amount < 10) {
+                amountSpan.style.color = '#FFE66D'; // Yellow for low
+                resourceItem.style.backgroundColor = 'rgba(255, 230, 109, 0.2)';
+                resourceItem.style.borderColor = 'rgba(255, 230, 109, 0.4)';
+            } else {
+                amountSpan.style.color = '#4ECDC4'; // Cyan for good amounts
+                resourceItem.style.backgroundColor = 'rgba(78, 205, 196, 0.2)';
+                resourceItem.style.borderColor = 'rgba(78, 205, 196, 0.4)';
+            }
+
+            resourceItem.appendChild(amountSpan);
+
+            // Add hover effect
+            resourceItem.addEventListener('mouseenter', () => {
+                resourceItem.style.transform = 'scale(1.05)';
+                resourceItem.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            });
+            
+            resourceItem.addEventListener('mouseleave', () => {
+                resourceItem.style.transform = 'scale(1)';
+                // Restore original background color based on amount
+                if (amount === 0) {
+                    resourceItem.style.backgroundColor = 'rgba(255, 107, 107, 0.2)';
+                } else if (amount < 10) {
+                    resourceItem.style.backgroundColor = 'rgba(255, 230, 109, 0.2)';
+                } else {
+                    resourceItem.style.backgroundColor = 'rgba(78, 205, 196, 0.2)';
+                }
+            });
+
+            // Add tooltip with resource name
+            const resourceName = resourceType.split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+            resourceItem.title = resourceName;
+
+            this.resourceCounterContainer.appendChild(resourceItem);
+            
+            // Store current value for next comparison
+            this.previousResourceValues[resourceType] = amount;
+        });
+    }
+
+    updateSerfListUI() {
+        if (!this.serfListContent || !this.serfManager || typeof this.serfManager.getSerfsGroupedByProfession !== 'function') {
+            if (this.serfListContent) {
+                this.serfListContent.innerHTML = '';
+                const placeholder = document.createElement('p');
+                placeholder.textContent = 'Serf data unavailable.';
+                placeholder.style.cssText = `
+                    padding: 8px;
+                    font-style: italic;
+                    color: rgba(255,255,255,0.6);
+                    font-size: 12px;
+                `;
+                this.serfListContent.appendChild(placeholder);
+            }
+            return;
+        }
+
+        this.serfListContent.innerHTML = '';
+        const serfsByProfession = this.serfManager.getSerfsGroupedByProfession();
+
+        if (Object.keys(serfsByProfession).length === 0) {
+            const noSerfsMessage = document.createElement('p');
+            noSerfsMessage.textContent = 'No serfs active.';
+            noSerfsMessage.style.cssText = `
+                padding: 8px;
+                font-style: italic;
+                color: rgba(255,255,255,0.6);
+                font-size: 12px;
+                text-align: center;
+            `;
+            this.serfListContent.appendChild(noSerfsMessage);
+            return;
+        }
+
+        for (const profession in serfsByProfession) {
+            const serfs = serfsByProfession[profession];
+            if (serfs.length > 0) {
+                const professionHeader = document.createElement('h4');
+                professionHeader.textContent = `${profession.replace(/([A-Z])/g, ' $1').trim()} (${serfs.length})`;
+                professionHeader.style.cssText = `
+                    margin: 8px 0 4px 0;
+                    color: #81C784;
+                    font-size: 12px;
+                    font-weight: 600;
+                    border-bottom: 1px solid rgba(129,199,132,0.3);
+                    padding-bottom: 2px;
+                `;
+                this.serfListContent.appendChild(professionHeader);
+
+                serfs.forEach(serf => {
+                    const serfItem = document.createElement('div');
+                    serfItem.className = 'serf-list-item';
+                    serfItem.dataset.serfId = serf.id;
+                    serfItem.textContent = `${serf.id.substring(0, 6)} - ${serf.state || 'Active'}`;
+                    serfItem.style.cssText = `
+                        padding: 6px 8px;
+                        background: rgba(255,255,255,0.05);
+                        border-radius: 4px;
+                        margin-bottom: 2px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        color: rgba(255,255,255,0.9);
+                        transition: all 0.2s ease;
+                        border: 1px solid transparent;
+                    `;
+
+                    serfItem.addEventListener('mouseenter', () => {
+                        serfItem.style.background = 'rgba(76,175,80,0.2)';
+                        serfItem.style.borderColor = 'rgba(76,175,80,0.4)';
+                        serfItem.style.transform = 'translateX(2px)';
+                    });
+
+                    serfItem.addEventListener('mouseleave', () => {
+                        if (!serfItem.classList.contains('selected')) {
+                            serfItem.style.background = 'rgba(255,255,255,0.05)';
+                            serfItem.style.borderColor = 'transparent';
+                            serfItem.style.transform = '';
+                        }
+                    });
+
+                    serfItem.addEventListener('click', () => {
+                        if (this.onSerfSelectCallback) {
+                            this.onSerfSelectCallback(serf.id);
+                        } else {
+                            console.warn('UIManager: onSerfSelectCallback not set.');
+                        }
+                    });
+
+                    this.serfListContent.appendChild(serfItem);
+                });
+            }
         }
     }
 
-    // ...existing code...
+    updateBuildingListUI() {
+        if (!this.buildingListContent || !this.constructionManager) {
+            if (this.buildingListContent) {
+                this.buildingListContent.innerHTML = '';
+                const placeholder = document.createElement('p');
+                placeholder.textContent = 'Building data unavailable.';
+                placeholder.style.cssText = `
+                    padding: 8px;
+                    font-style: italic;
+                    color: rgba(255,255,255,0.6);
+                    font-size: 12px;
+                `;
+                this.buildingListContent.appendChild(placeholder);
+            }
+            return;
+        }
+
+        this.buildingListContent.innerHTML = '';
+        
+        // Combine all relevant building lists from ConstructionManager
+        const buildings = [
+            ...this.constructionManager.placedBuildings,
+            ...this.constructionManager.activeConstructions,
+            ...this.constructionManager.constructionQueue
+        ];
+
+        if (buildings.length === 0) {
+            const noBuildingsMessage = document.createElement('p');
+            noBuildingsMessage.textContent = 'No buildings on map.';
+            noBuildingsMessage.style.cssText = `
+                padding: 8px;
+                font-style: italic;
+                color: rgba(255,255,255,0.6);
+                font-size: 12px;
+                text-align: center;
+            `;
+            this.buildingListContent.appendChild(noBuildingsMessage);
+            return;
+        }
+
+        // Group buildings by type for better display
+        const buildingsByType = buildings.reduce((acc, building) => {
+            let typeName = 'Unknown Building';
+            
+            if (building && building.info && building.info.name) {
+                typeName = building.info.name;
+            } else if (building && building.type) {
+                typeName = building.type;
+            }
+
+            if (!acc[typeName]) {
+                acc[typeName] = [];
+            }
+            acc[typeName].push(building);
+            return acc;
+        }, {});
+
+        for (const typeName in buildingsByType) {
+            const buildingGroup = buildingsByType[typeName];
+            if (buildingGroup.length > 0) {
+                const typeHeader = document.createElement('h4');
+                typeHeader.textContent = `${typeName} (${buildingGroup.length})`;
+                typeHeader.style.cssText = `
+                    margin: 8px 0 4px 0;
+                    color: #FFB74D;
+                    font-size: 12px;
+                    font-weight: 600;
+                    border-bottom: 1px solid rgba(255,183,77,0.3);
+                    padding-bottom: 2px;
+                `;
+                this.buildingListContent.appendChild(typeHeader);
+
+                buildingGroup.forEach(building => {
+                    const buildingItem = document.createElement('div');
+                    buildingItem.className = 'building-list-item';
+                    
+                    const buildingId = (building.model && building.model.uuid) ? 
+                        building.model.uuid.substring(0,6) : (building.id || 'N/A');
+                    
+                    let status = 'Completed';
+                    if (building.currentConstructionState) {
+                        switch (building.currentConstructionState) {
+                            case 'NEEDS_CONSTRUCTION':
+                                status = '🏗️ Needs Construction';
+                                break;
+                            case 'UNDER_CONSTRUCTION':
+                                status = '🔨 Building';
+                                break;
+                            case 'NEEDS_RESOURCES':
+                                status = '📦 Needs Resources';
+                                break;
+                            default:
+                                status = building.isConstructed ? '✅ Complete' : '⏳ Planning';
+                        }
+                    } else {
+                        status = building.isConstructed ? '✅ Complete' : '⏳ Planning';
+                    }
+
+                    buildingItem.textContent = `${buildingId} - ${status}`;
+                    buildingItem.dataset.buildingId = (building.model && building.model.uuid) ? building.model.uuid : '';
+                    buildingItem.style.cssText = `
+                        padding: 6px 8px;
+                        background: rgba(255,255,255,0.05);
+                        border-radius: 4px;
+                        margin-bottom: 2px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        color: rgba(255,255,255,0.9);
+                        transition: all 0.2s ease;
+                        border: 1px solid transparent;
+                    `;
+
+                    buildingItem.addEventListener('mouseenter', () => {
+                        buildingItem.style.background = 'rgba(255,183,77,0.2)';
+                        buildingItem.style.borderColor = 'rgba(255,183,77,0.4)';
+                        buildingItem.style.transform = 'translateX(2px)';
+                    });
+
+                    buildingItem.addEventListener('mouseleave', () => {
+                        if (!buildingItem.classList.contains('selected')) {
+                            buildingItem.style.background = 'rgba(255,255,255,0.05)';
+                            buildingItem.style.borderColor = 'transparent';
+                            buildingItem.style.transform = '';
+                        }
+                    });
+
+                    buildingItem.addEventListener('click', () => {
+                        if (this.onBuildingSelectCallback && building.model && building.model.uuid) {
+                            this.onBuildingSelectCallback(building.model.uuid);
+                        }
+                    });
+
+                    this.buildingListContent.appendChild(buildingItem);
+                });
+            }
+        }
+    }
+
+    checkSufficientResources(cost) {
+        if (Object.keys(cost).length === 0) return true;
+        return Object.entries(cost).every(([resourceType, amount]) => {
+            return this.resourceManager.getResourceCount(resourceType) >= amount;
+        });
+    }
+
+    buildCostDisplay(cost) {
+        if (Object.keys(cost).length === 0) {
+            return `<div class="cost-display-title-container"><span class="cost-display-title-text">Free</span></div>`;
+        }
+        let costItemsHTML = Object.entries(cost).map(([res, amount]) => {
+            const available = this.resourceManager.getResourceCount(res);
+            const resourceName = res.split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+            const availabilityClass = available >= amount ? 'resource-sufficient' : 'resource-insufficient';
+            const availableText = `<span class="${availabilityClass}">${available}/${amount}</span>`;
+            return `<div class="cost-display-item">
+                        <span class="cost-display-resource-name">${resourceName}:</span>
+                        <span class="cost-display-resource-value">${availableText}</span>
+                    </div>`;
+        }).join('');
+        return `<div class="cost-display-title-container"><span class="cost-display-title-text">Cost</span></div>
+                ${costItemsHTML}`;
+    }
+
+    updateBuildingButtons() {
+        this.buildingButtons.forEach(({ button, cost }, key) => {
+            const canBuild = this.checkSufficientResources(cost);
+            const costSectionContainer = button.querySelector('.building-button-cost-section');
+            if (costSectionContainer) {
+                costSectionContainer.innerHTML = this.buildCostDisplay(cost);
+            }
+            if (canBuild) {
+                button.style.setProperty('--md-sys-color-primary', '#4CAF50');
+                button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF');
+                button.style.fontWeight = 'bold';
+                button.style.opacity = '1';
+                button.style.cursor = 'pointer';
+                button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+                button.style.transform = '';
+                button.removeAttribute('title');
+                button.disabled = false;
+            } else {
+                button.style.setProperty('--md-sys-color-primary', '#B71C1C');
+                button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF');
+                button.style.opacity = '0.95';
+                button.style.cursor = 'not-allowed';
+                button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
+                const missingResources = Object.entries(cost)
+                    .filter(([resource, amount]) => this.resourceManager.getResourceCount(resource) < amount)
+                    .map(([resource, amount]) => {
+                        const current = this.resourceManager.getResourceCount(resource);
+                        const resourceName = resource.split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                            .join(' ');
+                        return `${resourceName}: ${current}/${amount}`;
+                    }).join(', ');
+                button.title = missingResources ? `Missing Resources: ${missingResources}` : 'Not enough resources';
+                button.style.transform = '';
+                button.disabled = true;
+            }
+        });
+    }
+
+    // Enhanced selection feedback methods
+    clearSelectionHighlights() {
+        // Clear all visual selection highlights
+        const selectedItems = document.querySelectorAll('.building-list-item.selected, .serf-list-item.selected');
+        selectedItems.forEach(item => {
+            item.classList.remove('selected', 'selection-pulse');
+            item.style.background = 'rgba(255,255,255,0.05)';
+            item.style.borderColor = 'transparent';
+            item.style.transform = '';
+        });
+        
+        // Clear panel highlights
+        if (this.selectedBuildingInfoPanel) {
+            this.selectedBuildingInfoPanel.classList.remove('entity-selected');
+            const title = this.selectedBuildingInfoPanel.querySelector('.themed-panel-title');
+            if (title) title.classList.remove('entity-selected');
+        }
+        
+        if (this.selectedUnitInfoPanel) {
+            this.selectedUnitInfoPanel.classList.remove('entity-selected');
+            const title = this.selectedUnitInfoPanel.querySelector('.themed-panel-title');
+            if (title) title.classList.remove('entity-selected');
+        }
+    }
+    
+    highlightSelectedBuilding(building) {
+        if (!building || !building.model) return;
+        
+        // Find and highlight the building in the building list
+        const buildingItems = document.querySelectorAll('.building-list-item');
+        buildingItems.forEach(item => {
+            if (item.dataset.buildingId === building.model.uuid) {
+                item.classList.add('selected', 'selection-pulse');
+                // Scroll item into view if needed
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+        
+        // Enhance building info panel appearance
+        if (this.selectedBuildingInfoPanel) {
+            this.selectedBuildingInfoPanel.classList.add('entity-selected');
+            const title = this.selectedBuildingInfoPanel.querySelector('.themed-panel-title');
+            if (title) title.classList.add('entity-selected');
+        }
+    }
+    
+    highlightSelectedSerf(serf) {
+        if (!serf || !serf.model) return;
+        
+        // Find and highlight the serf in the serf list
+        const serfItems = document.querySelectorAll('.serf-list-item');
+        serfItems.forEach(item => {
+            if (item.dataset.serfId === serf.model.uuid) {
+                item.classList.add('selected', 'selection-pulse');
+                // Scroll item into view if needed
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+        
+        // Enhance unit info panel appearance
+        if (this.selectedUnitInfoPanel) {
+            this.selectedUnitInfoPanel.classList.add('entity-selected');
+            const title = this.selectedUnitInfoPanel.querySelector('.themed-panel-title');
+            if (title) title.classList.add('entity-selected');
+        }
+    }
+    
+    showSelectionStatus(entity) {
+        // This could show a temporary status indicator for selection feedback
+        // For now, handled by the highlight methods above
+    }
+    
+    hideSelectionStatus() {
+        // Hide any temporary selection status indicators
+        this.clearSelectionHighlights();
+    }
+
+    // Helper method to create a professional close button for info panels
+    createCloseButton() {
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(244, 67, 54, 0.8);
+            border: none;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        `;
+        
+        // Add hover effects
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 1)';
+            closeButton.style.transform = 'scale(1.1)';
+            closeButton.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.4)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 0.8)';
+            closeButton.style.transform = 'scale(1)';
+            closeButton.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+        });
+        
+        closeButton.onclick = () => {
+            this.hideUnitInfo();
+            this.hideBuildingInfo();
+            // Also clear the selection if the selectionManager is available
+            if (this.selectionManager && typeof this.selectionManager.clearSelection === 'function') {
+                this.selectionManager.clearSelection();
+            }
+        };
+        
+        return closeButton;
+    }
+
+    initResourcePanel() {
+        this.resourcePanel = document.createElement('div');
+        this.resourcePanel.id = 'resource-panel';
+        this.resourcePanel.classList.add('themed-panel');
+        this.resourcePanel.style.top = '50px';
+        this.resourcePanel.style.left = '10px';
+        this.resourcePanel.style.minWidth = '230px';
+        this.resourcePanel.style.maxHeight = 'calc(100vh - 60px)'; // Max height for the panel itself
+        this.resourcePanel.style.overflowY = 'auto'; // Scroll for the panel when content overflows
+
+        const resourceTitle = document.createElement('h3');
+        resourceTitle.textContent = 'Resources';
+        resourceTitle.classList.add('themed-panel-title');
+        this.resourcePanel.appendChild(resourceTitle);
+
+        // Create content area
+        this.resourcePanelContent = document.createElement('div');
+        this.resourcePanelContent.classList.add('panel-content-area');
+        this.resourcePanel.appendChild(this.resourcePanelContent);
+
+        resourceTitle.addEventListener('click', () => {
+            const isHidden = this.resourcePanelContent.style.display === 'none';
+            this.resourcePanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiContainer.appendChild(this.resourcePanel);
+    }
+
+    initSerfListPanel() {
+        this.serfListPanel = document.createElement('div');
+        this.serfListPanel.id = 'serf-list-panel';
+        this.serfListPanel.classList.add('themed-panel');
+        this.serfListPanel.style.top = '10px';
+        // Position it to the right of the resource panel.
+        // Assuming resourcePanel is ~230px wide + 10px padding + 10px gap = 250px
+        this.serfListPanel.style.left = '250px'; 
+        this.serfListPanel.style.minWidth = '200px';
+        this.serfListPanel.style.maxHeight = 'calc(100vh - 20px)'; // Same height as resource panel
+        this.serfListPanel.style.overflowY = 'auto'; // Scroll for the panel
+
+        const serfListTitle = document.createElement('h3');
+        serfListTitle.textContent = 'Serfs';
+        serfListTitle.classList.add('themed-panel-title');
+        this.serfListPanel.appendChild(serfListTitle);
+
+        // Create content area
+        this.serfListPanelContent = document.createElement('div');
+        this.serfListPanelContent.classList.add('panel-content-area');
+        this.serfListPanel.appendChild(this.serfListPanelContent);
+        
+        serfListTitle.addEventListener('click', () => {
+            const isHidden = this.serfListPanelContent.style.display === 'none';
+            this.serfListPanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiContainer.appendChild(this.serfListPanel);
+    }
+
+    initBuildingListPanel() {
+        this.buildingListPanel = document.createElement('div');
+        this.buildingListPanel.id = 'building-list-panel';
+        this.buildingListPanel.classList.add('themed-panel');
+        this.buildingListPanel.style.top = '10px';
+        // Position it to the right of the serf list panel.
+        // serfListPanel.left (250px) + serfListPanel.minWidth (200px) + 10px gap = 460px
+        this.buildingListPanel.style.left = '460px'; 
+        this.buildingListPanel.style.minWidth = '220px';
+        this.buildingListPanel.style.maxHeight = 'calc(100vh - 20px)';
+        this.buildingListPanel.style.overflowY = 'auto';
+
+        const buildingListTitle = document.createElement('h3');
+        buildingListTitle.textContent = 'Buildings on Map';
+        buildingListTitle.classList.add('themed-panel-title');
+        this.buildingListPanel.appendChild(buildingListTitle);
+
+        this.buildingListPanelContent = document.createElement('div');
+        this.buildingListPanelContent.classList.add('panel-content-area');
+        this.buildingListPanel.appendChild(this.buildingListPanelContent);
+
+        buildingListTitle.addEventListener('click', () => {
+            const isHidden = this.buildingListPanelContent.style.display === 'none';
+            this.buildingListPanelContent.style.display = isHidden ? '' : 'none';
+        });
+
+        this.uiContainer.appendChild(this.buildingListPanel);
+    }
+
+    initMiniMapPanel() {
+        this.miniMapPanel = document.createElement('div');
+        this.miniMapPanel.id = 'mini-map-panel';
+        this.miniMapPanel.style.position = 'absolute';
+        this.miniMapPanel.style.top = '10px';
+        this.miniMapPanel.style.right = '10px';
+        this.miniMapPanel.style.width = '150px';
+        this.miniMapPanel.style.height = '150px';
+        this.miniMapPanel.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        this.miniMapPanel.style.border = '1px solid #fff';
+        this.miniMapPanel.style.borderRadius = '4px';
+        this.miniMapPanel.style.color = 'white';
+        this.miniMapPanel.style.display = 'flex';
+        this.miniMapPanel.style.alignItems = 'center';
+        this.miniMapPanel.style.justifyContent = 'center';
+        this.miniMapPanel.textContent = 'Mini-map';
+        this.uiContainer.appendChild(this.miniMapPanel);
+    }
+
+    initTestButtons() {
+        this.testButtonContainer = document.createElement('div');
+        this.testButtonContainer.style.position = 'absolute';
+        this.testButtonContainer.style.bottom = '10px';
+        this.testButtonContainer.style.left = '10px';
+        this.testButtonContainer.style.display = 'flex';
+        this.testButtonContainer.style.gap = '8px';
+        this.testButtonContainer.style.zIndex = '50';
+
+        const addCheatButton = document.createElement('md-filled-button');
+        addCheatButton.textContent = '+50 All';
+        addCheatButton.style.borderRadius = '4px';
+        addCheatButton.addEventListener('click', () => {
+            console.log('UI: "+50 All" button clicked.');
+            Object.values(RESOURCE_TYPES).forEach(type => {
+                if (typeof type === 'string') {
+                    this.resourceManager.addResource(type, 50);
+                }
+            });
+        });
+        this.testButtonContainer.appendChild(addCheatButton);
+        this.uiContainer.appendChild(this.testButtonContainer);
+    }
+
+    initConstructionPanel() {
+        this.constructionPanel = document.createElement('div');
+        this.constructionPanel.id = 'construction-panel';
+        this.constructionPanel.classList.add('themed-panel');
+        this.constructionPanel.style.bottom = '10px';
+        this.constructionPanel.style.right = '10px';
+        this.constructionPanel.style.display = 'flex';
+        this.constructionPanel.style.flexDirection = 'column';
+        this.constructionPanel.style.gap = '8px';
+        this.constructionPanel.style.maxHeight = '450px';
+        this.constructionPanel.style.minWidth = '220px';
+        this.constructionPanel.style.overflowY = 'auto';
+        this.constructionPanel.style.overflowX = 'hidden';
+
+        const buildingsTitle = document.createElement('h3');
+        buildingsTitle.textContent = 'Buildings';
+        buildingsTitle.classList.add('themed-panel-title');
+        this.constructionPanel.appendChild(buildingsTitle);
+
+        const availableBuildings = this.constructionManager.getAvailableBuildings();
+        availableBuildings.forEach(building => {
+            const button = document.createElement('md-filled-button');
+            const costString = this.buildCostDisplay(building.cost);
+            button.innerHTML = `
+                <div class="building-button-content">
+                    <div class="building-button-name">${building.name}</div>
+                    <div class="building-button-cost-section">
+                        ${costString}
+                    </div>
+                </div>
+            `;
+            button.style.setProperty('--md-filled-button-container-height', 'auto');
+            button.style.setProperty('--md-filled-button-container-width', '100%');
+            button.style.setProperty('--md-filled-button-container-shape', '8px');
+            button.style.setProperty('--md-filled-button-disabled-container-opacity', '0.9');
+            button.style.setProperty('--md-filled-button-disabled-label-text-color', 'rgba(255, 255, 255, 0.95)');
+            button.style.setProperty('--md-filled-button-disabled-label-text-opacity', '0.95');
+            button.style.padding = '12px 10px';
+            button.style.borderRadius = '8px';
+            button.style.margin = '0 0 12px 0';
+            button.style.width = '100%';
+            button.style.minWidth = '200px';
+            button.style.maxWidth = '100%';
+            button.style.boxSizing = 'border-box';
+            button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
+            button.style.transition = 'all 0.2s ease-in-out';
+            button.style.border = '1px solid rgba(255,255,255,0.15)';
+            button.style.letterSpacing = '0.3px';
+            button.style.setProperty('--md-sys-color-primary', '#4CAF50');
+            button.style.setProperty('--md-sys-color-on-primary', '#FFFFFF');
+
+            button.addEventListener('mouseover', () => {
+                if (!button.disabled) {
+                    button.style.transform = 'translateY(-2px)';
+                    button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.4)';
+                    button.style.setProperty('--md-sys-color-primary', '#5DBF60');
+                }
+            });
+            button.addEventListener('mouseout', () => {
+                if (!button.disabled) {
+                    button.style.transform = '';
+                    button.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
+                    button.style.setProperty('--md-sys-color-primary', '#4CAF50');
+                }
+            });
+            button.addEventListener('click', () => {
+                console.log(`UI: Construction button clicked for building key: ${building.key}, name: ${building.name}`);
+                this.constructionManager.startPlacement(building.key);
+            });
+
+            this.buildingButtons.set(building.key, { button, cost: building.cost });
+            this.constructionPanel.appendChild(button);
+        });
+        this.uiContainer.appendChild(this.constructionPanel);
+    }
+
+    initSelectionInfoPanels() {
+        // Selected Unit Info Panel
+        this.selectedUnitInfoPanel = document.createElement('div');
+        this.selectedUnitInfoPanel.id = 'selected-unit-info-panel';
+        this.selectedUnitInfoPanel.classList.add('themed-panel');
+        this.selectedUnitInfoPanel.style.position = 'absolute';
+        this.selectedUnitInfoPanel.style.bottom = '10px';
+        // Position it to the left of the construction panel
+        // Assuming construction panel is ~220px wide + 10px gap = 230px from right
+        this.selectedUnitInfoPanel.style.right = '240px'; 
+        this.selectedUnitInfoPanel.style.width = '250px'; // Adjusted width
+        this.selectedUnitInfoPanel.style.minHeight = '100px';
+        this.selectedUnitInfoPanel.style.maxHeight = '300px';
+        this.selectedUnitInfoPanel.style.overflowY = 'auto';
+        this.selectedUnitInfoPanel.style.display = 'none'; // Hidden by default
+        this.selectedUnitInfoPanel.style.padding = '10px';
+        this.selectedUnitInfoPanel.style.boxSizing = 'border-box';
+
+        const unitInfoTitle = document.createElement('h3');
+        unitInfoTitle.textContent = 'Selected Unit';
+        unitInfoTitle.classList.add('themed-panel-title');
+        this.selectedUnitInfoPanel.appendChild(unitInfoTitle);
+
+        // Add close button to unit info panel
+        const unitCloseButton = this.createCloseButton();
+        this.selectedUnitInfoPanel.appendChild(unitCloseButton);
+
+        this.selectedUnitInfoContent = document.createElement('div');
+        this.selectedUnitInfoContent.classList.add('panel-content-area');
+        this.selectedUnitInfoPanel.appendChild(this.selectedUnitInfoContent);
+        
+        this.uiContainer.appendChild(this.selectedUnitInfoPanel);
+
+        // Selected Building Info Panel
+        this.selectedBuildingInfoPanel = document.createElement('div');
+        this.selectedBuildingInfoPanel.id = 'selected-building-info-panel';
+        this.selectedBuildingInfoPanel.classList.add('themed-panel');
+        this.selectedBuildingInfoPanel.style.position = 'absolute';
+        this.selectedBuildingInfoPanel.style.bottom = '10px';
+        // Position it to the left of the construction panel, same as unit info or adjust as needed
+        this.selectedBuildingInfoPanel.style.right = '240px'; 
+        this.selectedBuildingInfoPanel.style.width = '250px'; 
+        this.selectedBuildingInfoPanel.style.minHeight = '100px';
+        this.selectedBuildingInfoPanel.style.maxHeight = '300px';
+        this.selectedBuildingInfoPanel.style.overflowY = 'auto';
+        this.selectedBuildingInfoPanel.style.display = 'none'; // Hidden by default
+        this.selectedBuildingInfoPanel.style.padding = '10px';
+        this.selectedBuildingInfoPanel.style.boxSizing = 'border-box';
+
+        const buildingInfoTitle = document.createElement('h3');
+        buildingInfoTitle.textContent = 'Selected Building';
+        buildingInfoTitle.classList.add('themed-panel-title');
+        this.selectedBuildingInfoPanel.appendChild(buildingInfoTitle);
+
+        // Add close button to building info panel
+        const buildingCloseButton = this.createCloseButton();
+        this.selectedBuildingInfoPanel.appendChild(buildingCloseButton);
+
+        this.selectedBuildingInfoContent = document.createElement('div');
+        this.selectedBuildingInfoContent.classList.add('panel-content-area');
+        this.selectedBuildingInfoPanel.appendChild(this.selectedBuildingInfoContent);
+
+        this.uiContainer.appendChild(this.selectedBuildingInfoPanel); // Add to UI container
+    }
 
     displayUnitInfo(unit) {
         if (!this.selectionInfo || !unit) {
@@ -1602,6 +2764,14 @@ class UIManager {
             return;
         }
         
+        // Clear and set up the panel with relative positioning for the close button
+        this.selectionInfo.innerHTML = '';
+        this.selectionInfo.style.position = 'relative';
+        
+        // Add close button to the selection info panel
+        const closeButton = this.createCloseButton();
+        this.selectionInfo.appendChild(closeButton);
+        
         // Create modern header
         const header = document.createElement('h3');
         let buildingName = 'Unknown Building';
@@ -1619,6 +2789,7 @@ class UIManager {
             font-weight: 600;
             border-bottom: 2px solid rgba(255,152,0,0.3);
             padding-bottom: 8px;
+            padding-right: 40px; /* Space for close button */
         `;
 
         const details = document.createElement('div');
@@ -1884,7 +3055,6 @@ class UIManager {
         }
 
         // Clear and populate selection info panel
-        this.selectionInfo.innerHTML = '';
         this.selectionInfo.appendChild(header);
         this.selectionInfo.appendChild(details);
         this.selectionInfo.style.display = 'block';
@@ -1945,7 +3115,7 @@ _subscribeToSelectionChanges() {
     } else {
         console.warn("UIManager: SelectionManager not provided or 'onSelectionChange' is not available. UI will not update on selection.");
     }
-    }
+}
 
 // Removed handleCanvasClick method
 // Removed handleOverlayClick method

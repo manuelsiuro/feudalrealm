@@ -663,6 +663,10 @@ class UIManager {
         resourceTitle.classList.add('themed-panel-title');
         this.resourcePanel.appendChild(resourceTitle);
 
+        // Add close button to resource panel
+        const resourceCloseButton = this.createPanelCloseButton(this.resourcePanel);
+        this.resourcePanel.appendChild(resourceCloseButton);
+
         // Create content area
         this.resourcePanelContent = document.createElement('div');
         this.resourcePanelContent.classList.add('panel-content-area');
@@ -692,6 +696,10 @@ class UIManager {
         serfListTitle.textContent = 'Serfs';
         serfListTitle.classList.add('themed-panel-title');
         this.serfListPanel.appendChild(serfListTitle);
+
+        // Add close button to serf list panel
+        const serfListCloseButton = this.createPanelCloseButton(this.serfListPanel);
+        this.serfListPanel.appendChild(serfListCloseButton);
 
         // Create content area
         this.serfListPanelContent = document.createElement('div');
@@ -723,6 +731,11 @@ class UIManager {
         buildingListTitle.classList.add('themed-panel-title');
         this.buildingListPanel.appendChild(buildingListTitle);
 
+        // Add close button to building list panel
+        const buildingListCloseButton = this.createPanelCloseButton(this.buildingListPanel);
+        this.buildingListPanel.appendChild(buildingListCloseButton);
+
+        // Create content area
         this.buildingListPanelContent = document.createElement('div');
         this.buildingListPanelContent.classList.add('panel-content-area');
         this.buildingListPanel.appendChild(this.buildingListPanelContent);
@@ -751,6 +764,11 @@ class UIManager {
         this.miniMapPanel.style.alignItems = 'center';
         this.miniMapPanel.style.justifyContent = 'center';
         this.miniMapPanel.textContent = 'Mini-map';
+
+        // Add close button to mini-map panel
+        const miniMapCloseButton = this.createPanelCloseButton(this.miniMapPanel);
+        this.miniMapPanel.appendChild(miniMapCloseButton);
+
         this.uiContainer.appendChild(this.miniMapPanel);
     }
 
@@ -864,18 +882,20 @@ class UIManager {
         // Position it to the left of the construction panel
         // Assuming construction panel is ~220px wide + 10px gap = 230px from right
         this.selectedUnitInfoPanel.style.right = '240px'; 
-        this.selectedUnitInfoPanel.style.width = '250px'; // Adjusted width
-        this.selectedUnitInfoPanel.style.minHeight = '100px';
+        this.selectedUnitInfoPanel.style.width = '250px';        this.selectedUnitInfoPanel.style.minHeight = '100px';
         this.selectedUnitInfoPanel.style.maxHeight = '300px';
         this.selectedUnitInfoPanel.style.overflowY = 'auto';
-        this.selectedUnitInfoPanel.style.display = 'none'; // Hidden by default
-        this.selectedUnitInfoPanel.style.padding = '10px';
+        this.selectedUnitInfoPanel.style.display = 'none';        this.selectedUnitInfoPanel.style.padding = '10px';
         this.selectedUnitInfoPanel.style.boxSizing = 'border-box';
 
         const unitInfoTitle = document.createElement('h3');
         unitInfoTitle.textContent = 'Selected Unit';
         unitInfoTitle.classList.add('themed-panel-title');
         this.selectedUnitInfoPanel.appendChild(unitInfoTitle);
+
+        // Add close button to unit info panel
+        const unitCloseButton = this.createCloseButton();
+        this.selectedUnitInfoPanel.appendChild(unitCloseButton);
 
         this.selectedUnitInfoContent = document.createElement('div');
         this.selectedUnitInfoContent.classList.add('panel-content-area');
@@ -895,8 +915,7 @@ class UIManager {
         this.selectedBuildingInfoPanel.style.minHeight = '100px';
         this.selectedBuildingInfoPanel.style.maxHeight = '300px';
         this.selectedBuildingInfoPanel.style.overflowY = 'auto';
-        this.selectedBuildingInfoPanel.style.display = 'none'; // Hidden by default
-        this.selectedBuildingInfoPanel.style.padding = '10px';
+        this.selectedBuildingInfoPanel.style.display = 'none';        this.selectedBuildingInfoPanel.style.padding = '10px';
         this.selectedBuildingInfoPanel.style.boxSizing = 'border-box';
 
         const buildingInfoTitle = document.createElement('h3');
@@ -904,11 +923,260 @@ class UIManager {
         buildingInfoTitle.classList.add('themed-panel-title');
         this.selectedBuildingInfoPanel.appendChild(buildingInfoTitle);
 
+        // Add close button to building info panel
+        const buildingCloseButton = this.createCloseButton();
+        this.selectedBuildingInfoPanel.appendChild(buildingCloseButton);
+
         this.selectedBuildingInfoContent = document.createElement('div');
         this.selectedBuildingInfoContent.classList.add('panel-content-area');
         this.selectedBuildingInfoPanel.appendChild(this.selectedBuildingInfoContent);
 
-        this.uiContainer.appendChild(this.selectedBuildingInfoPanel); // Add to UI container
+        this.uiContainer.appendChild(this.selectedBuildingInfoPanel);    }
+
+    displayUnitInfo(unit) {
+        if (!this.selectionInfo || !unit) {
+            this.hideUnitInfo();
+            return;
+        }
+        
+        // Clear and set up the panel with relative positioning for the close button
+        this.selectionInfo.innerHTML = '';
+        this.selectionInfo.style.position = 'relative';
+        
+        // Add close button to the selection info panel
+        const closeButton = this.createCloseButton();
+        this.selectionInfo.appendChild(closeButton);
+        
+        // Create modern header
+        const header = document.createElement('h3');
+        header.textContent = `👤 ${unit.serfType || 'Unit'}`;
+        header.style.cssText = `
+            margin: 0 0 16px 0;
+            color: #4CAF50;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(76,175,80,0.3);
+            padding-bottom: 8px;
+            padding-right: 40px; /* Space for close button */
+        `;
+
+        const details = document.createElement('div');
+        details.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+        `;
+
+        // Basic info with modern styling
+        const basicInfo = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div><strong>🆔 ID:</strong> ${unit.id}</div>
+                <div><strong>⚙️ State:</strong> ${unit.state || 'N/A'}</div>
+                <div><strong>📋 Task:</strong> ${unit.task || 'None'}</div>
+                ${unit.model ? `<div><strong>📍 Position:</strong> (${unit.model.position.x.toFixed(1)}, ${unit.model.position.z.toFixed(1)})</div>` : ''}
+            </div>
+        `;
+        details.innerHTML = basicInfo;
+
+        // Forester-specific features (simplified for main UIManager)
+        if (unit.serfType === 'forester') {
+            const plantedCount = unit.plantedSaplingsCount !== undefined ? unit.plantedSaplingsCount : 'N/A';
+            const maxPlanted = unit.maxPlantedSaplings !== undefined ? unit.maxPlantedSaplings : 'N/A';
+            
+            const foresterInfo = document.createElement('div');
+            foresterInfo.style.cssText = `
+                background: rgba(76,175,80,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(76,175,80,0.3);
+            `;
+            foresterInfo.innerHTML = `
+                <div style="margin-bottom: 8px;"><strong>🌱 Saplings Planted:</strong> ${plantedCount} / ${maxPlanted}</div>
+            `;
+            details.appendChild(foresterInfo);
+        }
+        
+        // Inventory display
+        if (unit.inventory && Object.keys(unit.inventory).length > 0) {
+            const inventorySection = document.createElement('div');
+            inventorySection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+            
+            let inventoryHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FFB74D;">📦 Inventory:</div>';
+            inventoryHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 4px;">';
+            
+            for (const resource in unit.inventory) {
+                if (unit.inventory[resource] > 0) {
+                    inventoryHTML += `<div style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px;">${resource.replace(/_/g, ' ')}: ${unit.inventory[resource]}</div>`;
+                }
+            }
+            inventoryHTML += '</div>';
+            inventorySection.innerHTML = inventoryHTML;
+            details.appendChild(inventorySection);
+        }
+
+        // Clear and populate selection info panel
+        this.selectionInfo.innerHTML = '';
+        this.selectionInfo.appendChild(header);
+        this.selectionInfo.appendChild(details);
+        this.selectionInfo.style.display = 'block';
+    }
+
+    hideUnitInfo() {
+        if (this.selectionInfo) {
+            this.selectionInfo.style.display = 'none';
+            this.selectionInfo.innerHTML = '';
+        }
+    }
+
+    displayBuildingInfo(building) {
+        if (!this.selectionInfo || !building) {
+            this.hideBuildingInfo();
+            return;
+        }
+        
+        // Clear and set up the panel with relative positioning for the close button
+        this.selectionInfo.innerHTML = '';
+        this.selectionInfo.style.position = 'relative';
+        
+        // Add close button to the selection info panel
+        const closeButton = this.createCloseButton();
+        this.selectionInfo.appendChild(closeButton);
+        
+        // Create modern header
+        const header = document.createElement('h3');
+        let buildingName = 'Unknown Building';
+        if (building.info && building.info.name) {
+            buildingName = building.info.name;
+        } else if (building.type) {
+            buildingName = building.type;
+        }
+        
+        header.textContent = `🏗️ ${buildingName}`;
+        header.style.cssText = `
+            margin: 0 0 16px 0;
+            color: #FF9800;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255,152,0,0.3);
+            padding-bottom: 8px;
+            padding-right: 40px; /* Space for close button */
+        `;
+
+        const details = document.createElement('div');
+        details.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+        `;
+
+        let buildingStatus = 'N/A';
+        
+        // Enhanced status with construction state support
+        if (building.currentConstructionState) {
+            switch (building.currentConstructionState) {
+                case 'NEEDS_CONSTRUCTION':
+                    buildingStatus = '🏗️ Needs Construction';
+                    break;
+                case 'UNDER_CONSTRUCTION':
+                    buildingStatus = '🔨 Under Construction';
+                    if (building.constructionRequiredTime && building.currentConstructionProgress !== undefined) {
+                        const progressPercent = Math.min(100, Math.round((building.currentConstructionProgress / building.constructionRequiredTime) * 100));
+                        const timeLeft = Math.max(0, building.constructionRequiredTime - building.currentConstructionProgress);
+                        buildingStatus += ` (${progressPercent}% - ${Math.ceil(timeLeft / 1000)}s left)`;
+                    }
+                    break;
+                case 'CONSTRUCTED':
+                    buildingStatus = '✅ Completed';
+                    break;
+                default:
+                    buildingStatus = building.isConstructed ? '✅ Completed' : '🔨 Under Construction';
+            }
+        } else if (building.isConstructed !== undefined) {
+            buildingStatus = building.isConstructed ? '✅ Completed' : '🔨 Under Construction';
+            if (!building.isConstructed && building.constructionEndTime) {
+                const timeLeft = Math.max(0, building.constructionEndTime - Date.now());
+                if (timeLeft > 0) {
+                    buildingStatus += ` (${Math.ceil(timeLeft / 1000)}s remaining)`;
+                }
+            }
+        }
+        
+        // Basic building info with modern styling
+        const basicInfo = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div><strong>⚙️ Status:</strong> ${buildingStatus}</div>
+                ${building.model ? `<div><strong>🌍 World:</strong> (${building.model.position.x.toFixed(1)}, ${building.model.position.z.toFixed(1)})</div>` : ''}
+            </div>
+        `;
+        details.innerHTML = basicInfo;
+
+        // Display health information with visual indicators
+        if (building.health !== undefined && building.maxHealth !== undefined) {
+            const healthPercent = Math.round((building.health / building.maxHealth) * 100);
+            const healthColor = healthPercent > 75 ? '#4CAF50' : healthPercent > 50 ? '#FF9800' : '#F44336';
+            
+            const healthSection = document.createElement('div');
+            healthSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid ${healthColor}40;
+            `;
+            healthSection.innerHTML = `
+                <div style="margin-bottom: 4px;"><strong>❤️ Health:</strong> <span style="color: ${healthColor}">${building.health}/${building.maxHealth} (${healthPercent}%)</span></div>
+                <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="background: ${healthColor}; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
+                </div>
+            `;
+            details.appendChild(healthSection);
+        }
+
+        // Enhanced worker information
+        if (building.workers && building.workers.length > 0) {
+            const maxWorkers = building.info?.jobSlots || 'N/A';
+            const workerSection = document.createElement('div');
+            workerSection.style.cssText = `
+                background: rgba(33,150,243,0.1);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+                border: 1px solid rgba(33,150,243,0.3);
+            `;
+            
+            let workerHTML = `<div style="margin-bottom: 8px; font-weight: 600; color: #2196F3;">👥 Workers: ${building.workers.length} / ${maxWorkers}</div>`;
+            
+            building.workers.forEach((worker, index) => {
+                const workerName = worker.id || `Worker ${index + 1}`;
+                const workerStatus = worker.state || 'Active';
+                workerHTML += `<div style="margin-left: 12px; font-size: 12px; color: rgba(255,255,255,0.8);">• ${workerName} - ${workerStatus}</div>`;
+            });
+            
+            workerSection.innerHTML = workerHTML;
+            details.appendChild(workerSection);
+        }
+
+        // Clear and populate selection info panel
+        this.selectionInfo.appendChild(header);
+        this.selectionInfo.appendChild(details);
+        this.selectionInfo.style.display = 'block';
+    }
+
+    hideBuildingInfo() {
+        if (this.selectionInfo) {
+            this.selectionInfo.style.display = 'none';
+            this.selectionInfo.innerHTML = '';
+        }
     }
 
     updateResourceUI(stockpiles) {
@@ -1467,436 +1735,103 @@ class UIManager {
         }
     }
 
-    // ...existing code...
-
-    displayUnitInfo(unit) {
-        if (!this.selectionInfo || !unit) {
+    // Helper method to create a professional close button for info panels
+    createCloseButton() {
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(244, 67, 54, 0.8);
+            border: none;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        `;
+        
+        // Add hover effects
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 1)';
+            closeButton.style.transform = 'scale(1.1)';
+            closeButton.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.4)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 0.8)';
+            closeButton.style.transform = 'scale(1)';
+            closeButton.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+        });
+        
+        closeButton.onclick = () => {
             this.hideUnitInfo();
-            return;
-        }
-        
-        // Create modern header
-        const header = document.createElement('h3');
-        header.textContent = `👤 ${unit.serfType || 'Unit'}`;
-        header.style.cssText = `
-            margin: 0 0 16px 0;
-            color: #4CAF50;
-            font-size: 18px;
-            font-weight: 600;
-            border-bottom: 2px solid rgba(76,175,80,0.3);
-            padding-bottom: 8px;
-        `;
-
-        const details = document.createElement('div');
-        details.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 14px;
-            line-height: 1.4;
-        `;
-
-        // Basic info with modern styling
-        const basicInfo = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                <div><strong>🆔 ID:</strong> ${unit.id}</div>
-                <div><strong>⚙️ State:</strong> ${unit.state || 'N/A'}</div>
-                <div><strong>📋 Task:</strong> ${unit.task || 'None'}</div>
-                ${unit.model ? `<div><strong>📍 Position:</strong> (${unit.model.position.x.toFixed(1)}, ${unit.model.position.z.toFixed(1)})</div>` : ''}
-            </div>
-        `;
-        details.innerHTML = basicInfo;
-
-        // Forester-specific features
-        if (unit.serfType === SERF_PROFESSIONS.FORESTER) {
-            const plantedCount = unit.plantedSaplingsCount !== undefined ? unit.plantedSaplingsCount : 'N/A';
-            const maxPlanted = unit.maxPlantedSaplings !== undefined ? unit.maxPlantedSaplings : 'N/A';
-            
-            const foresterInfo = document.createElement('div');
-            foresterInfo.style.cssText = `
-                background: rgba(76,175,80,0.1);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-                border: 1px solid rgba(76,175,80,0.3);
-            `;
-            foresterInfo.innerHTML = `
-                <div style="margin-bottom: 8px;"><strong>🌱 Saplings Planted:</strong> ${plantedCount} / ${maxPlanted}</div>
-            `;
-
-            const upgradeButton = document.createElement('button');
-            upgradeButton.textContent = 'Upgrade Max Saplings';
-            upgradeButton.style.cssText = `
-                background: rgba(76,175,80,0.8);
-                border: 1px solid rgba(76,175,80,0.6);
-                color: white;
-                padding: 8px 16px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 500;
-                transition: all 0.3s ease;
-                width: 100%;
-            `;
-            
-            upgradeButton.addEventListener('mouseenter', () => {
-                upgradeButton.style.background = 'rgba(76,175,80,1)';
-            });
-            upgradeButton.addEventListener('mouseleave', () => {
-                upgradeButton.style.background = 'rgba(76,175,80,0.8)';
-            });
-            upgradeButton.addEventListener('click', () => {
-                if (unit.upgradeMaxPlantedSaplings) {
-                    unit.upgradeMaxPlantedSaplings(FORESTER_SAPLING_UPGRADE_AMOUNT);
-                    this.displayUnitInfo(unit); // Refresh panel
-                } else {
-                    console.error("Selected unit does not have upgradeMaxPlantedSaplings method.");
-                }
-            });
-            
-            foresterInfo.appendChild(upgradeButton);
-            details.appendChild(foresterInfo);
-        }
-        
-        // Inventory display
-        if (unit.inventory && Object.keys(unit.inventory).length > 0) {
-            const inventorySection = document.createElement('div');
-            inventorySection.style.cssText = `
-                background: rgba(255,255,255,0.05);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-            `;
-            
-            let inventoryHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FFB74D;">📦 Inventory:</div>';
-            inventoryHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 4px;">';
-            
-            for (const resource in unit.inventory) {
-                if (unit.inventory[resource] > 0) {
-                    inventoryHTML += `<div style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px;">${resource.replace(/_/g, ' ')}: ${unit.inventory[resource]}</div>`;
-                }
-            }
-            inventoryHTML += '</div>';
-            inventorySection.innerHTML = inventoryHTML;
-            details.appendChild(inventorySection);
-        }
-
-        // Clear and populate selection info panel
-        this.selectionInfo.innerHTML = '';
-        this.selectionInfo.appendChild(header);
-        this.selectionInfo.appendChild(details);
-        this.selectionInfo.style.display = 'block';
-    }
-
-    hideUnitInfo() {
-        if (this.selectedUnitInfoPanel) {
-            this.selectedUnitInfoPanel.style.display = 'none';
-            if (this.selectedUnitInfoContent) {
-                this.selectedUnitInfoContent.innerHTML = ''; // Clear content
-            }
-        }
-    }
-
-    displayBuildingInfo(building) {
-        if (!this.selectionInfo || !building) {
             this.hideBuildingInfo();
-            return;
-        }
+            // Also clear the selection if the selectionManager is available
+            if (this.selectionManager && typeof this.selectionManager.clearSelection === 'function') {
+                this.selectionManager.clearSelection();
+            }
+        };
         
-        // Create modern header
-        const header = document.createElement('h3');
-        let buildingName = 'Unknown Building';
-        if (building.info && building.info.name) {
-            buildingName = building.info.name;
-        } else if (building.type) {
-            buildingName = building.type;
-        }
-        
-        header.textContent = `🏗️ ${buildingName}`;
-        header.style.cssText = `
-            margin: 0 0 16px 0;
-            color: #FF9800;
-            font-size: 18px;
-            font-weight: 600;
-            border-bottom: 2px solid rgba(255,152,0,0.3);
-            padding-bottom: 8px;
-        `;
-
-        const details = document.createElement('div');
-        details.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 14px;
-            line-height: 1.4;
-        `;
-
-        let buildingStatus = 'N/A';
-        let buildingPosition = '';
-        
-        // Enhanced status with construction state support
-        if (building.currentConstructionState) {
-            switch (building.currentConstructionState) {
-                case 'NEEDS_CONSTRUCTION':
-                    buildingStatus = '🏗️ Needs Construction';
-                    break;
-                case 'UNDER_CONSTRUCTION':
-                    buildingStatus = '🔨 Under Construction';
-                    if (building.constructionRequiredTime && building.currentConstructionProgress !== undefined) {
-                        const progressPercent = Math.min(100, Math.round((building.currentConstructionProgress / building.constructionRequiredTime) * 100));
-                        const timeLeft = Math.max(0, building.constructionRequiredTime - building.currentConstructionProgress);
-                        buildingStatus += ` (${progressPercent}% - ${Math.ceil(timeLeft / 1000)}s left)`;
-                    }
-                    break;
-                case 'CONSTRUCTED':
-                    buildingStatus = '✅ Completed';
-                    break;
-                default:
-                    buildingStatus = building.isConstructed ? '✅ Completed' : '🔨 Under Construction';
-            }
-        } else if (building.isConstructed !== undefined) {
-            buildingStatus = building.isConstructed ? '✅ Completed' : '🔨 Under Construction';
-            if (!building.isConstructed && building.constructionEndTime) {
-                const timeLeft = Math.max(0, building.constructionEndTime - Date.now());
-                if (timeLeft > 0) {
-                    buildingStatus += ` (${Math.ceil(timeLeft / 1000)}s remaining)`;
-                }
-            }
-        }
-        
-        // Basic building info with modern styling
-        const basicInfo = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                <div><strong>⚙️ Status:</strong> ${buildingStatus}</div>
-                ${buildingPosition ? `<div><strong>📍 Position:</strong> Grid (${building.gridX || 'N/A'}, ${building.gridZ || 'N/A'})</div>` : ''}
-                ${building.model ? `<div><strong>🌍 World:</strong> (${building.model.position.x.toFixed(1)}, ${building.model.position.z.toFixed(1)})</div>` : ''}
-            </div>
-        `;
-        details.innerHTML = basicInfo;
-
-        // Display health information with visual indicators
-        if (building.health !== undefined && building.maxHealth !== undefined) {
-            const healthPercent = Math.round((building.health / building.maxHealth) * 100);
-            const healthColor = healthPercent > 75 ? '#4CAF50' : healthPercent > 50 ? '#FF9800' : '#F44336';
-            
-            const healthSection = document.createElement('div');
-            healthSection.style.cssText = `
-                background: rgba(255,255,255,0.05);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-                border: 1px solid ${healthColor}40;
-            `;
-            healthSection.innerHTML = `
-                <div style="margin-bottom: 4px;"><strong>❤️ Health:</strong> <span style="color: ${healthColor}">${building.health}/${building.maxHealth} (${healthPercent}%)</span></div>
-                <div style="background: rgba(255,255,255,0.1); border-radius: 4px; height: 8px; overflow: hidden;">
-                    <div style="background: ${healthColor}; height: 100%; width: ${healthPercent}%; transition: width 0.3s ease;"></div>
-                </div>
-            `;
-            details.appendChild(healthSection);
-        }
-
-        // Enhanced worker information
-        if (building.workers && building.workers.length > 0) {
-            const maxWorkers = building.info?.jobSlots || 'N/A';
-            const workerSection = document.createElement('div');
-            workerSection.style.cssText = `
-                background: rgba(33,150,243,0.1);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-                border: 1px solid rgba(33,150,243,0.3);
-            `;
-            
-            let workerHTML = `<div style="margin-bottom: 8px; font-weight: 600; color: #2196F3;">👥 Workers: ${building.workers.length} / ${maxWorkers}</div>`;
-            
-            building.workers.forEach((worker, index) => {
-                const workerName = worker.id || `Worker ${index + 1}`;
-                const workerStatus = worker.state || 'Active';
-                workerHTML += `<div style="margin-left: 12px; font-size: 12px; color: rgba(255,255,255,0.8);">• ${workerName} - ${workerStatus}</div>`;
-            });
-            
-            if (building.jobProfession) {
-                workerHTML += `<div style="margin-top: 8px; font-size: 12px;"><strong>🎓 Required:</strong> ${building.jobProfession.replace(/_/g, ' ')}</div>`;
-            }
-            if (building.requiredTool) {
-                workerHTML += `<div style="font-size: 12px;"><strong>🔧 Tool:</strong> ${building.requiredTool.replace(/_/g, ' ')}</div>`;
-            }
-            
-            workerSection.innerHTML = workerHTML;
-            details.appendChild(workerSection);
-        } else if (building.info?.jobSlots > 0) {
-            const workerSection = document.createElement('div');
-            workerSection.style.cssText = `
-                background: rgba(255,193,7,0.1);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-                border: 1px solid rgba(255,193,7,0.3);
-            `;
-            
-            let workerHTML = `<div style="margin-bottom: 8px; font-weight: 600; color: #FFC107;">👤 Workers: 0 / ${building.info.jobSlots} (Needs Workers)</div>`;
-            
-            if (building.jobProfession) {
-                workerHTML += `<div style="font-size: 12px;"><strong>🎓 Required:</strong> ${building.jobProfession.replace(/_/g, ' ')}</div>`;
-            }
-            if (building.requiredTool) {
-                workerHTML += `<div style="font-size: 12px;"><strong>🔧 Tool:</strong> ${building.requiredTool.replace(/_/g, ' ')}</div>`;
-            }
-            
-            workerSection.innerHTML = workerHTML;
-            details.appendChild(workerSection);
-        }
-
-        // Enhanced production information
-        if (building.producesResource || (building.info?.producesResource)) {
-            const producedResource = building.producesResource || building.info.producesResource;
-            const productionInterval = building.productionIntervalMs || building.info?.productionIntervalMs || 'N/A';
-            const intervalText = productionInterval !== 'N/A' ? `${Math.round(productionInterval / 1000)}s` : 'Unknown';
-            
-            const productionSection = document.createElement('div');
-            productionSection.style.cssText = `
-                background: rgba(76,175,80,0.1);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-                border: 1px solid rgba(76,175,80,0.3);
-            `;
-            
-            let productionHTML = `<div style="margin-bottom: 4px; font-weight: 600; color: #4CAF50;">🏭 Produces: ${producedResource.replace(/_/g, ' ')} (Every ${intervalText})</div>`;
-            
-            if (building.lastProductionTime) {
-                const timeSinceProduction = Math.round((Date.now() - building.lastProductionTime) / 1000);
-                productionHTML += `<div style="font-size: 12px; color: rgba(255,255,255,0.7);">Last produced: ${timeSinceProduction}s ago</div>`;
-            }
-            
-            productionSection.innerHTML = productionHTML;
-            details.appendChild(productionSection);
-        }
-
-        // Enhanced consumption information  
-        if ((building.consumesMaterials && building.consumesMaterials.length > 0) || 
-            (building.consumesFood && building.consumesFood.length > 0)) {
-            
-            const consumptionSection = document.createElement('div');
-            consumptionSection.style.cssText = `
-                background: rgba(255,87,34,0.1);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-                border: 1px solid rgba(255,87,34,0.3);
-            `;
-            
-            let consumptionHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FF5722;">📦 Consumption:</div>';
-            
-            if (building.consumesMaterials && building.consumesMaterials.length > 0) {
-                const consumedResources = building.consumesMaterials.map(r => r.replace(/_/g, ' ')).join(', ');
-                consumptionHTML += `<div style="font-size: 12px; margin-bottom: 4px;">Materials: ${consumedResources}</div>`;
-            }
-            
-            if (building.consumesFood && building.consumesFood.length > 0) {
-                const consumedFood = building.consumesFood.map(f => f.replace(/_/g, ' ')).join(', ');
-                const foodRate = building.foodConsumptionRate || 'N/A';
-                consumptionHTML += `<div style="font-size: 12px;">Food: ${consumedFood} (Rate: ${foodRate})</div>`;
-                
-                if (building.isHaltedByNoFood) {
-                    consumptionHTML += `<div style="color: #F44336; font-weight: bold; margin-top: 4px;">⚠️ Halted: No Food Available</div>`;
-                }
-            }
-            
-            consumptionSection.innerHTML = consumptionHTML;
-            details.appendChild(consumptionSection);
-        }
-
-        // Enhanced inventory display with stock limits
-        if (building.inventory) {
-            const inventoryItems = [];
-            const hasGetStock = typeof building.getStock === 'function';
-            
-            for (const resourceType in building.inventory) {
-                const amount = hasGetStock ? building.getStock(resourceType) : building.inventory[resourceType];
-                if (amount > 0) {
-                    let maxStock = 'N/A';
-                    if (building.maxStock) {
-                        maxStock = building.maxStock[resourceType] || building.maxStock.default || 'N/A';
-                    }
-                    
-                    const stockDisplay = maxStock !== 'N/A' ? `${amount}/${maxStock}` : amount;
-                    const resourceName = resourceType.replace(/_/g, ' ');
-                    inventoryItems.push({ name: resourceName, amount: stockDisplay });
-                }
-            }
-            
-            if (inventoryItems.length > 0) {
-                const inventorySection = document.createElement('div');
-                inventorySection.style.cssText = `
-                    background: rgba(255,255,255,0.05);
-                    border-radius: 8px;
-                    padding: 12px;
-                    margin: 8px 0;
-                `;
-                
-                let inventoryHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FFB74D;">📦 Inventory:</div>';
-                inventoryHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 4px;">';
-                
-                inventoryItems.forEach(item => {
-                    inventoryHTML += `<div style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px;">${item.name}: ${item.amount}</div>`;
-                });
-                
-                inventoryHTML += '</div>';
-                
-                // Show storage capacity if available
-                if (building.maxStock && building.maxStock.default) {
-                    inventoryHTML += `<div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px;">Capacity: ${building.maxStock.default} per resource type</div>`;
-                }
-                
-                inventorySection.innerHTML = inventoryHTML;
-                details.appendChild(inventorySection);
-            } else {
-                const inventorySection = document.createElement('div');
-                inventorySection.style.cssText = `
-                    background: rgba(255,255,255,0.05);
-                    border-radius: 8px;
-                    padding: 12px;
-                    margin: 8px 0;
-                `;
-                inventorySection.innerHTML = '<div style="font-weight: 600; color: #FFB74D;">📦 Inventory: <span style="color: rgba(255,255,255,0.6);">Empty</span></div>';
-                details.appendChild(inventorySection);
-            }
-        }
-
-        // Construction cost information (useful for repair estimates)
-        if (building.cost && Object.keys(building.cost).length > 0) {
-            const costSection = document.createElement('div');
-            costSection.style.cssText = `
-                background: rgba(255,255,255,0.05);
-                border-radius: 8px;
-                padding: 12px;
-                margin: 8px 0;
-            `;
-            
-            const costItems = Object.entries(building.cost).map(([resourceType, amount]) => {
-                const resourceName = resourceType.replace(/_/g, ' ');
-                return `${resourceName}: ${amount}`;
-            }).join(', ');
-            
-            costSection.innerHTML = `<div style="font-weight: 600; color: #FFD54F;">💰 Construction Cost: ${costItems}</div>`;
-            details.appendChild(costSection);
-        }
-
-        // Clear and populate selection info panel
-        this.selectionInfo.innerHTML = '';
-        this.selectionInfo.appendChild(header);
-        this.selectionInfo.appendChild(details);
-        this.selectionInfo.style.display = 'block';
+        return closeButton;
     }
 
-    hideBuildingInfo() {
-        if (this.selectedBuildingInfoPanel) {
-            this.selectedBuildingInfoPanel.style.display = 'none';
-            if (this.selectedBuildingInfoContent) {
-                this.selectedBuildingInfoContent.innerHTML = ''; // Clear content
+    // Helper method to create a close button for any panel
+    createPanelCloseButton(targetPanel, customHandler = null) {
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(244, 67, 54, 0.8);
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        `;
+        
+        // Add hover effects
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 1)';
+            closeButton.style.transform = 'scale(1.1)';
+            closeButton.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.4)';
+        });
+        
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.background = 'rgba(244, 67, 54, 0.8)';
+            closeButton.style.transform = 'scale(1)';
+            closeButton.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+        });
+        
+        closeButton.onclick = () => {
+            if (customHandler) {
+                customHandler();
+            } else if (targetPanel) {
+                targetPanel.style.display = 'none';
             }
-        }
+        };
+        
+        return closeButton;
     }
 
     onWindowResize() {
