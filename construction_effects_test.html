@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Effects Test</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #1a1a1a; color: white; font-family: Arial, sans-serif; }
+        #gameCanvas { background: #333; }
+        .status { margin: 10px 0; padding: 10px; background: rgba(0,100,0,0.2); border-radius: 5px; }
+        .error { background: rgba(100,0,0,0.2) !important; }
+        .test-controls { margin: 20px 0; padding: 15px; background: rgba(50,50,150,0.2); border-radius: 5px; }
+        button { margin: 5px; padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        #ui-container { position: relative; }
+    </style>
+</head>
+<body>
+    <h1>Construction Effects System Test</h1>
+    
+    <div class="test-controls">
+        <h3>Test Controls:</h3>
+        <button onclick="testConstructionEffects()">Test Construction Effects Manager</button>
+        <button onclick="testBuildingIntegration()">Test Building Integration</button>
+        <button onclick="testUI()">Test UI Controls</button>
+        <button onclick="placeBuildingWithEffects()">Place Building with Effects</button>
+    </div>
+
+    <div id="status-log"></div>
+    
+    <div id="ui-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <script type="module">
+        import Game from './src/core/Game.js';
+        import ConstructionEffectsManager from './src/core/ConstructionEffectsManager.js';
+
+        let game;
+        let statusLog = document.getElementById('status-log');
+
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = isError ? 'status error' : 'status';
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            statusLog.appendChild(div);
+            console.log(message);
+        }
+
+        // Initialize the game
+        try {
+            const canvas = document.getElementById('gameCanvas');
+            const uiContainer = document.getElementById('ui-container');
+            
+            game = new Game(canvas, uiContainer);
+            game.start();
+            
+            log('✅ Game initialized successfully');
+            
+            // Make functions available globally for button clicks
+            window.testConstructionEffects = testConstructionEffects;
+            window.testBuildingIntegration = testBuildingIntegration;
+            window.testUI = testUI;
+            window.placeBuildingWithEffects = placeBuildingWithEffects;
+            
+        } catch (error) {
+            log(`❌ Failed to initialize game: ${error.message}`, true);
+        }
+
+        function testConstructionEffects() {
+            try {
+                if (!game.constructionManager) {
+                    throw new Error('ConstructionManager not found');
+                }
+                
+                if (!game.constructionManager.constructionEffectsManager) {
+                    throw new Error('ConstructionEffectsManager not found');
+                }
+                
+                const effects = game.constructionManager.constructionEffectsManager;
+                log('✅ ConstructionEffectsManager found');
+                log(`   - Transparency enabled: ${effects.config.transparency}`);
+                log(`   - Dust particles enabled: ${effects.config.dustParticles}`);
+                log(`   - Scaffolding enabled: ${effects.config.scaffolding}`);
+                log(`   - Animations enabled: ${effects.config.animations}`);
+                
+            } catch (error) {
+                log(`❌ Construction effects test failed: ${error.message}`, true);
+            }
+        }
+
+        function testBuildingIntegration() {
+            try {
+                const buildings = game.constructionManager.getAllBuildings();
+                if (buildings.length === 0) {
+                    log('ℹ️  No buildings found to test integration');
+                    return;
+                }
+                
+                const testBuilding = buildings[0];
+                if (typeof testBuilding.setConstructionEffectsManager === 'function') {
+                    log('✅ Building has setConstructionEffectsManager method');
+                } else {
+                    throw new Error('Building missing setConstructionEffectsManager method');
+                }
+                
+                if (typeof testBuilding.startConstructionEffects === 'function') {
+                    log('✅ Building has startConstructionEffects method');
+                } else {
+                    throw new Error('Building missing startConstructionEffects method');
+                }
+                
+            } catch (error) {
+                log(`❌ Building integration test failed: ${error.message}`, true);
+            }
+        }
+
+        function testUI() {
+            try {
+                if (!game.uiManager) {
+                    throw new Error('UIManager not found');
+                }
+                
+                // Check if construction effects panel exists
+                const effectsPanel = document.querySelector('[style*="Construction Effects"]');
+                if (effectsPanel) {
+                    log('✅ Construction effects UI panel found');
+                } else {
+                    log('ℹ️  Construction effects UI panel not visible (may appear after building placement)');
+                }
+                
+                log('✅ UI system integration test passed');
+                
+            } catch (error) {
+                log(`❌ UI test failed: ${error.message}`, true);
+            }
+        }
+
+        function placeBuildingWithEffects() {
+            try {
+                if (!game.constructionManager) {
+                    throw new Error('ConstructionManager not available');
+                }
+                
+                // Try to place a simple building like a woodcutter's hut
+                game.constructionManager.startPlacement('WOODCUTTERS_HUT');
+                log('✅ Started building placement mode');
+                log('ℹ️  Click on the canvas to place building and observe construction effects');
+                
+                // Simulate a placement after a short delay
+                setTimeout(() => {
+                    const canvas = document.getElementById('gameCanvas');
+                    const rect = canvas.getBoundingClientRect();
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    
+                    // Create a mock click event at the center
+                    const clickEvent = new MouseEvent('click', {
+                        clientX: rect.left + centerX,
+                        clientY: rect.top + centerY,
+                        bubbles: true
+                    });
+                    
+                    canvas.dispatchEvent(clickEvent);
+                    log('✅ Simulated building placement at center');
+                    
+                }, 1000);
+                
+            } catch (error) {
+                log(`❌ Building placement test failed: ${error.message}`, true);
+            }
+        }
+
+        // Auto-run basic tests after initialization
+        setTimeout(() => {
+            testConstructionEffects();
+            testBuildingIntegration();
+            testUI();
+        }, 2000);
+    </script>
+</body>
+</html>
