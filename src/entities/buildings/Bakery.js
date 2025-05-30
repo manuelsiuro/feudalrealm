@@ -5,7 +5,8 @@ import { TILE_SIZE } from '../../config/mapConstants.js';
 class Bakery extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager);
-        this.model = this.createModel();
+        // Model creation is handled by the base Building class
+        // Model will be created when construction starts, not immediately
     }
 
     createModel() {

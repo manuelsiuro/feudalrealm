@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Faster Progress Bars</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        
+        .log {
+            background: #000;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .log .success { color: #4CAF50; }
+        .log .error { color: #f44336; }
+        .log .warning { color: #ff9800; }
+        .log .info { color: #2196F3; }
+        .log .debug { color: #9E9E9E; }
+        
+        .progress-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .progress-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            background: white;
+        }
+        .progress-card h4 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .math-explanation {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+            margin: 15px 0;
+        }
+        .math-explanation h4 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        .math-explanation code {
+            background: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Faster Progress Bar Test</h1>
+            <p>Testing the improved construction speed optimizations for better visual feedback</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Progress Bar Speed Improvements</h3>
+            <div class="math-explanation">
+                <h4>📊 Speed Calculation Improvements</h4>
+                <p><strong>Previous vs New Construction Times:</strong></p>
+                <ul>
+                    <li><strong>Builder's Hut:</strong> <code>5000ms → 1000ms</code> (5x faster)</li>
+                    <li><strong>Woodcutter's Hut:</strong> <code>6000ms → 1500ms</code> (4x faster)</li>
+                    <li><strong>Forester's Hut:</strong> <code>4000ms → 1200ms</code> (3.3x faster)</li>
+                    <li><strong>Transporter's Hut:</strong> <code>3000ms → 800ms</code> (3.75x faster)</li>
+                    <li><strong>Quarry:</strong> <code>8000ms → 2000ms</code> (4x faster)</li>
+                </ul>
+                <p><strong>Progress Update Math:</strong></p>
+                <p>Progress per frame = <code>deltaTime (16ms) / constructionTime</code></p>
+                <p>Visual scale change per frame = <code>progress * barWidth</code></p>
+                <p><strong>Example:</strong> Builder's Hut now updates <code>16/1000 = 1.6%</code> per frame instead of <code>16/5000 = 0.32%</code></p>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="startSpeedTest()">🏗️ Start Speed Test</button>
+                <button class="btn btn-success" onclick="testProgressMath()">🧮 Test Progress Math</button>
+                <button class="btn btn-warning" onclick="monitorProgress()">👁️ Monitor Progress</button>
+                <button class="btn btn-danger" onclick="clearLog()">🧹 Clear Log</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Test Log</h3>
+            <div class="log" id="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Active Construction Progress</h3>
+            <div class="progress-info" id="progress-info">
+                <p>No active constructions. Start a test to see progress data.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Game from './src/core/Game.js';
+        
+        let game;
+        let monitorInterval;
+        
+        // Initialize game
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                log('🎮 Initializing game...', 'info');
+                game = new Game('main');
+                await game.initialize();
+                window.game = game;
+                log('✅ Game initialized successfully', 'success');
+                log('🎯 Ready to test faster progress bars!', 'info');
+            } catch (error) {
+                log(`❌ Game initialization failed: ${error.message}`, 'error');
+                console.error(error);
+            }
+        });
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(div);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        window.startSpeedTest = async function() {
+            if (!game) {
+                log('❌ Game not available', 'error');
+                return;
+            }
+
+            log('🚀 Starting comprehensive speed test...', 'info');
+            log('=' .repeat(50), 'debug');
+
+            // Add resources
+            game.resourceManager.addResource('WOOD', 100);
+            game.resourceManager.addResource('STONE', 50);
+            log('✅ Resources added', 'success');
+
+            const testBuildings = [
+                { type: 'BUILDERS_HUT', x: 10, z: 10 },
+                { type: 'WOODCUTTERS_HUT', x: 12, z: 10 },
+                { type: 'FORESTERS_HUT', x: 14, z: 10 },
+                { type: 'TRANSPORTER_HUT', x: 16, z: 10 }
+            ];
+
+            let queuedCount = 0;
+            for (const buildingTest of testBuildings) {
+                try {
+                    if (game.constructionManager.isBuildable(buildingTest.x, buildingTest.z)) {
+                        const building = game.constructionManager.queueBuilding(buildingTest.type, buildingTest.x, buildingTest.z);
+                        if (building) {
+                            queuedCount++;
+                            log(`✅ Queued ${building.name} at (${buildingTest.x}, ${buildingTest.z})`, 'success');
+                        }
+                    }
+                } catch (error) {
+                    log(`⚠️ Failed to queue ${buildingTest.type}: ${error.message}`, 'warning');
+                }
+            }
+
+            log(`🏗️ Queued ${queuedCount} buildings for construction`, 'info');
+            
+            // Run initial updates to assign builders
+            for (let i = 0; i < 20; i++) {
+                game.constructionManager.update(16);
+            }
+            
+            log('🔄 Initial builder assignment cycles completed', 'info');
+            log('⏳ Starting progress monitoring...', 'info');
+            
+            // Start automatic monitoring
+            monitorProgress();
+        };
+
+        window.testProgressMath = function() {
+            if (!game) {
+                log('❌ Game not available', 'error');
+                return;
+            }
+
+            log('🧮 Testing progress calculation math...', 'info');
+            log('=' .repeat(40), 'debug');
+
+            const activeConstructions = game.constructionManager?.activeConstructions || [];
+            if (activeConstructions.length === 0) {
+                log('⚠️ No active constructions found. Start a speed test first.', 'warning');
+                return;
+            }
+
+            const building = activeConstructions[0];
+            const deltaTime = 16; // Typical frame time at 60fps
+            
+            log(`📊 Testing ${building.name}:`, 'info');
+            log(`Current progress: ${building.currentConstructionProgress}ms`, 'debug');
+            log(`Total time needed: ${building.constructionRequiredTime}ms`, 'debug');
+            
+            const currentPercent = (building.currentConstructionProgress / building.constructionRequiredTime * 100).toFixed(2);
+            log(`Current completion: ${currentPercent}%`, 'info');
+            
+            const progressPerFrame = (deltaTime / building.constructionRequiredTime * 100).toFixed(4);
+            log(`Progress per frame: ${progressPerFrame}%`, 'success');
+            
+            const framesTo10Percent = Math.ceil((building.constructionRequiredTime * 0.1) / deltaTime);
+            const timeTo10Percent = (framesTo10Percent * deltaTime / 1000).toFixed(1);
+            log(`Time to reach 10% visible progress: ${timeTo10Percent}s (${framesTo10Percent} frames)`, 'success');
+            
+            const totalFrames = Math.ceil(building.constructionRequiredTime / deltaTime);
+            const totalSeconds = (totalFrames * deltaTime / 1000).toFixed(1);
+            log(`Total construction time: ${totalSeconds}s (${totalFrames} frames)`, 'info');
+        };
+
+        window.monitorProgress = function() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                log('⏹️ Progress monitoring stopped', 'info');
+                return;
+            }
+
+            log('👁️ Starting progress monitoring...', 'info');
+            let monitorCount = 0;
+            
+            monitorInterval = setInterval(() => {
+                monitorCount++;
+                
+                if (!game) return;
+                
+                const activeConstructions = game.constructionManager?.activeConstructions || [];
+                
+                if (activeConstructions.length === 0) {
+                    updateProgressInfo('No active constructions');
+                    return;
+                }
+
+                let infoHtml = '<h4>🏗️ Active Constructions:</h4>';
+                let hasProgress = false;
+                
+                activeConstructions.forEach((building, index) => {
+                    const progress = (building.getConstructionProgress() * 100).toFixed(1);
+                    const progressMs = building.currentConstructionProgress;
+                    const totalMs = building.constructionRequiredTime;
+                    const timeRemaining = Math.round((totalMs - progressMs) / 1000);
+                    const hasProgressBar = building.progressBarGroup ? '📊' : '❌';
+                    const hasModel = building.model ? '🏗️' : '⬜';
+                    const builderState = building.assignedBuilderId ? '👷' : '❌';
+                    const scale = building.progressBarMesh ? building.progressBarMesh.scale.x.toFixed(3) : 'N/A';
+                    
+                    if (progressMs > 0) hasProgress = true;
+                    
+                    infoHtml += `
+                        <div class="progress-card">
+                            <h4>${index + 1}. ${building.name} (${building.id})</h4>
+                            <p><strong>Progress:</strong> ${progress}% (${progressMs}/${totalMs}ms)</p>
+                            <p><strong>Time Remaining:</strong> ${timeRemaining}s</p>
+                            <p><strong>Progress Bar:</strong> ${hasProgressBar} (Scale: ${scale})</p>
+                            <p><strong>Model:</strong> ${hasModel} | <strong>Builder:</strong> ${builderState}</p>
+                            <p><strong>State:</strong> ${building.currentConstructionState}</p>
+                        </div>
+                    `;
+                });
+                
+                updateProgressInfo(infoHtml);
+                
+                if (hasProgress) {
+                    log(`[${monitorCount}] Monitoring ${activeConstructions.length} constructions...`, 'debug');
+                }
+                
+                // Check for completed constructions
+                const completedBuildings = activeConstructions.filter(b => b.currentConstructionState === 'CONSTRUCTED');
+                if (completedBuildings.length > 0) {
+                    completedBuildings.forEach(building => {
+                        log(`🎉 ${building.name} construction completed!`, 'success');
+                    });
+                }
+                
+            }, 1000);
+        };
+
+        function updateProgressInfo(content) {
+            document.getElementById('progress-info').innerHTML = content;
+        }
+
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared', 'info');
+        };
+        
+        // Auto-start monitoring when constructions begin
+        setInterval(() => {
+            if (game && !monitorInterval) {
+                const activeConstructions = game.constructionManager?.activeConstructions || [];
+                if (activeConstructions.length > 0) {
+                    log('🔍 Active constructions detected - auto-starting monitor', 'info');
+                    monitorProgress();
+                }
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -119,9 +119,15 @@ class Building {
         if (this.type === 'CASTLE' || this.constructionRequiredTime === 0) {
             this.currentConstructionState = BUILDING_STATE_CONSTRUCTED;
             this.isConstructed = true; // Keep isConstructed for compatibility for now
+            
+            // Create the model immediately for constructed buildings
+            this.model = this.createModel();
         } else {
             this.currentConstructionState = BUILDING_STATE_NEEDS_CONSTRUCTION;
             this.isConstructed = false;
+            
+            // Don't create the model yet - it will be created when construction starts
+            this.model = null;
         }
         console.log(`[Building CONSTRUCTOR] ${this.id} (${this.name}): Initial constructionRequiredTime: ${this.constructionRequiredTime}, currentConstructionState: ${this.currentConstructionState}`);
     }
@@ -167,7 +173,7 @@ class Building {
      */
     placeModel(buildingsGroup) {
         if (!this.model) {
-            console.error(`Building ${this.id} (${this.name}): Model not created before placing.`);
+            console.warn(`Building ${this.id} (${this.name}): Cannot place model - model not created yet (construction state: ${this.currentConstructionState}).`);
             return;
         }
 
@@ -576,6 +582,250 @@ class Building {
     }
 
     /**
+     * Starts the construction process for this building.
+     * Called by ConstructBuildingTask when a builder is assigned.
+     * @param {string} serfId - The ID of the serf assigned to build this building.
+     * @param {THREE.Scene} scene - The scene to add visual elements to.
+     * @returns {boolean} True if construction started successfully, false otherwise.
+     */
+    startConstructionProcess(serfId, scene) {
+        if (this.currentConstructionState !== BUILDING_STATE_NEEDS_CONSTRUCTION) {
+            console.warn(`${this.name} (${this.id}): Cannot start construction - current state is ${this.currentConstructionState}`);
+            return false;
+        }
+
+        if (this.assignedBuilderId) {
+            console.warn(`${this.name} (${this.id}): Cannot start construction - already assigned to builder ${this.assignedBuilderId}`);
+            return false;
+        }
+
+        console.log(`[Building startConstructionProcess] Starting construction of ${this.name} (${this.id}) with builder ${serfId}`);
+        
+        this.assignedBuilderId = serfId;
+        this.currentConstructionState = BUILDING_STATE_UNDER_CONSTRUCTION;
+        this.currentConstructionProgress = 0;
+
+        // Create the 3D model now that construction has started
+        if (!this.model) {
+            this.model = this.createModel();
+            console.log(`[Building startConstructionProcess] Created 3D model for ${this.name} (${this.id})`);
+            
+            // Place the model in the scene if we have access to buildingsGroup
+            if (scene && this.model) {
+                // Find or create the GameBuildings group
+                let buildingsGroup = null;
+                scene.traverse((child) => {
+                    if (child.name === "GameBuildings") {
+                        buildingsGroup = child;
+                    }
+                });
+                
+                if (buildingsGroup) {
+                    this.placeModel(buildingsGroup);
+                    console.log(`[Building startConstructionProcess] Placed model for ${this.name} (${this.id}) in scene`);
+                }
+            }
+        }
+
+        // Create 3D progress bar
+        if (this.model && scene) {
+            this._createProgressBar(scene);
+        }
+
+        return true;
+    }
+
+    /**
+     * Updates the construction progress of this building.
+     * Called by ConstructionManager during its update loop.
+     * @param {number} deltaTime - The time elapsed since the last update in milliseconds.
+     * @returns {boolean} True if construction is complete, false otherwise.
+     */
+    updateConstructionProgress(deltaTime) {
+        if (this.currentConstructionState !== BUILDING_STATE_UNDER_CONSTRUCTION) {
+            return false; // Not under construction
+        }
+
+        if (!this.assignedBuilderId) {
+            console.warn(`${this.name} (${this.id}): No builder assigned but state is UNDER_CONSTRUCTION`);
+            return false;
+        }
+
+        // Check if the assigned builder is actually constructing this building
+        // We need access to the serfManager to check builder state
+        // For now, we'll assume progress should only happen when builder is at the site
+        // This check will be done by the ConstructionManager or we trust the task system
+        
+        // Increment construction progress
+        this.currentConstructionProgress += deltaTime;
+
+        // Update progress bar visual
+        this._updateProgressBar();
+
+        // Check if construction is complete
+        if (this.currentConstructionProgress >= this.constructionRequiredTime) {
+            //console.log(`[Building updateConstructionProgress] Construction of ${this.name} (${this.id}) completed!`);
+            this.completeConstructionProcess();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Completes the construction process for this building.
+     * Called internally when construction progress reaches 100%.
+     */
+    completeConstructionProcess() {
+        //console.log(`[Building completeConstructionProcess] Completing construction of ${this.name} (${this.id})`);
+        
+        this.currentConstructionState = BUILDING_STATE_CONSTRUCTED;
+        this.isConstructed = true; // Keep for compatibility
+        this.currentConstructionProgress = this.constructionRequiredTime; // Ensure it's exactly at completion
+        this.assignedBuilderId = null; // Release the builder
+
+        // Remove progress bar
+        this._removeProgressBar();
+
+        //console.log(`[Building completeConstructionProcess] ${this.name} (${this.id}) construction complete!`);
+    }
+
+    /**
+     * Creates a 3D progress bar above the building.
+     * @param {THREE.Scene} scene - The scene to add the progress bar to.
+     * @private
+     */
+    _createProgressBar(scene) {
+        if (this.progressBarGroup) {
+            this._removeProgressBar(); // Remove existing one
+        }
+
+        if (!this.model) {
+            console.warn(`${this.name} (${this.id}): Cannot create progress bar - no model available`);
+            return;
+        }
+
+        // Create progress bar group
+        this.progressBarGroup = new THREE.Group();
+        this.progressBarGroup.name = `ProgressBar_${this.id}`;
+
+        // Calculate position above the building
+        const modelBox = new THREE.Box3().setFromObject(this.model);
+        const modelHeight = modelBox.max.y - modelBox.min.y;
+        const barHeight = 0.15;
+        const barWidth = TILE_SIZE * 0.8;
+        const barDepth = 0.05;
+
+        // Position above the building
+        this.progressBarGroup.position.copy(this.model.position);
+        this.progressBarGroup.position.y += modelHeight + 0.5;
+
+        // Background bar (red/dark)
+        const backgroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
+        const backgroundMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x444444,
+            transparent: true,
+            opacity: 0.8
+        });
+        const backgroundMesh = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+        this.progressBarGroup.add(backgroundMesh);
+
+        // Progress bar (green) - create at full width but scale it down
+        const progressGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth + 0.01); 
+        const progressMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 0.9
+        });
+        this.progressBarMesh = new THREE.Mesh(progressGeometry, progressMaterial);
+        this.progressBarMesh.scale.x = 0.01; // Start at minimum scale
+        this.progressBarMesh.position.x = -(barWidth / 2) + (barWidth * 0.01 / 2); // Start from left edge
+        this.progressBarGroup.add(this.progressBarMesh);
+
+        // Add to scene
+        scene.add(this.progressBarGroup);
+
+        //console.log(`[Building _createProgressBar] Created progress bar for ${this.name} (${this.id})`);
+    }
+
+    /**
+     * Updates the visual representation of the progress bar.
+     * Uses the actual construction progress and time.
+     * @private
+     */
+    _updateProgressBar() {
+        if (!this.progressBarGroup || !this.progressBarMesh) {
+            return;
+        }
+
+        // Calculate progress percentage based on actual construction progress
+        const progressPercentage = Math.min(this.currentConstructionProgress / this.constructionRequiredTime, 1.0);
+        
+        // Update progress bar using scale instead of recreating geometry
+        const barWidth = TILE_SIZE * 0.8;
+        
+        // Use scale to change the width instead of recreating geometry
+        this.progressBarMesh.scale.x = Math.max(progressPercentage, 0.01); // Minimum scale to keep it visible
+        
+        // Reposition to grow from left to right
+        this.progressBarMesh.position.x = -(barWidth / 2) + (barWidth * progressPercentage / 2);
+        
+        // Debug log for first few updates - now shows both actual and visual progress
+        //if (this.currentConstructionProgress < 1000) {
+        //    const actualProgress = (this.currentConstructionProgress / this.constructionRequiredTime * 100).toFixed(1);
+        //    const visualProgress = (visualProgressPercentage * 100).toFixed(1);
+        //    console.log(`[Building _updateProgressBar] ${this.name}: Actual: ${actualProgress}% | Visual: ${visualProgress}% | Scale: ${this.progressBarMesh.scale.x.toFixed(3)}`);
+        //}
+    }
+
+    /**
+     * Removes the progress bar from the scene.
+     * @private
+     */
+    _removeProgressBar() {
+        if (this.progressBarGroup && this.progressBarGroup.parent) {
+            // Dispose of geometries and materials
+            this.progressBarGroup.traverse((child) => {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(material => material.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
+
+            // Remove from scene
+            this.progressBarGroup.parent.remove(this.progressBarGroup);
+            this.progressBarGroup = null;
+            this.progressBarMesh = null;
+
+            //console.log(`[Building _removeProgressBar] Removed progress bar for ${this.name} (${this.id})`);
+        }
+    }
+
+    /**
+     * Gets the current construction progress as a percentage.
+     * @returns {number} Progress percentage (0.0 to 1.0)
+     */
+    getConstructionProgress() {
+        if (this.constructionRequiredTime <= 0) return 1.0;
+        return Math.min(this.currentConstructionProgress / this.constructionRequiredTime, 1.0);
+    }
+
+    /**
+     * Estimates time remaining for construction.
+     * @returns {number} Time remaining in milliseconds
+     */
+    getConstructionTimeRemaining() {
+        if (this.constructionRequiredTime <= 0) return 0;
+        return Math.max(this.constructionRequiredTime - this.currentConstructionProgress, 0);
+    }
+
+    /**
      * Enhanced update method with improved production chain processing.
      * This provides a base implementation that subclasses can use or override.
      * @param {number} deltaTime - The time elapsed since the last update in milliseconds.
@@ -627,6 +877,82 @@ class Building {
                 this.currentProcessingProgress = 0;
             }
         }
+    }
+    
+    /**
+     * Checks and consumes food for workers if necessary.
+     * This method handles the food consumption logic that halts production when workers don't have food.
+     * @param {number} currentTime - The current game time (e.g., Date.now()).
+     * @private
+     */
+    _checkAndConsumeFood(currentTime) {
+        // Only check food if this building consumes food and has workers
+        if (!this.consumesFood || this.consumesFood.length === 0 || this.workers.length === 0) {
+            this.isHaltedByNoFood = false;
+            return;
+        }
+        
+        // Check if it's time for a food check
+        if (this.lastFoodCheckTime === 0) {
+            this.lastFoodCheckTime = currentTime;
+        }
+        
+        if (currentTime - this.lastFoodCheckTime < this.foodCheckIntervalMs) {
+            return; // Not time for food check yet
+        }
+        
+        // Calculate food needed based on workers and consumption rate
+        const foodNeeded = this.workers.length * this.foodConsumptionRate;
+        
+        if (foodNeeded <= 0) {
+            this.isHaltedByNoFood = false;
+            this.lastFoodCheckTime = currentTime;
+            return;
+        }
+        
+        // Try to find and consume any available food type
+        let foodConsumed = false;
+        for (const foodType of this.consumesFood) {
+            const availableFood = this.inventory[foodType] || 0;
+            
+            if (availableFood >= foodNeeded) {
+                // Consume the food
+                this.inventory[foodType] = availableFood - foodNeeded;
+                foodConsumed = true;
+                console.log(`${this.name} (${this.id}) consumed ${foodNeeded} ${foodType} for ${this.workers.length} workers`);
+                break;
+            }
+        }
+        
+        if (!foodConsumed) {
+            // No food available, halt production
+            if (!this.isHaltedByNoFood) {
+                console.log(`${this.name} (${this.id}) halted: No food available for ${this.workers.length} workers`);
+            }
+            this.isHaltedByNoFood = true;
+        } else {
+            // Food consumed successfully, resume production
+            if (this.isHaltedByNoFood) {
+                console.log(`${this.name} (${this.id}) resumed: Food consumed for workers`);
+            }
+            this.isHaltedByNoFood = false;
+        }
+        
+        this.lastFoodCheckTime = currentTime;
+    }
+
+    /**
+     * Gets the entry point grid position where serfs should stand to interact with this building.
+     * This is typically adjacent to the building, often in front of it.
+     * @returns {{x: number, z: number}} The grid coordinates of the building's entry point.
+     */
+    getEntryPointGridPosition() {
+        // For most buildings, the entry point is just in front of the building (south side)
+        // Buildings are typically accessed from the south (positive Z direction)
+        return {
+            x: this.gridX,
+            z: this.gridZ + 1
+        };
     }
 }
 

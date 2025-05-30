@@ -6,7 +6,8 @@ import { TILE_SIZE } from '../../config/mapConstants.js';
 class Blacksmith extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Use buildingDataEntry.key
-        this.model = this.createModel();
+        // Model creation is handled by the base Building class
+        // Model will be created when construction starts, not immediately
         this.currentProcessingProgress = 0; // Initialize for this building type
     }
 

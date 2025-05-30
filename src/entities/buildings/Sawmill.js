@@ -8,12 +8,8 @@ class Sawmill extends Building {
         const buildingData = buildingDataEntry || BUILDING_DATA.SAWMILL;
         super(buildingData.key, gridX, gridZ, gameMap, buildingData, resourceFlowManager);
 
-        this.model = this.createModel();
-        if (this.model) {
-            this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
-            this.model.userData.building = this;
-            // this.gameMap.scene.add(this.model); // Removed as gameMap does not have a scene property directly
-        }
+        // Model creation is handled by the base Building class
+        // Model will be created when construction starts, not immediately
     }
 
     createModel() {

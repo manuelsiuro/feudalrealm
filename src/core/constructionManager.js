@@ -4,7 +4,7 @@ import resourceManager from './resourceManager.js';
 // Removed: import * as Buildings from '../entities/buildings.js';
 import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js'; // Added TERRAIN_TYPES
 // SERF_PROFESSIONS and RESOURCE_TYPES might not be directly needed here anymore if Building class handles relevant logic
-// import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; 
+import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; 
 // import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { BUILDING_DATA } from '../config/buildingData.js';
 
@@ -249,9 +249,8 @@ class ConstructionManager {
         if (!buildingsGroup.parent) {
             buildingsGroup.name = "GameBuildings";
             this.gameElementsGroup.add(buildingsGroup);
-        }
-        newBuilding.placeModel(buildingsGroup); // Model is created within constructor or placeModel
-
+        }        newBuilding.placeModel(buildingsGroup); // Model is created within constructor for CONSTRUCTED buildings
+        
         const constructionTimeSeconds = buildingDataEntry.constructionTimeSeconds || 5; 
         // newBuilding.startConstruction(constructionTimeSeconds); // Old direct start
         
@@ -329,7 +328,7 @@ class ConstructionManager {
             buildingsGroup.name = "GameBuildings";
             this.gameElementsGroup.add(buildingsGroup);
         }
-        newBuilding.placeModel(buildingsGroup);
+        newBuilding.placeModel(buildingsGroup); // Model is created for CONSTRUCTED buildings in constructor
         // newBuilding.finishConstruction(); // Instantly constructed
         // For initial buildings, we now use the new state system.
         // If it's a Castle, it should initialize as CONSTRUCTED.
@@ -390,7 +389,7 @@ class ConstructionManager {
 
         // 1. Assign tasks from constructionQueue to available builders
         if (this.constructionQueue.length > 0 && this.serfManager) {
-            const availableBuilders = this.serfManager.getAvailableSerfsByProfession('BUILDER');
+            const availableBuilders = this.serfManager.getAvailableSerfsByProfession(SERF_PROFESSIONS.BUILDER);
             
             for (const builder of availableBuilders) {
                 if (this.constructionQueue.length === 0) break; // All queued items assigned
@@ -404,7 +403,7 @@ class ConstructionManager {
                     continue;
                 }
                 
-                console.log(`[CM Update] Assigning Builder ${builder.id} to construct ${buildingToConstruct.name} (ID: ${buildingToConstruct.id}). Building state: ${buildingToConstruct.currentConstructionState}`);
+                //console.log(`[CM Update] Assigning Builder ${builder.id} to construct ${buildingToConstruct.name} (ID: ${buildingToConstruct.id}). Building state: ${buildingToConstruct.currentConstructionState}`);
                 this.serfManager.addConstructionTask(buildingToConstruct, builder.id); // Assign to specific builder
                 this.activeConstructions.push(buildingToConstruct);
             }
@@ -417,7 +416,7 @@ class ConstructionManager {
             if (building.currentConstructionState === 'UNDER_CONSTRUCTION') {
                 // Error recovery: Check if assigned builder still exists and is working on this building
                 if (building.assignedBuilderId) {
-                    const assignedBuilder = this.serfManager.getSerf(building.assignedBuilderId);
+                    const assignedBuilder = this.serfManager.getSerfById(building.assignedBuilderId);
                     if (!assignedBuilder) {
                         console.warn(`[CM Error Recovery] Builder ${building.assignedBuilderId} no longer exists. Returning ${building.name} (${building.id}) to queue.`);
                         this.returnBuildingToQueue(building);
@@ -427,7 +426,7 @@ class ConstructionManager {
                     // Check if builder is still working on this specific building
                     const currentTask = assignedBuilder.currentTask;
                     if (!currentTask || currentTask.type !== 'CONSTRUCT_BUILDING' || 
-                        currentTask.target.id !== building.id) {
+                        currentTask.targetEntity.id !== building.id) {
                         console.warn(`[CM Error Recovery] Builder ${building.assignedBuilderId} is no longer working on ${building.name} (${building.id}). Returning to queue.`);
                         this.returnBuildingToQueue(building);
                         continue;
@@ -441,24 +440,56 @@ class ConstructionManager {
                     continue; // Move to the next building
                 }
 
-                // Update construction progress
-                // console.log(`[CM Update] About to call updateConstructionProgress for ${building.id} (${building.name}). DeltaTime: ${deltaTime}`);
-                // Building.updateConstructionProgress returns true if construction is complete
-                if (building.updateConstructionProgress(deltaTime)) {
-                    // building.completeConstructionProcess() is called by updateConstructionProgress itself.
-                    console.log(`[CM Update] ${building.name} (ID: ${building.id}) construction reported complete by updateConstructionProgress.`);
-                    this.placedBuildings.push(building);
-                    this.activeConstructions.splice(i, 1);
-                    this._notifyUI();
-                    
-                    // Register the completed building with the ProductionChainManager
-                    if (this.game && this.game.productionChainManager) {
-                        this.game.productionChainManager.registerBuilding(building);
-                        console.log(`[CM Update] Registered ${building.name} (ID: ${building.id}) with ProductionChainManager`);
+                // Update construction progress - only if builder is actively working
+                const assignedBuilder = this.serfManager.getSerfById(building.assignedBuilderId);
+                let shouldUpdateProgress = false;
+                
+                if (assignedBuilder) {
+                    // Check if builder is actively constructing
+                    if (assignedBuilder.currentState.name === 'CONSTRUCTING_BUILDING') {
+                        // Also check if builder is at the construction site
+                        const entryPoint = building.getEntryPointGridPosition();
+                        const builderAtSite = (assignedBuilder.x === entryPoint.x && assignedBuilder.y === entryPoint.z);
+                        
+                        if (builderAtSite) {
+                            shouldUpdateProgress = true;
+                        } else {
+                            // Builder is in construction state but not at site yet - this is OK, they're moving
+                            // console.log(`[CM Update] Builder ${building.assignedBuilderId} is CONSTRUCTING_BUILDING but not at site yet for ${building.name}`);
+                        }
+                    } else {
+                        // Builder is not in construction state yet (maybe still moving)
+                        // console.log(`[CM Update] Builder ${building.assignedBuilderId} not in CONSTRUCTING_BUILDING state yet (${assignedBuilder.currentState.name}) for ${building.name}`);
                     }
-                    
-                    // The builder's task will automatically complete and they will return to their hut
-                    // through the ConstructBuildingTask completion logic
+                } else {
+                    console.warn(`[CM Update] Assigned builder ${building.assignedBuilderId} not found for ${building.name}`);
+                }
+                
+                if (shouldUpdateProgress) {
+                    //console.log(`[CM Update] Updating progress for ${building.name}: Builder ${building.assignedBuilderId} is working. Delta: ${deltaTime}ms`);
+                    // Building.updateConstructionProgress returns true if construction is complete
+                    if (building.updateConstructionProgress(deltaTime)) {
+                        // building.completeConstructionProcess() is called by updateConstructionProgress itself.
+                        console.log(`[CM Update] ${building.name} (ID: ${building.id}) construction reported complete by updateConstructionProgress.`);
+                        this.placedBuildings.push(building);
+                        this.activeConstructions.splice(i, 1);
+                        this._notifyUI();
+                        
+                        // Register the completed building with the ProductionChainManager
+                        if (this.game && this.game.productionChainManager) {
+                            this.game.productionChainManager.registerBuilding(building);
+                            console.log(`[CM Update] Registered ${building.name} (ID: ${building.id}) with ProductionChainManager`);
+                        }
+                        
+                        // The builder's task will automatically complete and they will return to their hut
+                        // through the ConstructBuildingTask completion logic
+                    }
+                } else {
+                    // Log why progress isn't updating (but not too frequently)
+                    if (Math.random() < 0.01) { // 1% chance to log to reduce spam
+                        const builderState = assignedBuilder ? assignedBuilder.currentState.name : 'BUILDER_NOT_FOUND';
+                        //console.log(`[CM Update] Not updating progress for ${building.name}: Builder state is ${builderState}`);
+                    }
                 }
             } else if (building.currentConstructionState === 'NEEDS_CONSTRUCTION' && building.assignedBuilderId) {
                 // This case might indicate that startConstructionProcess was not called or failed.
@@ -637,7 +668,7 @@ class ConstructionManager {
             buildingsGroup.name = "GameBuildings";
             this.gameElementsGroup.add(buildingsGroup);
         }
-        newBuilding.placeModel(buildingsGroup);
+        newBuilding.placeModel(buildingsGroup); // Only places model if it exists (CONSTRUCTED buildings)
 
         // Add to appropriate list based on construction state
         if (newBuilding.currentConstructionState === 'NEEDS_CONSTRUCTION') {

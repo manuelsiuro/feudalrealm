@@ -8,11 +8,8 @@ class Windmill extends Building {
         const buildingData = buildingDataEntry || BUILDING_DATA.WINDMILL;
         super(buildingData.key, gridX, gridZ, gameMap, buildingData, resourceFlowManager);
 
-        this.model = this.createModel();
-        if (this.model) {
-            this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
-            this.model.userData.building = this;
-        }
+        // Model creation is handled by the base Building class
+        // Model will be created when construction starts, not immediately
     }
 
     createModel() {

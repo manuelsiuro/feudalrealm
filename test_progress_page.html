@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Indicators Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        #console {
+            background: #000;
+            color: #00ff00;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .test-controls {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ Construction Progress Indicators Test</h1>
+        
+        <div class="status">
+            <h3>Test Instructions:</h3>
+            <ol>
+                <li>The test will automatically run when the main game loads</li>
+                <li>Watch the console output below for results</li>
+                <li>If auto-test doesn't trigger, use manual controls</li>
+                <li>Check the main game to see 3D progress bars above buildings</li>
+            </ol>
+        </div>
+        
+        <div class="test-controls">
+            <h3>Manual Test Controls:</h3>
+            <button onclick="window.open('http://localhost:5173', '_blank')">Open Main Game</button>
+            <button onclick="runTest()">Run Test</button>
+            <button onclick="monitorConstructions()">Monitor Active Constructions</button>
+            <button onclick="clearConsole()">Clear Console</button>
+        </div>
+        
+        <div id="console"></div>
+    </div>
+
+    <script>
+        const consoleDiv = document.getElementById('console');
+        
+        // Redirect console output to our div
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ') + '\n';
+            consoleDiv.textContent += message;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+        
+        function clearConsole() {
+            consoleDiv.textContent = '';
+            console.log('Console cleared');
+        }
+        
+        function runTest() {
+            console.log('🔄 Running manual test...');
+            // Load and execute the test script
+            const script = document.createElement('script');
+            script.src = 'test_progress_indicators.js';
+            document.head.appendChild(script);
+        }
+        
+        function monitorConstructions() {
+            console.log('👀 Opening construction monitor...');
+            
+            // Check if game is available in parent window or open new window
+            const gameWindow = window.parent.game || window.opener?.game;
+            if (gameWindow) {
+                const game = gameWindow;
+                console.log('📊 Monitoring constructions from current window...');
+                
+                setInterval(() => {
+                    const active = game.constructionManager?.getActiveConstructions() || [];
+                    if (active.length > 0) {
+                        console.log(`🔨 ${active.length} active constructions:`);
+                        active.forEach((building, i) => {
+                            const progress = (building.getConstructionProgress() * 100).toFixed(1);
+                            const hasBar = building.progressBarGroup ? '📊' : '❌';
+                            console.log(`  ${i+1}. ${building.name}: ${progress}% ${hasBar}`);
+                        });
+                    }
+                }, 2000);
+                
+            } else {
+                console.log('⚠️ Game not accessible, opening new window...');
+                window.open('http://localhost:5173', '_blank');
+            }
+        }
+        
+        // Auto-load test when page loads
+        console.log('🚀 Progress Indicators Test Page Loaded');
+        console.log('📡 Waiting for main game to be accessible...');
+        
+        // Try to access the main game periodically
+        let attempts = 0;
+        const checkGame = setInterval(() => {
+            attempts++;
+            
+            // Try different ways to access the game
+            let game = null;
+            
+            if (window.opener && window.opener.game) {
+                game = window.opener.game;
+                console.log('✅ Found game in opener window');
+            } else if (window.parent && window.parent.game) {
+                game = window.parent.game;
+                console.log('✅ Found game in parent window');
+            } else if (window.game) {
+                game = window.game;
+                console.log('✅ Found game in current window');
+            }
+            
+            if (game) {
+                clearInterval(checkGame);
+                console.log('🎮 Game accessed successfully, running test...');
+                runTest();
+            } else if (attempts > 10) {
+                clearInterval(checkGame);
+                console.log('⚠️ Could not access game automatically. Use manual controls.');
+                console.log('💡 Make sure to run this test from the main game page.');
+            } else {
+                console.log(`🔍 Attempt ${attempts}/10: Looking for game...`);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

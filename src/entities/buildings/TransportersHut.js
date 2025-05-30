@@ -6,7 +6,7 @@ import { TILE_SIZE } from '../../config/mapConstants.js';
 class TransportersHut extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Use buildingDataEntry.key
-        this.model = this.createModel();
+        // Model will be created when construction starts or if building is pre-constructed
     }
 
     createModel() {

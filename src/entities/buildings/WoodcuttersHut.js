@@ -19,7 +19,8 @@ class WoodcuttersHut extends Building {
      */
     constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Use buildingDataEntry.key
-        this.model = this.createModel();
+        // Model creation is handled by the base Building class
+        // Model will be created when construction starts, not immediately
     }
 
     /**

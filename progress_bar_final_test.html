@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Bar Final Test</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            overflow-x: hidden;
+        }
+        
+        #console-output {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            height: 400px;
+            background: rgba(0, 20, 0, 0.95);
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 1000;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        #game-container {
+            position: absolute;
+            top: 430px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #001100;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 420px;
+            left: 10px;
+            z-index: 1001;
+        }
+        
+        .btn {
+            background: #004400;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px 16px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        
+        .btn:hover {
+            background: #006600;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .success { color: #00ff88; }
+        .error { color: #ff4444; }
+        .warning { color: #ffaa00; }
+        .info { color: #4488ff; }
+        .debug { color: #888888; }
+    </style>
+</head>
+<body>
+    <div id="console-output">
+        <div style="color: #00ffff; font-weight: bold; margin-bottom: 10px;">
+            🐛 PROGRESS BAR FINAL VALIDATION CONSOLE
+        </div>
+        <div style="color: #ffff00; margin-bottom: 10px;">
+            Loading game... Please wait for initialization to complete.
+        </div>
+        <div id="log-content"></div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn" onclick="runFullValidation()">🔍 Full Validation</button>
+        <button class="btn" onclick="testProgressUpdates()">📊 Test Progress</button>
+        <button class="btn" onclick="startTestConstruction()">🏗️ Start Construction</button>
+        <button class="btn" onclick="monitorProgress()">👁️ Monitor</button>
+        <button class="btn" onclick="clearLog()">🗑️ Clear</button>
+    </div>
+    
+    <div id="game-container"></div>
+
+    <!-- Load the main game -->
+    <script type="module">
+        import './src/main.js';
+        
+        // Initialize after game loads
+        let initTimer = setInterval(() => {
+            if (window.game && window.game.constructionManager) {
+                clearInterval(initTimer);
+                log('🎮 Game initialized successfully!', 'success');
+                log('Ready for progress bar testing...', 'info');
+                
+                // Auto-run basic validation after 2 seconds
+                setTimeout(() => {
+                    log('🔍 Running automatic initial validation...', 'info');
+                    runFullValidation();
+                }, 2000);
+            }
+        }, 500);
+    </script>
+
+    <script>
+        let monitorInterval = null;
+        let testBuilding = null;
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('log-content');
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log-content').innerHTML = '';
+        }
+        
+        async function runFullValidation() {
+            log('🔍 Starting comprehensive progress bar validation...', 'info');
+            log('=' .repeat(60), 'debug');
+            
+            if (!window.game) {
+                log('❌ Game not available', 'error');
+                return false;
+            }
+            
+            const game = window.game;
+            
+            // 1. Check active constructions
+            const activeConstructions = game.constructionManager?.activeConstructions || [];
+            log(`📊 Found ${activeConstructions.length} active constructions`, 'info');
+            
+            if (activeConstructions.length === 0) {
+                log('⚠️ No active constructions found. Starting test construction...', 'warning');
+                await startTestConstruction();
+                return;
+            }
+            
+            // 2. Test first building
+            const building = activeConstructions[0];
+            testBuilding = building;
+            log(`🏗️ Testing building: ${building.name} (ID: ${building.id})`, 'info');
+            log(`📈 Progress: ${building.currentConstructionProgress}/${building.constructionRequiredTime}ms`, 'info');
+            
+            // 3. Check progress bar components
+            const hasGroup = !!building.progressBarGroup;
+            const hasMesh = !!building.progressBarMesh;
+            
+            log(`Progress bar group: ${hasGroup ? '✅' : '❌'}`, hasGroup ? 'success' : 'error');
+            log(`Progress bar mesh: ${hasMesh ? '✅' : '❌'}`, hasMesh ? 'success' : 'error');
+            
+            if (!hasGroup || !hasMesh) {
+                log('❌ Progress bar not properly initialized', 'error');
+                return false;
+            }
+            
+            // 4. Check visibility and scene integration
+            const isVisible = building.progressBarGroup.visible;
+            const inScene = building.progressBarGroup.parent === game.scene;
+            
+            log(`Progress bar visible: ${isVisible ? '✅' : '❌'}`, isVisible ? 'success' : 'error');
+            log(`Progress bar in scene: ${inScene ? '✅' : '❌'}`, inScene ? 'success' : 'error');
+            
+            // 5. Check current state
+            const currentScale = building.progressBarMesh.scale.x;
+            const currentPosition = building.progressBarMesh.position.x;
+            const expectedProgress = building.currentConstructionProgress / building.constructionRequiredTime;
+            
+            log(`Current scale X: ${currentScale.toFixed(4)}`, 'info');
+            log(`Current position X: ${currentPosition.toFixed(4)}`, 'info');
+            log(`Expected progress: ${(expectedProgress * 100).toFixed(1)}%`, 'info');
+            
+            // 6. Test manual progress update
+            return await testProgressUpdates();
+        }
+        
+        async function testProgressUpdates() {
+            if (!testBuilding) {
+                const activeConstructions = window.game?.constructionManager?.activeConstructions || [];
+                if (activeConstructions.length === 0) {
+                    log('❌ No building to test', 'error');
+                    return false;
+                }
+                testBuilding = activeConstructions[0];
+            }
+            
+            const building = testBuilding;
+            log('🧪 Testing progress bar visual updates...', 'info');
+            log('-' .repeat(50), 'debug');
+            
+            if (!building.progressBarMesh) {
+                log('❌ No progress bar mesh to test', 'error');
+                return false;
+            }
+            
+            // Record initial state
+            const initialProgress = building.currentConstructionProgress;
+            const initialScale = building.progressBarMesh.scale.x;
+            const initialPosition = building.progressBarMesh.position.x;
+            
+            log(`Initial - Progress: ${initialProgress}ms, Scale: ${initialScale.toFixed(4)}, Position: ${initialPosition.toFixed(4)}`, 'info');
+            
+            // Test 1: Manual progress increment
+            log('🔧 Test 1: Manual progress increment...', 'info');
+            building.currentConstructionProgress += 1000; // Add 1 second
+            building._updateProgressBar();
+            
+            const afterManual = {
+                progress: building.currentConstructionProgress,
+                scale: building.progressBarMesh.scale.x,
+                position: building.progressBarMesh.position.x
+            };
+            
+            log(`After manual - Progress: ${afterManual.progress}ms, Scale: ${afterManual.scale.toFixed(4)}, Position: ${afterManual.position.toFixed(4)}`, 'info');
+            
+            const scaleChanged = Math.abs(afterManual.scale - initialScale) > 0.001;
+            const positionChanged = Math.abs(afterManual.position - initialPosition) > 0.001;
+            
+            log(`Scale changed: ${scaleChanged ? '✅' : '❌'}`, scaleChanged ? 'success' : 'error');
+            log(`Position changed: ${positionChanged ? '✅' : '❌'}`, positionChanged ? 'success' : 'error');
+            
+            // Test 2: Construction manager update
+            log('⚙️ Test 2: Construction manager update...', 'info');
+            const beforeManager = {
+                progress: building.currentConstructionProgress,
+                scale: building.progressBarMesh.scale.x,
+                position: building.progressBarMesh.position.x
+            };
+            
+            // Force construction manager update
+            window.game.constructionManager.update(200); // 200ms delta
+            
+            const afterManager = {
+                progress: building.currentConstructionProgress,
+                scale: building.progressBarMesh.scale.x,
+                position: building.progressBarMesh.position.x
+            };
+            
+            const managerProgressDelta = afterManager.progress - beforeManager.progress;
+            const managerScaleDelta = afterManager.scale - beforeManager.scale;
+            
+            log(`Manager update - Progress delta: ${managerProgressDelta}ms, Scale delta: ${managerScaleDelta.toFixed(4)}`, 'info');
+            
+            if (managerProgressDelta > 0) {
+                log('✅ Construction manager is updating progress', 'success');
+                if (managerScaleDelta > 0) {
+                    log('✅ Progress bar scale updated with manager', 'success');
+                } else {
+                    log('❌ Progress bar scale NOT updated with manager', 'error');
+                }
+            } else {
+                log('⚠️ Construction manager not updating progress (builder may be traveling)', 'warning');
+                // Check builder state
+                if (building.assignedBuilderId) {
+                    const builder = window.game.serfManager.getSerfById(building.assignedBuilderId);
+                    if (builder) {
+                        log(`Builder state: ${builder.currentState.name}`, 'info');
+                        log(`Builder position: (${builder.x}, ${builder.y})`, 'info');
+                        const entryPoint = building.getEntryPointGridPosition();
+                        log(`Building entry point: (${entryPoint.x}, ${entryPoint.z})`, 'info');
+                        const atSite = (builder.x === entryPoint.x && builder.y === entryPoint.z);
+                        log(`Builder at construction site: ${atSite ? '✅' : '❌'}`, atSite ? 'success' : 'warning');
+                    }
+                }
+            }
+            
+            // Final assessment
+            const manualUpdateWorks = scaleChanged && positionChanged;
+            const managerUpdateWorks = managerProgressDelta > 0 && managerScaleDelta > 0;
+            
+            log('📋 FINAL ASSESSMENT:', 'info');
+            log(`Manual progress updates: ${manualUpdateWorks ? '✅ WORKING' : '❌ BROKEN'}`, manualUpdateWorks ? 'success' : 'error');
+            log(`Manager progress updates: ${managerUpdateWorks ? '✅ WORKING' : '⚠️ CONDITIONAL'}`, managerUpdateWorks ? 'success' : 'warning');
+            
+            const overallSuccess = manualUpdateWorks && (managerUpdateWorks || managerProgressDelta === 0);
+            log(`Overall progress bar system: ${overallSuccess ? '✅ WORKING' : '❌ NEEDS FIXES'}`, overallSuccess ? 'success' : 'error');
+            
+            return overallSuccess;
+        }
+        
+        async function startTestConstruction() {
+            const game = window.game;
+            if (!game) {
+                log('❌ Game not available', 'error');
+                return false;
+            }
+            
+            log('🏗️ Starting test construction...', 'info');
+            
+            // Add resources
+            game.resourceManager.addResource('WOOD', 50);
+            game.resourceManager.addResource('STONE', 30);
+            log('✅ Resources added', 'success');
+            
+            // Find buildable location
+            let testX = 15, testZ = 15;
+            let foundLocation = false;
+            
+            for (let x = 10; x < 20 && !foundLocation; x++) {
+                for (let z = 10; z < 20 && !foundLocation; z++) {
+                    if (game.constructionManager.isBuildable(x, z)) {
+                        testX = x;
+                        testZ = z;
+                        foundLocation = true;
+                    }
+                }
+            }
+            
+            if (!foundLocation) {
+                log('❌ No buildable location found', 'error');
+                return false;
+            }
+            
+            log(`📍 Found buildable location: (${testX}, ${testZ})`, 'success');
+            
+            try {
+                const building = game.constructionManager.queueBuilding('WOODCUTTERS_HUT', testX, testZ);
+                if (building) {
+                    testBuilding = building;
+                    log(`✅ Building queued: ${building.name} (ID: ${building.id})`, 'success');
+                    
+                    // Run some update cycles to assign builder
+                    for (let i = 0; i < 10; i++) {
+                        game.constructionManager.update(16);
+                    }
+                    
+                    log('🔄 Initial update cycles completed', 'info');
+                    log('⏳ Waiting a moment for builder assignment...', 'info');
+                    
+                    // Check results after a delay
+                    setTimeout(() => {
+                        runFullValidation();
+                    }, 3000);
+                    
+                    return true;
+                } else {
+                    log('❌ Failed to queue building', 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`❌ Error queuing building: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function monitorProgress() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                log('⏹️ Progress monitoring stopped', 'info');
+                return;
+            }
+            
+            log('👁️ Starting progress monitoring...', 'info');
+            let monitorCount = 0;
+            
+            monitorInterval = setInterval(() => {
+                monitorCount++;
+                
+                if (!window.game) return;
+                
+                const activeConstructions = window.game.constructionManager?.activeConstructions || [];
+                
+                if (activeConstructions.length === 0) {
+                    log(`[${monitorCount}] No active constructions`, 'debug');
+                    return;
+                }
+                
+                activeConstructions.forEach((building, index) => {
+                    const progress = (building.getConstructionProgress() * 100).toFixed(1);
+                    const timeRemaining = Math.round(building.getConstructionTimeRemaining() / 1000);
+                    const hasProgressBar = building.progressBarGroup ? '📊' : '❌';
+                    const builderState = building.assignedBuilderId ? '👷' : '⬜';
+                    const scale = building.progressBarMesh ? building.progressBarMesh.scale.x.toFixed(3) : 'N/A';
+                    
+                    log(`[${monitorCount}] ${building.name}: ${progress}% (${timeRemaining}s) ${hasProgressBar} ${builderState} Scale:${scale}`, 'debug');
+                });
+                
+                if (monitorCount >= 30) { // Stop after 30 checks
+                    clearInterval(monitorInterval);
+                    monitorInterval = null;
+                    log('⏹️ Monitor completed (30 checks)', 'info');
+                }
+            }, 2000); // Check every 2 seconds
+        }
+        
+        // Expose functions globally for button clicks
+        window.runFullValidation = runFullValidation;
+        window.testProgressUpdates = testProgressUpdates;
+        window.startTestConstruction = startTestConstruction;
+        window.monitorProgress = monitorProgress;
+        window.clearLog = clearLog;
+    </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fast Progress Bar Test</title>
+    <style>
+        body { 
+            font-family: 'Courier New', monospace; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: #00ff00; 
+            line-height: 1.4;
+        }
+        .header { 
+            color: #00ffff; 
+            text-align: center; 
+            margin-bottom: 30px; 
+        }
+        .section { 
+            border: 1px solid #333; 
+            padding: 15px; 
+            margin: 10px 0; 
+            background: #2a2a2a; 
+        }
+        .improvement { 
+            color: #ffff00; 
+            font-weight: bold; 
+        }
+        .math { 
+            color: #ff9900; 
+            font-style: italic; 
+        }
+        .success { 
+            color: #00ff00; 
+        }
+        .warning { 
+            color: #ffaa00; 
+        }
+        .controls { 
+            text-align: center; 
+            margin: 20px 0; 
+        }
+        button { 
+            background: #333; 
+            color: #00ff00; 
+            border: 1px solid #666; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            cursor: pointer; 
+            font-family: inherit;
+        }
+        button:hover { 
+            background: #444; 
+        }
+        .progress-demo {
+            background: #111;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #444;
+        }
+        .bar {
+            height: 20px;
+            background: #333;
+            border: 1px solid #666;
+            position: relative;
+            margin: 5px 0;
+        }
+        .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #88ff88);
+            transition: width 0.1s ease;
+        }
+        .label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Fast Construction Progress Test</h1>
+        <p>Testing the improved progress bar update speeds</p>
+    </div>
+
+    <div class="section">
+        <h2>📊 Construction Time Improvements</h2>
+        <div class="improvement">Old vs New Construction Times:</div>
+        <ul>
+            <li>Builder's Hut: <span class="math">5000ms → 1000ms</span> (5x faster)</li>
+            <li>Woodcutter's Hut: <span class="math">6000ms → 1500ms</span> (4x faster)</li>
+            <li>Forester's Hut: <span class="math">4000ms → 1200ms</span> (3.3x faster)</li>
+            <li>Transporter's Hut: <span class="math">3000ms → 800ms</span> (3.75x faster)</li>
+            <li>Quarry: <span class="math">8000ms → 2000ms</span> (4x faster)</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>⚡ Visual Progress Impact</h2>
+        <div class="math">Progress per frame calculation (assuming 60fps = 16ms per frame):</div>
+        <div class="progress-demo">
+            <h4>Old Speed (Woodcutter's Hut - 6000ms):</h4>
+            <div class="bar">
+                <div class="fill" id="old-bar" style="width: 0%"></div>
+                <div class="label" id="old-label">0%</div>
+            </div>
+            <div>Progress per frame: <span class="math">16ms / 6000ms = 0.27% per frame</span></div>
+        </div>
+        
+        <div class="progress-demo">
+            <h4>New Speed (Woodcutter's Hut - 1500ms):</h4>
+            <div class="bar">
+                <div class="fill" id="new-bar" style="width: 0%"></div>
+                <div class="label" id="new-label">0%</div>
+            </div>
+            <div>Progress per frame: <span class="math">16ms / 1500ms = 1.07% per frame</span></div>
+        </div>
+        
+        <div class="improvement">Result: Progress bars now move 4x faster visually!</div>
+    </div>
+
+    <div class="controls">
+        <button onclick="startDemo()">🎬 Start Progress Demo</button>
+        <button onclick="resetDemo()">🔄 Reset Demo</button>
+        <button onclick="testInGame()">🎮 Test In Game</button>
+        <button onclick="loadTestScript()">📝 Load Test Script</button>
+    </div>
+
+    <div class="section">
+        <h2>🎮 Game Integration Test</h2>
+        <div id="game-status">Checking game status...</div>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        let demoRunning = false;
+        let oldProgress = 0;
+        let newProgress = 0;
+
+        function startDemo() {
+            if (demoRunning) return;
+            demoRunning = true;
+            oldProgress = 0;
+            newProgress = 0;
+            
+            const oldBar = document.getElementById('old-bar');
+            const oldLabel = document.getElementById('old-label');
+            const newBar = document.getElementById('new-bar');
+            const newLabel = document.getElementById('new-label');
+            
+            const startTime = Date.now();
+            
+            function animate() {
+                if (!demoRunning) return;
+                
+                const elapsed = Date.now() - startTime;
+                
+                // Old speed: 6000ms total time
+                oldProgress = Math.min(100, (elapsed / 6000) * 100);
+                
+                // New speed: 1500ms total time
+                newProgress = Math.min(100, (elapsed / 1500) * 100);
+                
+                oldBar.style.width = oldProgress + '%';
+                oldLabel.textContent = oldProgress.toFixed(1) + '%';
+                
+                newBar.style.width = newProgress + '%';
+                newLabel.textContent = newProgress.toFixed(1) + '%';
+                
+                if (newProgress < 100) {
+                    requestAnimationFrame(animate);
+                } else {
+                    demoRunning = false;
+                    setTimeout(() => {
+                        if (oldProgress < 100) {
+                            log('🎉 New progress completed while old progress is still at ' + oldProgress.toFixed(1) + '%!');
+                        }
+                    }, 100);
+                }
+            }
+            
+            animate();
+        }
+        
+        function resetDemo() {
+            demoRunning = false;
+            document.getElementById('old-bar').style.width = '0%';
+            document.getElementById('old-label').textContent = '0%';
+            document.getElementById('new-bar').style.width = '0%';
+            document.getElementById('new-label').textContent = '0%';
+        }
+        
+        function testInGame() {
+            const statusDiv = document.getElementById('game-status');
+            const resultsDiv = document.getElementById('test-results');
+            
+            if (typeof window.game === 'undefined') {
+                statusDiv.innerHTML = '<span class="warning">❌ Game not loaded. Please load the main game first.</span>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<span class="success">✅ Game loaded successfully!</span>';
+            
+            const game = window.game;
+            const activeConstructions = game.constructionManager?.activeConstructions || [];
+            
+            resultsDiv.innerHTML = `
+                <h4>🏗️ Current Construction Status:</h4>
+                <div>Active constructions: ${activeConstructions.length}</div>
+            `;
+            
+            if (activeConstructions.length > 0) {
+                let html = '<h4>📊 Active Constructions:</h4>';
+                activeConstructions.forEach((building, i) => {
+                    const percent = (building.currentConstructionProgress / building.constructionRequiredTime * 100).toFixed(1);
+                    const timeLeft = building.constructionRequiredTime - building.currentConstructionProgress;
+                    const framesLeft = Math.ceil(timeLeft / 16);
+                    
+                    html += `
+                        <div style="margin: 10px 0; padding: 10px; border: 1px solid #444;">
+                            <strong>${building.name}</strong><br>
+                            Progress: ${percent}% (${building.currentConstructionProgress}/${building.constructionRequiredTime}ms)<br>
+                            Estimated frames to completion: ~${framesLeft} frames<br>
+                            Progress bar scale: ${building.progressBarMesh ? building.progressBarMesh.scale.x.toFixed(4) : 'N/A'}
+                        </div>
+                    `;
+                });
+                resultsDiv.innerHTML += html;
+            } else {
+                resultsDiv.innerHTML += `
+                    <div class="warning">⚠️ No active constructions. Starting test construction...</div>
+                `;
+                startTestConstruction();
+            }
+        }
+        
+        function startTestConstruction() {
+            const game = window.game;
+            
+            // Add resources
+            game.resourceManager.addResource('WOOD', 50);
+            
+            // Find buildable location
+            let testX = 10, testZ = 10;
+            for (let x = 8; x < 15; x++) {
+                for (let z = 8; z < 15; z++) {
+                    if (game.constructionManager.isBuildable(x, z)) {
+                        testX = x;
+                        testZ = z;
+                        break;
+                    }
+                }
+                if (testX === x) break;
+            }
+            
+            // Queue fastest building (Transporter's Hut - 800ms)
+            const building = game.constructionManager.queueBuilding('TRANSPORTER_HUT', testX, testZ);
+            if (building) {
+                log(`✅ Started fast construction: ${building.name} (${building.constructionRequiredTime}ms)`);
+                
+                // Run some updates to assign builder
+                for (let i = 0; i < 10; i++) {
+                    game.constructionManager.update(16);
+                }
+                
+                // Monitor progress
+                let monitorCount = 0;
+                const monitor = setInterval(() => {
+                    monitorCount++;
+                    const percent = (building.currentConstructionProgress / building.constructionRequiredTime * 100).toFixed(1);
+                    const scale = building.progressBarMesh ? building.progressBarMesh.scale.x.toFixed(4) : 'N/A';
+                    
+                    log(`[${monitorCount}] ${building.name}: ${percent}% - Scale: ${scale}`);
+                    
+                    if (building.currentConstructionState === 'CONSTRUCTED' || monitorCount >= 20) {
+                        clearInterval(monitor);
+                        if (building.currentConstructionState === 'CONSTRUCTED') {
+                            log('🎉 Fast construction completed!');
+                        }
+                    }
+                }, 500);
+            }
+        }
+        
+        function loadTestScript() {
+            if (typeof window.game === 'undefined') {
+                log('❌ Game not loaded');
+                return;
+            }
+            
+            // Load the test script
+            const script = document.createElement('script');
+            script.src = 'test_faster_progress.js';
+            script.onload = () => log('✅ Test script loaded');
+            script.onerror = () => log('❌ Failed to load test script');
+            document.head.appendChild(script);
+        }
+        
+        function log(message) {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML += '<div>' + message + '</div>';
+            console.log(message);
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            testInGame();
+        });
+    </script>
+</body>
+</html>

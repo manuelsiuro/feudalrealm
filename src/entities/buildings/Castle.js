@@ -6,7 +6,8 @@ import { TILE_SIZE } from '../../config/mapConstants.js'; // Assuming TILE_SIZE 
 class Castle extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager); // Pass resourceFlowManager to parent
-        this.model = this.createModel();
+        // Model creation is handled by the base Building class constructor
+        // Castles are pre-built structures so they get their model immediately
     }
 
     createModel() {

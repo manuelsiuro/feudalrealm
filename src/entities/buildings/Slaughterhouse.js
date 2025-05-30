@@ -8,11 +8,12 @@ class Slaughterhouse extends Building {
         const buildingData = buildingDataEntry || BUILDING_DATA.SLAUGHTERHOUSE;
         super(buildingData.key, gridX, gridZ, gameMap, buildingData, resourceFlowManager);
 
-        this.model = this.createModel();
-        if (this.model) {
-            this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
-            this.model.userData.building = this;
-        }
+        // Model will be created during construction process by startConstructionProcess()
+        // this.model = this.createModel();
+        // if (this.model) {
+        //     this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
+        //     this.model.userData.building = this;
+        // }
     }
 
     createModel() {

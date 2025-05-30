@@ -6,12 +6,7 @@ import { TILE_SIZE } from '../../config/mapConstants.js';
 class BuildersHut extends Building {
     constructor(gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
         super(buildingDataEntry.key, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager);
-
-        this.model = this.createModel();
-        if (this.model) {
-            this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
-            this.model.userData.building = this;
-        }
+        // Model will be created when construction starts or if building is pre-constructed
     }
 
     createModel() {

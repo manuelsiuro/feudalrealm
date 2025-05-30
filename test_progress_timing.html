@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Bar Timing Test</title>
+</head>
+<body>
+    <h1>🎯 Progress Bar Timing Test</h1>
+    <div id="status">Loading game...</div>
+    <div id="results"></div>
+
+    <script type="module">
+        import { Game } from './src/core/game.js';
+
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+
+        function log(message) {
+            console.log(message);
+            resultsDiv.innerHTML += `<div>${message}</div>`;
+        }
+
+        async function testProgressBarTiming() {
+            try {
+                statusDiv.textContent = 'Initializing game...';
+                const game = new Game();
+                await game.init();
+                
+                statusDiv.textContent = 'Testing progress bar timing...';
+                log('🎯 Testing Progress Bar Timing');
+                
+                // Place a Builder's Hut for testing
+                const buildingType = 'BUILDERS_HUT';
+                const gridX = 15;
+                const gridZ = 15;
+                
+                log(`📍 Placing ${buildingType} at (${gridX}, ${gridZ})`);
+                const building = game.constructionManager.placeBuilding(buildingType, gridX, gridZ);
+                
+                if (!building) {
+                    log('❌ Failed to place building');
+                    return;
+                }
+                
+                log(`✅ Building placed. Construction time: ${building.constructionRequiredTime}ms`);
+                log(`📊 Visual progress time: ${building.visualProgressTime}ms`);
+                log(`⚡ Progress multiplier: ${building.progressMultiplier}x`);
+                
+                // Start construction
+                game.constructionManager.startConstruction(building);
+                log('🔨 Construction started');
+                
+                // Monitor progress for 8 seconds
+                const startTime = Date.now();
+                let lastProgress = 0;
+                let progressUpdates = 0;
+                
+                const monitorInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const currentProgress = building.currentConstructionProgress;
+                    const progressPercent = ((currentProgress / building.constructionRequiredTime) * 100).toFixed(1);
+                    const visualPercent = ((currentProgress / building.visualProgressTime) * 100).toFixed(1);
+                    
+                    if (currentProgress !== lastProgress) {
+                        progressUpdates++;
+                        log(`⏱️ ${(elapsed/1000).toFixed(1)}s: Progress ${progressPercent}% (Visual: ${visualPercent}%)`);
+                        lastProgress = currentProgress;
+                    }
+                    
+                    // Check if construction is complete or we've monitored long enough
+                    if (building.currentConstructionState !== 'UNDER_CONSTRUCTION' || elapsed > 8000) {
+                        clearInterval(monitorInterval);
+                        
+                        if (building.currentConstructionState !== 'UNDER_CONSTRUCTION') {
+                            log(`✅ Construction completed in ${(elapsed/1000).toFixed(1)} seconds`);
+                            log(`📊 Total progress updates: ${progressUpdates}`);
+                            
+                            // Test progress bar visual timing
+                            const visualTime = building.visualProgressTime;
+                            const actualTime = building.constructionRequiredTime;
+                            const ratio = visualTime / actualTime;
+                            
+                            log(`🎯 Visual timing results:`);
+                            log(`   - Actual construction time: ${actualTime}ms`);
+                            log(`   - Visual progress time: ${visualTime}ms`);
+                            log(`   - Ratio: ${ratio}x (target: 6x)`);
+                            
+                            if (Math.abs(ratio - 6) < 0.5) {
+                                log(`✅ Progress bar timing is correct! (${ratio}x ≈ 6x)`);
+                            } else {
+                                log(`⚠️ Progress bar timing needs adjustment (${ratio}x, target: 6x)`);
+                            }
+                        } else {
+                            log(`⏱️ Test completed after 8 seconds (construction still ongoing)`);
+                        }
+                        
+                        statusDiv.textContent = 'Test completed - check results below';
+                    }
+                }, 100);
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+                console.error(error);
+                statusDiv.textContent = 'Test failed - check console';
+            }
+        }
+
+        // Start the test
+        testProgressBarTiming();
+    </script>
+</body>
+</html>

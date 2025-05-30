@@ -8,12 +8,13 @@ class SiegeWorkshop extends Building {
         const buildingData = buildingDataEntry || BUILDING_DATA.SIEGE_WORKSHOP;
         super(buildingData.key, gridX, gridZ, gameMap, buildingData, resourceFlowManager);
 
-        this.model = this.createModel();
-        if (this.model) {
-            this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
-            this.model.userData.building = this;
-            // this.gameMap.scene.add(this.model); // Removed as gameMap does not have a scene property directly
-        }
+        // Model will be created during construction process by startConstructionProcess()
+        // this.model = this.createModel();
+        // if (this.model) {
+        //     this.model.position.set(gridX * TILE_SIZE, 0, gridZ * TILE_SIZE);
+        //     this.model.userData.building = this;
+        //     // this.gameMap.scene.add(this.model); // Removed as gameMap does not have a scene property directly
+        // }
     }
 
     createModel() {
