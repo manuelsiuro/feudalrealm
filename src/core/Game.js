@@ -352,6 +352,10 @@ class Game {
         }
         if (this.constructionManager) {
             this.constructionManager.update(deltaTime);
+            // Update construction visual effects
+            if (this.constructionManager.constructionEffectsManager) {
+                this.constructionManager.constructionEffectsManager.update(deltaTime);
+            }
         }
         if (this.natureManager) { 
             this.natureManager.update(deltaTime);

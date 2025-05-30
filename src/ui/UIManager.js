@@ -512,6 +512,7 @@ class UIManager {
 
         this.createMiniMap();
         this.createConstructionPanel();
+        this.createConstructionEffectsPanel();
         
         this.uiOverlay.appendChild(this.rightSidebar);
     }
@@ -622,6 +623,80 @@ class UIManager {
         this.buildingConstruction.appendChild(constructionTitle);
         this.buildingConstruction.appendChild(buildingGrid);
         this.rightSidebar.appendChild(this.buildingConstruction);
+    }
+
+    createConstructionEffectsPanel() {
+        if (!this.constructionManager || !this.constructionManager.constructionEffectsManager) {
+            return; // Skip if effects manager not available
+        }
+
+        const effectsPanel = document.createElement('div');
+        effectsPanel.style.cssText = `
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            border: 1px solid rgba(139,69,19,0.3);
+        `;
+
+        const effectsTitle = document.createElement('h4');
+        effectsTitle.textContent = 'Construction Effects';
+        effectsTitle.style.cssText = `
+            margin: 0 0 12px 0;
+            color: #FFB74D;
+            font-size: 14px;
+            font-weight: 600;
+        `;
+        effectsPanel.appendChild(effectsTitle);
+
+        const effectsConfig = this.constructionManager.constructionEffectsManager.config;
+
+        // Create toggles for each effect type
+        const effectTypes = [
+            { key: 'transparency', label: 'Building Transparency', icon: '👻' },
+            { key: 'dustParticles', label: 'Dust Particles', icon: '💨' },
+            { key: 'scaffolding', label: 'Scaffolding', icon: '🏗️' },
+            { key: 'animations', label: 'Animations', icon: '✨' }
+        ];
+
+        effectTypes.forEach(effect => {
+            const toggleContainer = document.createElement('div');
+            toggleContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                padding: 4px 0;
+            `;
+
+            const label = document.createElement('span');
+            label.textContent = `${effect.icon} ${effect.label}`;
+            label.style.cssText = `
+                color: rgba(255,255,255,0.9);
+                font-size: 12px;
+                flex: 1;
+            `;
+
+            const toggle = document.createElement('input');
+            toggle.type = 'checkbox';
+            toggle.checked = effectsConfig[effect.key];
+            toggle.style.cssText = `
+                width: 16px;
+                height: 16px;
+                cursor: pointer;
+            `;
+
+            toggle.addEventListener('change', () => {
+                effectsConfig[effect.key] = toggle.checked;
+                console.log(`Construction effect ${effect.label} ${toggle.checked ? 'enabled' : 'disabled'}`);
+            });
+
+            toggleContainer.appendChild(label);
+            toggleContainer.appendChild(toggle);
+            effectsPanel.appendChild(toggleContainer);
+        });
+
+        this.rightSidebar.appendChild(effectsPanel);
     }
 
     createBottomPanel() {

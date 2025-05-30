@@ -113,6 +113,8 @@ class Building {
         this.progressBarMesh = null; // Will be created when construction starts
         this.progressBarGroup = null; // Group containing background and foreground of progress bar
 
+        // Construction effects manager reference (will be set by ConstructionManager)
+        this.constructionEffectsManager = null;
 
         // Set initial construction state
         // Castles or pre-built structures might start as CONSTRUCTED
@@ -605,6 +607,9 @@ class Building {
         this.currentConstructionState = BUILDING_STATE_UNDER_CONSTRUCTION;
         this.currentConstructionProgress = 0;
 
+        // Start construction visual effects
+        this.startConstructionEffects();
+
         // Create the 3D model now that construction has started
         if (!this.model) {
             this.model = this.createModel();
@@ -631,6 +636,9 @@ class Building {
         if (this.model && scene) {
             this._createProgressBar(scene);
         }
+
+        // Start construction effects
+        this.startConstructionEffects();
 
         return true;
     }
@@ -684,10 +692,33 @@ class Building {
         this.currentConstructionProgress = this.constructionRequiredTime; // Ensure it's exactly at completion
         this.assignedBuilderId = null; // Release the builder
 
+        // Stop construction effects
+        if (this.constructionEffectsManager) {
+            this.constructionEffectsManager.stopConstructionEffects(this);
+        }
+
         // Remove progress bar
         this._removeProgressBar();
 
         //console.log(`[Building completeConstructionProcess] ${this.name} (${this.id}) construction complete!`);
+    }
+
+    /**
+     * Start construction effects for this building
+     * Called when construction begins
+     */
+    startConstructionEffects() {
+        if (this.constructionEffectsManager && this.model) {
+            this.constructionEffectsManager.startConstructionEffects(this);
+        }
+    }
+
+    /**
+     * Set the construction effects manager reference
+     * @param {ConstructionEffectsManager} effectsManager
+     */
+    setConstructionEffectsManager(effectsManager) {
+        this.constructionEffectsManager = effectsManager;
     }
 
     /**

@@ -7,6 +7,7 @@ import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js'; // Added T
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; 
 // import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { BUILDING_DATA } from '../config/buildingData.js';
+import ConstructionEffectsManager from './ConstructionEffectsManager.js';
 
 // Import new Building classes
 import Building from '../entities/Building.js'; // Base class (if needed for type checking, though map uses specific)
@@ -98,6 +99,7 @@ class ConstructionManager {
         this.placedBuildings = []; // Fully constructed and operational buildings
         this.serfManager = null; // Added serfManager property
         this.resourceFlowManager = null; // Added resourceFlowManager property
+        this.constructionEffectsManager = new ConstructionEffectsManager(scene, gameElementsGroup); // Add construction effects
 
         this.onChangeCallback = null;
 
@@ -233,6 +235,7 @@ class ConstructionManager {
 
         const newBuilding = new BuildingClass(placedGridX, placedGridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
         newBuilding.setResourceManager(resourceManager); // Pass the imported singleton
+        newBuilding.setConstructionEffectsManager(this.constructionEffectsManager); // Set the effects manager
         console.log(`[CM confirmPlacement] New building ${newBuilding.id} (${newBuilding.name}) created. Initial state: ${newBuilding.currentConstructionState}, Required time: ${newBuilding.constructionRequiredTime}`);
 
 
@@ -251,7 +254,7 @@ class ConstructionManager {
             this.gameElementsGroup.add(buildingsGroup);
         }        newBuilding.placeModel(buildingsGroup); // Model is created within constructor for CONSTRUCTED buildings
         
-        const constructionTimeSeconds = buildingDataEntry.constructionTimeSeconds || 5; 
+        //const constructionTimeSeconds = buildingDataEntry.constructionTimeSeconds || 5; 
         // newBuilding.startConstruction(constructionTimeSeconds); // Old direct start
         
         // Instead of starting construction directly, add to queue if it needs construction
