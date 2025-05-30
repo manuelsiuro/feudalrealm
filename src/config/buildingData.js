@@ -197,7 +197,7 @@ export const BUILDING_DATA = {
         name: 'Farm',
         cost: { [RESOURCE_TYPES.WOOD]: 20 }, 
         tier: 1,
-        constructionTime: 5500, // Example time in ms
+        constructionTime: 5.5, // 5.5 seconds
         maxHealth: 150, // Added maxHealth
         producesResource: RESOURCE_TYPES.GRAIN, // Simple direct production
         productionIntervalMs: 25000,         // Interval for simple production
@@ -213,7 +213,7 @@ export const BUILDING_DATA = {
         name: 'Iron Mine',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
         tier: 2,
-        constructionTime: 12000, // Example time in ms
+        constructionTime: 12, // 12 seconds
         maxHealth: 220, // Added maxHealth
         producesResource: RESOURCE_TYPES.IRON_ORE, // Simple direct production
         productionIntervalMs: 20000,         // Interval for simple production
@@ -232,7 +232,7 @@ export const BUILDING_DATA = {
         name: 'Coal Mine',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 },
         tier: 2,
-        constructionTime: 11000, // Example time in ms
+        constructionTime: 11, // 11 seconds
         maxHealth: 220, // Added maxHealth
         producesResource: RESOURCE_TYPES.COAL_ORE, // Simple direct production
         productionIntervalMs: 18000,        // Interval for simple production
@@ -251,7 +251,7 @@ export const BUILDING_DATA = {
         name: 'Gold Mine',
         cost: { [RESOURCE_TYPES.WOOD]: 40, [RESOURCE_TYPES.STONE]: 25 },
         tier: 3,
-        constructionTime: 15000, // Example time in ms
+        constructionTime: 15, // 15 seconds
         maxHealth: 280, // Added maxHealth
         producesResource: RESOURCE_TYPES.GOLD_ORE, // Simple direct production
         productionIntervalMs: 30000,        // Interval for simple production
@@ -270,7 +270,7 @@ export const BUILDING_DATA = {
         name: 'Sawmill',
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 10 }, 
         tier: 2,
-        constructionTime: 9500, // Example time in ms
+        constructionTime: 9.5, // 9.5 seconds
         maxHealth: 200, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.WOOD, quantity: 1 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.PLANKS, quantity: 2 }], 
@@ -289,7 +289,7 @@ export const BUILDING_DATA = {
         name: 'Windmill',
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 15 }, 
         tier: 2,
-        constructionTime: 8500, // Example time in ms
+        constructionTime: 8.5, // 8.5 seconds
         maxHealth: 180, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.GRAIN, quantity: 2 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.FLOUR, quantity: 1 }], 
@@ -305,7 +305,7 @@ export const BUILDING_DATA = {
         name: 'Slaughterhouse',
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 10 },
         tier: 2,
-        constructionTime: 7000, // Example time in ms
+        constructionTime: 7, // 7 seconds
         maxHealth: 160, // Added maxHealth
         consumesMaterials: [{ resource: RESOURCE_TYPES.PIG, quantity: 1 }], 
         producesMaterials: [{ resource: RESOURCE_TYPES.MEAT, quantity: 2 }], 
@@ -321,7 +321,7 @@ export const BUILDING_DATA = {
         name: 'Iron Smelter',
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 20 }, 
         tier: 2,
-        constructionTime: 13000, // Example time in ms
+        constructionTime: 13, // 13 seconds
         maxHealth: 250, // Added maxHealth
         consumesMaterials: [ 
             { resource: RESOURCE_TYPES.IRON_ORE, quantity: 2 },

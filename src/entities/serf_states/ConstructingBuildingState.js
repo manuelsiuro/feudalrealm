@@ -38,16 +38,29 @@ class ConstructingBuildingState {
         const task = serf.currentTask;
         const building = task.building;
 
-        // Check if the building is constructed (task is complete)
-        if (task.status === TASK_STATUS.COMPLETED) {
-            console.log(`Serf ${serf.id} (${serf.serfType}): Construction task for ${building.name} is COMPLETED. ConstructingBuildingState transitioning to IDLE.`);
-            serf.changeState(SERF_ACTION_STATES.IDLE);
-            return;
+        // Update the task - this is crucial for task completion detection
+        if (task.status === TASK_STATUS.ACTIVE) {
+            task.onUpdate(serf, deltaTime);
+            
+            // Check if the task is now complete after the update
+            if (task.isComplete(serf)) {
+                task.onComplete(serf);
+                console.log(`Serf ${serf.id} (${serf.serfType}): Construction task for ${building.name} completed. Transitioning to IDLE.`);
+                serf.changeState(SERF_ACTION_STATES.IDLE);
+                return;
+            }
         }
 
         // Check if the task failed or was cancelled
         if (task.status === TASK_STATUS.FAILED || task.status === TASK_STATUS.CANCELLED) {
             console.log(`Serf ${serf.id} (${serf.serfType}): Construction task for ${building.name} is ${task.status}. ConstructingBuildingState transitioning to IDLE.`);
+            serf.changeState(SERF_ACTION_STATES.IDLE);
+            return;
+        }
+
+        // Check if the task is already completed (backup check)
+        if (task.status === TASK_STATUS.COMPLETED) {
+            console.log(`Serf ${serf.id} (${serf.serfType}): Construction task for ${building.name} is COMPLETED. ConstructingBuildingState transitioning to IDLE.`);
             serf.changeState(SERF_ACTION_STATES.IDLE);
             return;
         }
