@@ -635,23 +635,30 @@ class SerfManager {
                     }
 
                     if (hasRequiredTool) {
+                        // Set the serf's profession properly
+                        serf.setProfession(requiredProfession, building);
+                        
                         building.workers.push(serf.id);
                         serf.job = building;
-                        const taskDetails = {
-                            buildingId: building.model.userData.buildingInstance.model.uuid,
-                            buildingName: building.info.name,
-                        };
+
+                        // Create a ProcessItemsTask for building work instead of legacy string-based tasks
+                        const processTask = new ProcessItemsTask(
+                            serf,
+                            building,
+                            building.info.producesResource || null,
+                            building.info.consumesResources || null
+                        );
+                        
+                        // Add the task to the task system
+                        this.tasks.push(processTask);
+                        serf.currentTask = processTask;
 
                         if (building.type === 'WOODCUTTERS_HUT' && building.info.producesResource) {
-                            taskDetails.resourceType = building.info.producesResource;
-                            serf.setTask('gather_resource_for_building', taskDetails);
-                            console.log(`Serf ${serf.id} (${serf.serfType}) assigned to GATHER from ${building.info.name}.`);
+                            console.log(`Serf ${serf.id} (${serf.serfType}) assigned to GATHER ${building.info.producesResource} from ${building.info.name}.`);
                         } else if (requiredProfession === SERF_PROFESSIONS.FORESTER && building.info.name === "Forester\'s Hut") {
                             // Forester assigned to hut, should become idle to be picked up by plant_sapling logic
-                            serf.setTask('work_at_building', taskDetails); // Standard work task
                             console.log(`Serf ${serf.id} (Forester) assigned to ${building.info.name}. Will become IDLE for planting tasks.`);
                         } else {
-                             serf.setTask('work_at_building', taskDetails);
                              console.log(`Serf ${serf.id} (${serf.serfType}) assigned to WORK AT ${building.info.name}.`);
                         }
                         

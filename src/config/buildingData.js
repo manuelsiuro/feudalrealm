@@ -342,7 +342,7 @@ export const BUILDING_DATA = {
         name: "Toolmaker's Workshop",
         cost: { [RESOURCE_TYPES.WOOD]: 25, [RESOURCE_TYPES.STONE]: 10 }, 
         tier: 3,
-        constructionTime: 14000, // Example time in ms
+        constructionTime: 14, // 14 seconds
         maxHealth: 280, // Added maxHealth
         // Production of specific tools will be handled by more complex logic tied to UI/player choice
         // For now, `consumesMaterials` and `producesMaterials` can be empty or define a default tool.
@@ -372,7 +372,7 @@ export const BUILDING_DATA = {
         name: "Goldsmith's Mint",
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 20 }, 
         tier: 3,
-        constructionTime: 16000, // Example time in ms
+        constructionTime: 16, // 16 seconds
         maxHealth: 260, // Added maxHealth
         consumesMaterials: [ 
             { resource: RESOURCE_TYPES.GOLD_ORE, quantity: 1 },
@@ -390,7 +390,7 @@ export const BUILDING_DATA = {
         name: 'Blacksmith Armory', 
         cost: { [RESOURCE_TYPES.WOOD]: 30, [RESOURCE_TYPES.STONE]: 15 }, 
         tier: 3,
-        constructionTime: 17000, // Example time in ms
+        constructionTime: 17, // 17 seconds
         maxHealth: 300, // Added maxHealth
         // Similar to Toolmaker, specific production (swords, shields) will be chosen by player.
         jobSlots: 1,
@@ -408,7 +408,7 @@ export const BUILDING_DATA = {
         name: 'Guard Hut',
         cost: { [RESOURCE_TYPES.WOOD]: 15, [RESOURCE_TYPES.STONE]: 5 }, 
         tier: 1,
-        constructionTime: 3500, // Example time in ms
+        constructionTime: 3, // 3 seconds
         maxHealth: 120, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GUARD, // Assuming GUARD profession
@@ -420,7 +420,7 @@ export const BUILDING_DATA = {
         name: 'Watchtower',
         cost: { [RESOURCE_TYPES.WOOD]: 20, [RESOURCE_TYPES.STONE]: 15 },
         tier: 2,
-        constructionTime: 6500, // Example time in ms
+        constructionTime: 7, // 7 seconds
         maxHealth: 180, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GUARD, // Assuming GUARD profession
@@ -433,7 +433,7 @@ export const BUILDING_DATA = {
         name: 'Barracks/Fortress',
         cost: { [RESOURCE_TYPES.STONE]: 100, [RESOURCE_TYPES.WOOD]: 50 }, 
         tier: 3,
-        constructionTime: 20000, // Example time in ms
+        constructionTime: 20, // 20 seconds
         maxHealth: 500, // Added maxHealth
         jobSlots: 5, // For training or stationing units
         // jobProfession: SERF_PROFESSIONS.KNIGHT, // Or trainer
@@ -447,7 +447,7 @@ export const BUILDING_DATA = {
         name: 'Warehouse/Storehouse',
         cost: { [RESOURCE_TYPES.WOOD]: 50, [RESOURCE_TYPES.STONE]: 20 },
         tier: 1, // Should be accessible early
-        constructionTime: 7000, // Example time in ms
+        constructionTime: 30, // 30 seconds
         maxHealth: 300,
         // This building primarily increases global storage, not local job-based storage.
         // The `storageCapacityIncrease` is handled by ResourceManager.
@@ -470,7 +470,7 @@ export const BUILDING_DATA = {
         name: 'Harbor',
         cost: { [RESOURCE_TYPES.WOOD]: 75, [RESOURCE_TYPES.STONE]: 25 },
         tier: 3,
-        constructionTime: 18000, // Example time in ms
+        constructionTime: 180, // 180 seconds
         maxHealth: 350, // Added maxHealth
         jobSlots: 2, 
         // jobProfession: SERF_PROFESSIONS.TRADER, // Add if exists
@@ -482,7 +482,7 @@ export const BUILDING_DATA = {
         name: 'Marketplace',
         cost: { [RESOURCE_TYPES.WOOD]: 40, [RESOURCE_TYPES.STONE]: 10 },
         tier: 2,
-        constructionTime: 8000, // Example time in ms
+        constructionTime: 8, // 8 seconds
         maxHealth: 200, // Added maxHealth
         jobSlots: 0, // Or 1 for a market tender if that's a role
         maxStock: { default: 100 }, // For various goods available at market
@@ -493,7 +493,7 @@ export const BUILDING_DATA = {
         name: 'Church/Temple',
         cost: { [RESOURCE_TYPES.STONE]: 150, [RESOURCE_TYPES.WOOD]: 50, [RESOURCE_TYPES.GOLD_BARS]: 10 },
         tier: 3,
-        constructionTime: 22000, // Example time in ms
+        constructionTime: 22, // 22 seconds
         maxHealth: 400, // Added maxHealth
         jobSlots: 1, // Example (Priest)
         // jobProfession: SERF_PROFESSIONS.PRIEST, // If exists
@@ -505,7 +505,7 @@ export const BUILDING_DATA = {
         name: 'Shipyard',
         cost: { [RESOURCE_TYPES.WOOD]: 100, [RESOURCE_TYPES.STONE]: 50 },
         tier: 3,
-        constructionTime: 25000, // Example time in ms
+        constructionTime: 25, // 25 seconds
         maxHealth: 320, // Added maxHealth
         // Produces ships (special logic, not simple resource)
         jobSlots: 2, // Example
@@ -518,7 +518,7 @@ export const BUILDING_DATA = {
         name: 'University/Library',
         cost: { [RESOURCE_TYPES.STONE]: 120, [RESOURCE_TYPES.WOOD]: 60, [RESOURCE_TYPES.GOLD_BARS]: 20 },
         tier: 4,
-        constructionTime: 20000, // Added constructionTime
+        constructionTime: 20, // 20 seconds
         maxHealth: 350, // Added maxHealth
         // Produces research/upgrades (special logic)
         jobSlots: 1, // Example (Scholar)
@@ -531,7 +531,7 @@ export const BUILDING_DATA = {
         name: 'Siege Workshop',
         cost: { [RESOURCE_TYPES.WOOD]: 70, [RESOURCE_TYPES.STONE]: 30, [RESOURCE_TYPES.IRON_BARS]: 20 },
         tier: 4,
-        constructionTime: 20000, // Added constructionTime
+        constructionTime: 20, // 20 seconds
         maxHealth: 280, // Added maxHealth
         // Produces siege engines (special logic)
         jobSlots: 1, // Example
@@ -544,7 +544,7 @@ export const BUILDING_DATA = {
         name: 'Treasury/Mint',
         cost: { [RESOURCE_TYPES.STONE]: 100, [RESOURCE_TYPES.GOLD_BARS]: 50 },
         tier: 4,
-        constructionTime: 20000, // Added constructionTime
+        constructionTime: 20, // 20 seconds
         maxHealth: 320, // Added maxHealth
         // Could produce coins or increase gold storage (special logic)
         jobSlots: 1, // Example (Mint Master)
