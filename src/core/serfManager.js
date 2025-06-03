@@ -147,6 +147,23 @@ class SerfManager {
             console.error("SerfManager: Failed to spawn initial Builder serf.");
         }
 
+
+        // Spawn 1 Woodcutter serf
+        let woodcutterSpawnX = spawnX + 1;
+        let woodcutterSpawnZ = spawnZ + 1;
+
+        // Ensure spawn position is within map bounds
+        woodcutterSpawnX = Math.max(0, Math.min(woodcutterSpawnX, this.gameMap.width - 1));
+        woodcutterSpawnZ = Math.max(0, Math.min(woodcutterSpawnZ, this.gameMap.height - 1));
+        console.log(`Spawning initial Woodcutter serf at (${woodcutterSpawnX}, ${woodcutterSpawnZ})`);
+        const woodcutterSerf = this.createSerf(SERF_PROFESSIONS.WOODCUTTER, woodcutterSpawnX, woodcutterSpawnZ);
+
+        if (woodcutterSerf) {
+            console.log(`Initial Woodcutter serf ${woodcutterSerf.id} spawned at (${woodcutterSpawnX}, ${woodcutterSpawnZ}).`);
+            woodcutterSerf.setProfession
+        }
+
+
         /*
         // Spawn X Transporter serfs
         const amountOfTransporters = 1; // Number of Transporter serfs to spawn
