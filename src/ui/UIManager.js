@@ -240,12 +240,12 @@ class UIManager {
 
         // Priority resources to display
         const priorityResources = [
-            RESOURCE_TYPES.WOOD,
-            RESOURCE_TYPES.STONE,
-            RESOURCE_TYPES.GRAIN,
-            RESOURCE_TYPES.IRON_ORE,
-            RESOURCE_TYPES.PLANKS,
-            RESOURCE_TYPES.IRON_BARS
+            RESOURCE_TYPES.WOOD.key,
+            RESOURCE_TYPES.STONE.key,
+            RESOURCE_TYPES.GRAIN.key,
+            RESOURCE_TYPES.IRON_ORE.key,
+            RESOURCE_TYPES.PLANKS.key,
+            RESOURCE_TYPES.IRON_BARS.key
         ].filter(type => type !== undefined);
 
         priorityResources.forEach(resourceType => {
@@ -269,12 +269,12 @@ class UIManager {
 
             // Resource icon and amount
             const resourceIcons = {
-                [RESOURCE_TYPES.WOOD]: '🪵',
-                [RESOURCE_TYPES.STONE]: '🪨',
-                [RESOURCE_TYPES.GRAIN]: '🌾',
-                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
-                [RESOURCE_TYPES.PLANKS]: '📏',
-                [RESOURCE_TYPES.IRON_BARS]: '🔩'
+                [RESOURCE_TYPES.WOOD.key]: RESOURCE_TYPES.WOOD.icon,
+                [RESOURCE_TYPES.STONE.key]: RESOURCE_TYPES.STONE.icon,
+                [RESOURCE_TYPES.GRAIN.key]: RESOURCE_TYPES.GRAIN.icon,
+                [RESOURCE_TYPES.IRON_ORE.key]: RESOURCE_TYPES.IRON_ORE.icon,
+                [RESOURCE_TYPES.PLANKS.key]: RESOURCE_TYPES.PLANKS.icon,
+                [RESOURCE_TYPES.IRON_BARS.key]: RESOURCE_TYPES.IRON_BARS.icon
             };
 
             const icon = document.createElement('span');
@@ -382,9 +382,9 @@ class UIManager {
             font-weight: 500;
         `;
         addResourcesBtn.addEventListener('click', () => {
-            Object.values(RESOURCE_TYPES).forEach(type => {
-                if (typeof type === 'string') {
-                    this.resourceManager.addResource(type, 50);
+            Object.values(RESOURCE_TYPES).forEach(resourceType => {
+                if (resourceType && resourceType.key) {
+                    this.resourceManager.addResource(resourceType.key, 50);
                 }
             });
         });
@@ -567,32 +567,78 @@ class UIManager {
         availableBuildings.forEach(building => {
             const buildingBtn = document.createElement('button');
             buildingBtn.style.cssText = `
-                background: rgba(76,175,80,0.8);
+                background: linear-gradient(135deg, rgba(76,175,80,0.8), rgba(56,142,60,0.9));
                 border: 1px solid rgba(76,175,80,0.6);
                 color: white;
-                padding: 12px;
-                border-radius: 8px;
+                padding: 14px 16px;
+                border-radius: 10px;
                 cursor: pointer;
                 font-weight: 500;
                 transition: all 0.3s ease;
                 text-align: left;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                position: relative;
+                overflow: hidden;
             `;
 
             const buildingName = document.createElement('div');
             buildingName.textContent = building.name;
-            buildingName.style.fontWeight = '600';
+            buildingName.style.cssText = `
+                font-weight: 600;
+                font-size: 14px;
+                color: #ffffff;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                margin-bottom: 8px;
+                padding-bottom: 6px;
+                border-bottom: 1px solid rgba(255,255,255,0.15);
+                letter-spacing: 0.3px;
+            `;
 
             const costDisplay = document.createElement('div');
             costDisplay.style.cssText = `
                 font-size: 12px;
                 color: rgba(255,255,255,0.8);
                 margin-top: 4px;
+                line-height: 1.4;
             `;
             
-            const costText = Object.entries(building.cost || {})
-                .map(([resource, amount]) => `${resource.replace(/_/g, ' ')}: ${amount}`)
-                .join(', ') || 'Free';
-            costDisplay.textContent = costText;
+            // Format cost with icons and proper display
+            if (building.cost && Object.keys(building.cost).length > 0) {
+                const costItems = Object.entries(building.cost).map(([resourceKey, amount]) => {
+                    const resourceType = RESOURCE_TYPES[resourceKey];
+                    const icon = resourceType ? resourceType.icon : '📦';
+                    const name = resourceType ? resourceType.name : resourceKey.replace(/_/g, ' ');
+                    const title = resourceType ? resourceType.description : `${name} resource`;
+                    
+                    return `<div style="
+                        display: flex; 
+                        align-items: center; 
+                        margin-bottom: 3px; 
+                        padding: 4px 8px;
+                        background: rgba(0,0,0,0.3);
+                        border-radius: 6px;
+                        border: 1px solid rgba(255,255,255,0.1);
+                        transition: all 0.2s ease;
+                    " title="${title}" 
+                    onmouseover="this.style.background='rgba(0,0,0,0.4)'" 
+                    onmouseout="this.style.background='rgba(0,0,0,0.3)'">
+                        <span style="margin-right: 6px; font-size: 14px;" title="${title}">${icon}</span>
+                        <span style="font-size: 11px; font-weight: 500;" title="${title}">${name}: ${amount}</span>
+                    </div>`;
+                }).join('');
+                costDisplay.innerHTML = costItems;
+            } else {
+                costDisplay.innerHTML = `<div style="
+                    color: rgba(76,175,80,0.9);
+                    padding: 4px 8px;
+                    background: rgba(76,175,80,0.15);
+                    border-radius: 6px;
+                    border: 1px solid rgba(76,175,80,0.3);
+                    text-align: center;
+                    font-size: 11px;
+                    font-weight: 500;
+                ">Free</div>`;
+            }
 
             buildingBtn.appendChild(buildingName);
             buildingBtn.appendChild(costDisplay);
@@ -602,13 +648,15 @@ class UIManager {
             });
 
             buildingBtn.addEventListener('mouseenter', () => {
-                buildingBtn.style.background = 'rgba(76,175,80,1)';
-                buildingBtn.style.transform = 'translateX(4px)';
+                buildingBtn.style.background = 'linear-gradient(135deg, rgba(76,175,80,1), rgba(56,142,60,1))';
+                buildingBtn.style.transform = 'translateX(4px) translateY(-1px)';
+                buildingBtn.style.boxShadow = '0 4px 16px rgba(76,175,80,0.4)';
             });
 
             buildingBtn.addEventListener('mouseleave', () => {
-                buildingBtn.style.background = 'rgba(76,175,80,0.8)';
+                buildingBtn.style.background = 'linear-gradient(135deg, rgba(76,175,80,0.8), rgba(56,142,60,0.9))';
                 buildingBtn.style.transform = '';
+                buildingBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
             });
 
             this.buildingButtons.set(building.key, { 
@@ -894,9 +942,9 @@ class UIManager {
         addCheatButton.style.borderRadius = '4px';
         addCheatButton.addEventListener('click', () => {
             console.log('UI: "+50 All" button clicked.');
-            Object.values(RESOURCE_TYPES).forEach(type => {
-                if (typeof type === 'string') {
-                    this.resourceManager.addResource(type, 50);
+            Object.values(RESOURCE_TYPES).forEach(resourceType => {
+                if (resourceType && resourceType.key) {
+                    this.resourceManager.addResource(resourceType.key, 50);
                 }
             });
         });
@@ -1331,16 +1379,16 @@ class UIManager {
 
         // Define the most important resources to display in the counter bar
         const priorityResources = [
-            RESOURCE_TYPES.WOOD,
-            RESOURCE_TYPES.STONE, 
-            RESOURCE_TYPES.GRAIN,
-            RESOURCE_TYPES.IRON_ORE,
-            RESOURCE_TYPES.COAL_ORE,
-            RESOURCE_TYPES.GOLD_ORE,
-            RESOURCE_TYPES.PLANKS,
-            RESOURCE_TYPES.IRON_BARS,
-            RESOURCE_TYPES.TOOL_AXE,
-            RESOURCE_TYPES.TOOL_PICKAXE
+            RESOURCE_TYPES.WOOD.key,
+            RESOURCE_TYPES.STONE.key, 
+            RESOURCE_TYPES.GRAIN.key,
+            RESOURCE_TYPES.IRON_ORE.key,
+            RESOURCE_TYPES.COAL_ORE.key,
+            RESOURCE_TYPES.GOLD_ORE.key,
+            RESOURCE_TYPES.PLANKS.key,
+            RESOURCE_TYPES.IRON_BARS.key,
+            RESOURCE_TYPES.TOOL_AXE.key,
+            RESOURCE_TYPES.TOOL_PICKAXE.key
         ].filter(type => type !== undefined); // Filter out any undefined types
 
         priorityResources.forEach(resourceType => {
@@ -1376,16 +1424,16 @@ class UIManager {
             
             // Map resource types to icons
             const resourceIcons = {
-                [RESOURCE_TYPES.WOOD]: '🪵',
-                [RESOURCE_TYPES.STONE]: '🪨', 
-                [RESOURCE_TYPES.GRAIN]: '🌾',
-                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
-                [RESOURCE_TYPES.COAL_ORE]: '⚫',
-                [RESOURCE_TYPES.GOLD_ORE]: '💰',
-                [RESOURCE_TYPES.PLANKS]: '📏',
-                [RESOURCE_TYPES.IRON_BARS]: '🔩',
-                [RESOURCE_TYPES.TOOL_AXE]: '🪓',
-                [RESOURCE_TYPES.TOOL_PICKAXE]: '⛏️'
+                [RESOURCE_TYPES.WOOD.key]: RESOURCE_TYPES.WOOD.icon,
+                [RESOURCE_TYPES.STONE.key]: RESOURCE_TYPES.STONE.icon, 
+                [RESOURCE_TYPES.GRAIN.key]: RESOURCE_TYPES.GRAIN.icon,
+                [RESOURCE_TYPES.IRON_ORE.key]: RESOURCE_TYPES.IRON_ORE.icon,
+                [RESOURCE_TYPES.COAL_ORE.key]: RESOURCE_TYPES.COAL_ORE.icon,
+                [RESOURCE_TYPES.GOLD_ORE.key]: RESOURCE_TYPES.GOLD_ORE.icon,
+                [RESOURCE_TYPES.PLANKS.key]: RESOURCE_TYPES.PLANKS.icon,
+                [RESOURCE_TYPES.IRON_BARS.key]: RESOURCE_TYPES.IRON_BARS.icon,
+                [RESOURCE_TYPES.TOOL_AXE.key]: RESOURCE_TYPES.TOOL_AXE.icon,
+                [RESOURCE_TYPES.TOOL_PICKAXE.key]: RESOURCE_TYPES.TOOL_PICKAXE.icon
             };
             
             icon.textContent = resourceIcons[resourceType] || '📦';
@@ -1692,13 +1740,18 @@ class UIManager {
         }
         let costItemsHTML = Object.entries(cost).map(([res, amount]) => {
             const available = this.resourceManager.getResourceCount(res);
-            const resourceName = res.split('_')
+            const resourceType = RESOURCE_TYPES[res];
+            const icon = resourceType ? resourceType.icon : '📦';
+            const resourceName = resourceType ? resourceType.name : res.split('_')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
                 .join(' ');
+            const title = resourceType ? resourceType.description : `${resourceName} resource`;
             const availabilityClass = available >= amount ? 'resource-sufficient' : 'resource-insufficient';
             const availableText = `<span class="${availabilityClass}">${available}/${amount}</span>`;
-            return `<div class="cost-display-item">
-                        <span class="cost-display-resource-name">${resourceName}:</span>
+            return `<div class="cost-display-item" title="${title}">
+                        <span class="cost-display-resource-name" title="${title}">
+                            <span style="margin-right: 4px;" title="${title}">${icon}</span>${resourceName}:
+                        </span>
                         <span class="cost-display-resource-value">${availableText}</span>
                     </div>`;
         }).join('');
