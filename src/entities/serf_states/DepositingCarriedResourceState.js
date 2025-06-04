@@ -88,7 +88,7 @@ export default class DepositingCarriedResourceState extends SerfState {
                     const tree = this.serf.game.map.findClosestTreeInRadius(
                         woodcuttersHut.model.position,
                         searchRadius,
-                        RESOURCE_TYPES.TREE
+                        RESOURCE_TYPES.TREE.key
                     );
 
                     if (tree) {
@@ -97,7 +97,7 @@ export default class DepositingCarriedResourceState extends SerfState {
                             id: `chop-${tree.id}-${Date.now()}`,
                             type: 'GATHER_RESOURCE',
                             targetResourceNode: tree,
-                            resourceType: RESOURCE_TYPES.TREE,
+                            resourceType: RESOURCE_TYPES.TREE.key,
                             choppingDuration: choppingDuration,
                             status: TASK_STATUS.ACTIVE,
                             originBuildingId: woodcuttersHut.id

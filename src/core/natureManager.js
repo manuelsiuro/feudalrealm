@@ -25,11 +25,11 @@ export class NatureManager {
     _placeInitialResources() {
         console.log("NatureManager: Placing initial resources...");
         const RESOURCE_NODES = {
-            TREE: { type: RESOURCE_TYPES.WOOD, terrains: [TERRAIN_TYPES.FOREST], chance: 0.4, amount: () => this.rng.nextInt(50, 150), generator: Resources.RESOURCE_GENERATORS.wood, scale: {min: 0.8, max: 1.2} },
-            ROCK: { type: RESOURCE_TYPES.STONE, terrains: [TERRAIN_TYPES.MOUNTAIN], chance: 0.3, amount: () => this.rng.nextInt(100, 250), generator: Resources.RESOURCE_GENERATORS.stone, scale: {min: 0.7, max: 1.1} },
-            GOLD_VEIN: { type: RESOURCE_TYPES.GOLD_ORE, terrains: [TERRAIN_TYPES.MOUNTAIN], chance: 0.15, amount: () => this.rng.nextInt(20, 80), generator: Resources.RESOURCE_GENERATORS.gold_ore, scale: {min: 0.9, max: 1.1} },
-            FERTILE_SOIL: { type: RESOURCE_TYPES.FERTILE_LAND, terrains: [TERRAIN_TYPES.GRASSLAND], chance: 0.2, amount: () => 1, generator: Resources.RESOURCE_GENERATORS.fertile_land, scale: {min: TILE_SIZE * 0.3, max: TILE_SIZE * 0.4} },
-            SAPLING: { type: RESOURCE_TYPES.SAPLING, terrains: [TERRAIN_TYPES.GRASSLAND, TERRAIN_TYPES.FOREST], chance: 0, amount: () => 1, generator: Resources.RESOURCE_GENERATORS.sapling, scale: {min: 0.2, max: 0.3}, growthStartTime: null }, // Planted, not natural
+            TREE: { type: RESOURCE_TYPES.WOOD.key, terrains: [TERRAIN_TYPES.FOREST], chance: 0.4, amount: () => this.rng.nextInt(50, 150), generator: Resources.RESOURCE_GENERATORS.wood, scale: {min: 0.8, max: 1.2} },
+            ROCK: { type: RESOURCE_TYPES.STONE.key, terrains: [TERRAIN_TYPES.MOUNTAIN], chance: 0.3, amount: () => this.rng.nextInt(100, 250), generator: Resources.RESOURCE_GENERATORS.stone, scale: {min: 0.7, max: 1.1} },
+            GOLD_VEIN: { type: RESOURCE_TYPES.GOLD_ORE.key, terrains: [TERRAIN_TYPES.MOUNTAIN], chance: 0.15, amount: () => this.rng.nextInt(20, 80), generator: Resources.RESOURCE_GENERATORS.gold_ore, scale: {min: 0.9, max: 1.1} },
+            FERTILE_SOIL: { type: RESOURCE_TYPES.FERTILE_LAND.key, terrains: [TERRAIN_TYPES.GRASSLAND], chance: 0.2, amount: () => 1, generator: Resources.RESOURCE_GENERATORS.fertile_land, scale: {min: TILE_SIZE * 0.3, max: TILE_SIZE * 0.4} },
+            SAPLING: { type: RESOURCE_TYPES.SAPLING.key, terrains: [TERRAIN_TYPES.GRASSLAND, TERRAIN_TYPES.FOREST], chance: 0, amount: () => 1, generator: Resources.RESOURCE_GENERATORS.sapling, scale: {min: 0.2, max: 0.3}, growthStartTime: null }, // Planted, not natural
         };
         this.RESOURCE_NODES_CONFIG = RESOURCE_NODES; // Store for later use if needed
 
@@ -49,7 +49,7 @@ export class NatureManager {
                                 scaleOptions: resDef.scale,
                                 visualNode: null
                             };
-                            if (resDef.type === RESOURCE_TYPES.SAPLING) {
+                            if (resDef.type === RESOURCE_TYPES.SAPLING.key) {
                                 tile.resource.growthStartTime = resDef.growthStartTime;
                             }
                             break;
@@ -101,20 +101,20 @@ export class NatureManager {
         }
 
         let options = {};
-        if (tile.resource.type === RESOURCE_TYPES.FERTILE_LAND) {
+        if (tile.resource.type === RESOURCE_TYPES.FERTILE_LAND.key) {
             options.radius = randomScale;
-        } else if (tile.resource.type === RESOURCE_TYPES.WOOD) {
+        } else if (tile.resource.type === RESOURCE_TYPES.WOOD.key) {
             options.height = TILE_SIZE * 0.4 * randomScale;
             options.radius = TILE_SIZE * 0.08 * randomScale;
             options.leavesHeight = TILE_SIZE * 0.3 * randomScale;
             options.leavesRadius = TILE_SIZE * 0.16 * randomScale;
-        } else if (tile.resource.type === RESOURCE_TYPES.SAPLING) {
+        } else if (tile.resource.type === RESOURCE_TYPES.SAPLING.key) {
             options.height = TILE_SIZE * 0.15 * randomScale;
             options.radius = TILE_SIZE * 0.05 * randomScale;
             options.color = 0x6B8E23; // Young green
         } else { // stone, gold_ore etc.
             options.size = TILE_SIZE * 0.15 * randomScale;
-            if (tile.resource.type === RESOURCE_TYPES.GOLD_ORE) {
+            if (tile.resource.type === RESOURCE_TYPES.GOLD_ORE.key) {
                 options.speckCount = this.rng.nextInt(3, 7);
             }
         }
@@ -202,7 +202,7 @@ export class NatureManager {
         
         const saplingDef = this.RESOURCE_NODES_CONFIG.SAPLING;
         tile.resource = {
-            type: RESOURCE_TYPES.SAPLING,
+            type: RESOURCE_TYPES.SAPLING.key,
             amount: saplingDef.amount(),
             generator: saplingDef.generator,
             scaleOptions: saplingDef.scale,
@@ -221,13 +221,13 @@ export class NatureManager {
         for (let r = 0; r < this.mapManager.height; r++) {
             for (let c = 0; c < this.mapManager.width; c++) {
                 const tile = this.mapManager.grid[r][c];
-                if (tile.resource && tile.resource.type === RESOURCE_TYPES.SAPLING && tile.resource.growthStartTime) {
+                if (tile.resource && tile.resource.type === RESOURCE_TYPES.SAPLING.key && tile.resource.growthStartTime) {
                     if (Date.now() - tile.resource.growthStartTime >= saplingGrowthTime) {
                         // console.log(`NatureManager: Sapling at (${c},${r}) is mature. Growing into a tree.`);
                         this.removeResourceVisual(tile);
 
                         tile.resource = {
-                            type: RESOURCE_TYPES.WOOD,
+                            type: RESOURCE_TYPES.WOOD.key,
                             amount: this.RESOURCE_NODES_CONFIG.TREE.amount(),
                             generator: Resources.RESOURCE_GENERATORS.wood,
                             scaleOptions: this.RESOURCE_NODES_CONFIG.TREE.scale,

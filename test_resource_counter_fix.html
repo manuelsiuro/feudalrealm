@@ -53,9 +53,9 @@
             log('✅ Resource types imported successfully', 'success');
 
             // Test the specific constants that were causing issues
-            log(`IRON_BARS: ${RESOURCE_TYPES.IRON_BARS}`, 'info');
-            log(`TOOL_AXE: ${RESOURCE_TYPES.TOOL_AXE}`, 'info');
-            log(`TOOL_PICKAXE: ${RESOURCE_TYPES.TOOL_PICKAXE}`, 'info');
+            log(`IRON_BARS: ${RESOURCE_TYPES.IRON_BARS.key}`, 'info');
+            log(`TOOL_AXE: ${RESOURCE_TYPES.TOOL_AXE.key}`, 'info');
+            log(`TOOL_PICKAXE: ${RESOURCE_TYPES.TOOL_PICKAXE.key}`, 'info');
 
             // Test that these are not undefined
             if (RESOURCE_TYPES.IRON_BARS && RESOURCE_TYPES.TOOL_AXE && RESOURCE_TYPES.TOOL_PICKAXE) {
@@ -91,16 +91,16 @@
 
             // Test the updateResourceCounterBar method with mock data
             const mockStockpiles = {
-                [RESOURCE_TYPES.WOOD]: 50,
-                [RESOURCE_TYPES.STONE]: 25,
-                [RESOURCE_TYPES.GRAIN]: 15,
-                [RESOURCE_TYPES.IRON_ORE]: 30,
-                [RESOURCE_TYPES.COAL_ORE]: 20,
-                [RESOURCE_TYPES.GOLD_ORE]: 5,
-                [RESOURCE_TYPES.PLANKS]: 40,
-                [RESOURCE_TYPES.IRON_BARS]: 10,
-                [RESOURCE_TYPES.TOOL_AXE]: 5,
-                [RESOURCE_TYPES.TOOL_PICKAXE]: 3
+                [RESOURCE_TYPES.WOOD.key]: 50,
+                [RESOURCE_TYPES.STONE.key]: 25,
+                [RESOURCE_TYPES.GRAIN.key]: 15,
+                [RESOURCE_TYPES.IRON_ORE.key]: 30,
+                [RESOURCE_TYPES.COAL_ORE.key]: 20,
+                [RESOURCE_TYPES.GOLD_ORE.key]: 5,
+                [RESOURCE_TYPES.PLANKS.key]: 40,
+                [RESOURCE_TYPES.IRON_BARS.key]: 10,
+                [RESOURCE_TYPES.TOOL_AXE.key]: 5,
+                [RESOURCE_TYPES.TOOL_PICKAXE.key]: 3
             };
 
             uiManager.updateResourceCounterBar(mockStockpiles);

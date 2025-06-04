@@ -549,9 +549,9 @@
         window.addResources = function() {
             if (!game) return;
             
-            game.resourceManager.addResource(RESOURCE_TYPES.WOOD, 100);
-            game.resourceManager.addResource(RESOURCE_TYPES.STONE, 100);
-            game.resourceManager.addResource(RESOURCE_TYPES.IRON_ORE, 50);
+            game.resourceManager.addResource(RESOURCE_TYPES.WOOD.key, 100);
+            game.resourceManager.addResource(RESOURCE_TYPES.STONE.key, 100);
+            game.resourceManager.addResource(RESOURCE_TYPES.IRON_ORE.key, 50);
             log('💰 Added resources: 100 Wood, 100 Stone, 50 Iron Ore');
         };
 

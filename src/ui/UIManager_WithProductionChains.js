@@ -215,11 +215,11 @@ class UIManager {
 
         // Priority resources to display
         const priorityResources = [
-            RESOURCE_TYPES.WOOD,
-            RESOURCE_TYPES.STONE,
-            RESOURCE_TYPES.GRAIN,
-            RESOURCE_TYPES.IRON_ORE,
-            RESOURCE_TYPES.PLANKS,
+            RESOURCE_TYPES.WOOD.key,
+            RESOURCE_TYPES.STONE.key,
+            RESOURCE_TYPES.GRAIN.key,
+            RESOURCE_TYPES.IRON_ORE.key,
+            RESOURCE_TYPES.PLANKS.key,
             RESOURCE_TYPES.IRON_BARS
         ].filter(type => type !== undefined);
 
@@ -244,12 +244,12 @@ class UIManager {
 
             // Resource icon and amount
             const resourceIcons = {
-                [RESOURCE_TYPES.WOOD]: '🪵',
-                [RESOURCE_TYPES.STONE]: '🪨',
-                [RESOURCE_TYPES.GRAIN]: '🌾',
-                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
-                [RESOURCE_TYPES.PLANKS]: '📏',
-                [RESOURCE_TYPES.IRON_BARS]: '🔩'
+                [RESOURCE_TYPES.WOOD.key]: '🪵',
+                [RESOURCE_TYPES.STONE.key]: '🪨',
+                [RESOURCE_TYPES.GRAIN.key]: '🌾',
+                [RESOURCE_TYPES.IRON_ORE.key]: '⛏️',
+                [RESOURCE_TYPES.PLANKS.key]: '📏',
+                [RESOURCE_TYPES.IRON_BARS.key]: '🔩'
             };
 
             const icon = document.createElement('span');
@@ -349,9 +349,9 @@ class UIManager {
             font-weight: 500;
         `;
         addResourcesBtn.addEventListener('click', () => {
-            Object.values(RESOURCE_TYPES).forEach(type => {
-                if (typeof type === 'string') {
-                    this.resourceManager.addResource(type, 50);
+            Object.values(RESOURCE_TYPES).forEach(resource => {
+                if (resource.key) {
+                    this.resourceManager.addResource(resource.key, 50);
                 }
             });
         });
@@ -768,9 +768,9 @@ class UIManager {
         addCheatButton.style.borderRadius = '4px';
         addCheatButton.addEventListener('click', () => {
             console.log('UI: "+50 All" button clicked.');
-            Object.values(RESOURCE_TYPES).forEach(type => {
-                if (typeof type === 'string') {
-                    this.resourceManager.addResource(type, 50);
+            Object.values(RESOURCE_TYPES).forEach(resource => {
+                if (resource.key) {
+                    this.resourceManager.addResource(resource.key, 50);
                 }
             });
         });
@@ -963,15 +963,15 @@ class UIManager {
 
         // Define the most important resources to display in the counter bar
         const priorityResources = [
-            RESOURCE_TYPES.WOOD,
-            RESOURCE_TYPES.STONE, 
-            RESOURCE_TYPES.GRAIN,
-            RESOURCE_TYPES.IRON_ORE,
-            RESOURCE_TYPES.COAL_ORE,
-            RESOURCE_TYPES.GOLD_ORE,
-            RESOURCE_TYPES.PLANKS,
-            RESOURCE_TYPES.IRON_BARS,
-            RESOURCE_TYPES.TOOL_AXE,
+            RESOURCE_TYPES.WOOD.key,
+            RESOURCE_TYPES.STONE.key, 
+            RESOURCE_TYPES.GRAIN.key,
+            RESOURCE_TYPES.IRON_ORE.key,
+            RESOURCE_TYPES.COAL_ORE.key,
+            RESOURCE_TYPES.GOLD_ORE.key,
+            RESOURCE_TYPES.PLANKS.key,
+            RESOURCE_TYPES.IRON_BARS.key,
+            RESOURCE_TYPES.TOOL_AXE.key,
             RESOURCE_TYPES.TOOL_PICKAXE
         ].filter(type => type !== undefined); // Filter out any undefined types
 
@@ -1008,16 +1008,16 @@ class UIManager {
             
             // Map resource types to icons
             const resourceIcons = {
-                [RESOURCE_TYPES.WOOD]: '🪵',
-                [RESOURCE_TYPES.STONE]: '🪨', 
-                [RESOURCE_TYPES.GRAIN]: '🌾',
-                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
-                [RESOURCE_TYPES.COAL_ORE]: '⚫',
-                [RESOURCE_TYPES.GOLD_ORE]: '💰',
-                [RESOURCE_TYPES.PLANKS]: '📏',
-                [RESOURCE_TYPES.IRON_BARS]: '🔩',
-                [RESOURCE_TYPES.TOOL_AXE]: '🪓',
-                [RESOURCE_TYPES.TOOL_PICKAXE]: '⛏️'
+                [RESOURCE_TYPES.WOOD.key]: '🪵',
+                [RESOURCE_TYPES.STONE.key]: '🪨', 
+                [RESOURCE_TYPES.GRAIN.key]: '🌾',
+                [RESOURCE_TYPES.IRON_ORE.key]: '⛏️',
+                [RESOURCE_TYPES.COAL_ORE.key]: '⚫',
+                [RESOURCE_TYPES.GOLD_ORE.key]: '💰',
+                [RESOURCE_TYPES.PLANKS.key]: '📏',
+                [RESOURCE_TYPES.IRON_BARS.key]: '🔩',
+                [RESOURCE_TYPES.TOOL_AXE.key]: '🪓',
+                [RESOURCE_TYPES.TOOL_PICKAXE.key]: '⛏️'
             };
             
             icon.textContent = resourceIcons[resourceType] || '📦';
@@ -1624,9 +1624,9 @@ class UIManager {
         addCheatButton.style.borderRadius = '4px';
         addCheatButton.addEventListener('click', () => {
             console.log('UI: "+50 All" button clicked.');
-            Object.values(RESOURCE_TYPES).forEach(type => {
-                if (typeof type === 'string') {
-                    this.resourceManager.addResource(type, 50);
+            Object.values(RESOURCE_TYPES).forEach(resource => {
+                if (resource.key) {
+                    this.resourceManager.addResource(resource.key, 50);
                 }
             });
         });
@@ -1819,15 +1819,15 @@ class UIManager {
 
         // Define the most important resources to display in the counter bar
         const priorityResources = [
-            RESOURCE_TYPES.WOOD,
-            RESOURCE_TYPES.STONE, 
-            RESOURCE_TYPES.GRAIN,
-            RESOURCE_TYPES.IRON_ORE,
-            RESOURCE_TYPES.COAL_ORE,
-            RESOURCE_TYPES.GOLD_ORE,
-            RESOURCE_TYPES.PLANKS,
-            RESOURCE_TYPES.IRON_BARS,
-            RESOURCE_TYPES.TOOL_AXE,
+            RESOURCE_TYPES.WOOD.key,
+            RESOURCE_TYPES.STONE.key, 
+            RESOURCE_TYPES.GRAIN.key,
+            RESOURCE_TYPES.IRON_ORE.key,
+            RESOURCE_TYPES.COAL_ORE.key,
+            RESOURCE_TYPES.GOLD_ORE.key,
+            RESOURCE_TYPES.PLANKS.key,
+            RESOURCE_TYPES.IRON_BARS.key,
+            RESOURCE_TYPES.TOOL_AXE.key,
             RESOURCE_TYPES.TOOL_PICKAXE
         ].filter(type => type !== undefined); // Filter out any undefined types
 
@@ -1864,16 +1864,16 @@ class UIManager {
             
             // Map resource types to icons
             const resourceIcons = {
-                [RESOURCE_TYPES.WOOD]: '🪵',
-                [RESOURCE_TYPES.STONE]: '🪨', 
-                [RESOURCE_TYPES.GRAIN]: '🌾',
-                [RESOURCE_TYPES.IRON_ORE]: '⛏️',
-                [RESOURCE_TYPES.COAL_ORE]: '⚫',
-                [RESOURCE_TYPES.GOLD_ORE]: '💰',
-                [RESOURCE_TYPES.PLANKS]: '📏',
-                [RESOURCE_TYPES.IRON_BARS]: '🔩',
-                [RESOURCE_TYPES.TOOL_AXE]: '🪓',
-                [RESOURCE_TYPES.TOOL_PICKAXE]: '⛏️'
+                [RESOURCE_TYPES.WOOD.key]: '🪵',
+                [RESOURCE_TYPES.STONE.key]: '🪨', 
+                [RESOURCE_TYPES.GRAIN.key]: '🌾',
+                [RESOURCE_TYPES.IRON_ORE.key]: '⛏️',
+                [RESOURCE_TYPES.COAL_ORE.key]: '⚫',
+                [RESOURCE_TYPES.GOLD_ORE.key]: '💰',
+                [RESOURCE_TYPES.PLANKS.key]: '📏',
+                [RESOURCE_TYPES.IRON_BARS.key]: '🔩',
+                [RESOURCE_TYPES.TOOL_AXE.key]: '🪓',
+                [RESOURCE_TYPES.TOOL_PICKAXE.key]: '⛏️'
             };
             
             icon.textContent = resourceIcons[resourceType] || '📦';
@@ -2480,9 +2480,9 @@ class UIManager {
         addCheatButton.style.borderRadius = '4px';
         addCheatButton.addEventListener('click', () => {
             console.log('UI: "+50 All" button clicked.');
-            Object.values(RESOURCE_TYPES).forEach(type => {
-                if (typeof type === 'string') {
-                    this.resourceManager.addResource(type, 50);
+            Object.values(RESOURCE_TYPES).forEach(resource => {
+                if (resource.key) {
+                    this.resourceManager.addResource(resource.key, 50);
                 }
             });
         });

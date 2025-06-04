@@ -18,9 +18,9 @@ const mockGame = {
 
 // Test resource types that were causing issues
 console.log('Testing resource type constants:');
-console.log('IRON_BARS:', RESOURCE_TYPES.IRON_BARS);
-console.log('TOOL_AXE:', RESOURCE_TYPES.TOOL_AXE);
-console.log('TOOL_PICKAXE:', RESOURCE_TYPES.TOOL_PICKAXE);
+console.log('IRON_BARS:', RESOURCE_TYPES.IRON_BARS.key);
+console.log('TOOL_AXE:', RESOURCE_TYPES.TOOL_AXE.key);
+console.log('TOOL_PICKAXE:', RESOURCE_TYPES.TOOL_PICKAXE.key);
 
 // Create UIManager instance to test
 try {
@@ -36,11 +36,11 @@ try {
     
     // Test updateResourceCounterBar with mock stockpiles
     const mockStockpiles = {
-        [RESOURCE_TYPES.WOOD]: 50,
-        [RESOURCE_TYPES.STONE]: 25,
-        [RESOURCE_TYPES.IRON_BARS]: 10,
-        [RESOURCE_TYPES.TOOL_AXE]: 5,
-        [RESOURCE_TYPES.TOOL_PICKAXE]: 3
+        [RESOURCE_TYPES.WOOD.key]: 50,
+        [RESOURCE_TYPES.STONE.key]: 25,
+        [RESOURCE_TYPES.IRON_BARS.key]: 10,
+        [RESOURCE_TYPES.TOOL_AXE.key]: 5,
+        [RESOURCE_TYPES.TOOL_PICKAXE.key]: 3
     };
     
     uiManager.updateResourceCounterBar(mockStockpiles);

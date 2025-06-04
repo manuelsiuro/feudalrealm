@@ -43,7 +43,7 @@ export default class ChoppingTreeState extends SerfState {
             }
             
             // 2. Serf "collects" a wood resource
-            this.serf.carriedResource = { type: RESOURCE_TYPES.WOOD, amount: 1 };
+            this.serf.carriedResource = { type: RESOURCE_TYPES.WOOD.key, amount: 1 };
             console.log(`${this.serf.id} collected 1 WOOD. Inventory:`, this.serf.carriedResource);
 
             // 3. Transition to ReturningCarriedResourceState

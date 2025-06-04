@@ -11,14 +11,20 @@ class ResourceManager {
     }
 
     _initializeStockpiles() {
-        for (const type in RESOURCE_TYPES) {
-            this.stockpiles[RESOURCE_TYPES[type]] = 0;
-        }
+        // Use Object.values to iterate over resource objects directly
+        Object.values(RESOURCE_TYPES).forEach(resourceType => {
+            if (resourceType && resourceType.key) {
+                this.stockpiles[resourceType.key] = 0;
+            } else {
+                console.warn(`ResourceManager: Skipping invalid resource type:`, resourceType);
+            }
+        });
+        
         // Starting resources (example)
-        this.stockpiles[RESOURCE_TYPES.WOOD] = 50;
-        this.stockpiles[RESOURCE_TYPES.STONE] = 20;
-        this.stockpiles[RESOURCE_TYPES.GRAIN] = 10; // For pig farm or early food
-        this.stockpiles[RESOURCE_TYPES.TOOLS_AXE] = 1; // Add one axe for the initial Woodcutter
+        this.stockpiles[RESOURCE_TYPES.WOOD.key] = 50;
+        this.stockpiles[RESOURCE_TYPES.STONE.key] = 20;
+        this.stockpiles[RESOURCE_TYPES.GRAIN.key] = 10; // For pig farm or early food
+        this.stockpiles[RESOURCE_TYPES.TOOL_AXE.key] = 1; // Add one axe for the initial Woodcutter
     }
 
     addResource(type, amount) {

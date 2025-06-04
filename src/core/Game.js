@@ -232,11 +232,11 @@ class Game {
             // Debug keys
             if (event.key.toLowerCase() === 'a') {
                 console.log("DEBUG: 'A' key pressed. Adding 1 TOOLS_AXE.");
-                this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_AXE, 1);
+                this.resourceManager.addResource(RESOURCE_TYPES.TOOL_AXE.key, 1);
             }
             if (event.key.toLowerCase() === 'p') {
                 console.log("DEBUG: 'P' key pressed. Adding 1 TOOLS_PICKAXE.");
-                this.resourceManager.addResource(RESOURCE_TYPES.TOOLS_PICKAXE, 1);
+                this.resourceManager.addResource(RESOURCE_TYPES.TOOL_PICKAXE.key, 1);
             }
             
             // Quick Win #3: Flow visualization controls

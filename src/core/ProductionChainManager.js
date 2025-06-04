@@ -49,8 +49,8 @@ class ProductionChainManager {
             id: 'wood_processing',
             name: 'Wood Processing Chain',
             stages: [
-                { buildingType: 'WOODCUTTERS_HUT', produces: [RESOURCE_TYPES.WOOD] },
-                { buildingType: 'SAWMILL', consumes: [RESOURCE_TYPES.WOOD], produces: [RESOURCE_TYPES.PLANKS] }
+                { buildingType: 'WOODCUTTERS_HUT', produces: [RESOURCE_TYPES.WOOD.key] },
+                { buildingType: 'SAWMILL', consumes: [RESOURCE_TYPES.WOOD.key], produces: [RESOURCE_TYPES.PLANKS.key] }
             ]
         });
 
@@ -59,10 +59,10 @@ class ProductionChainManager {
             id: 'iron_production',
             name: 'Iron Production Chain',
             stages: [
-                { buildingType: 'IRON_MINE', produces: [RESOURCE_TYPES.IRON_ORE] },
-                { buildingType: 'COAL_MINE', produces: [RESOURCE_TYPES.COAL_ORE] },
-                { buildingType: 'IRON_SMELTER', consumes: [RESOURCE_TYPES.IRON_ORE, RESOURCE_TYPES.COAL_ORE], produces: [RESOURCE_TYPES.IRON_BAR] },
-                { buildingType: 'BLACKSMITH', consumes: [RESOURCE_TYPES.IRON_BAR], produces: [RESOURCE_TYPES.TOOLS_AXE] }
+                { buildingType: 'IRON_MINE', produces: [RESOURCE_TYPES.IRON_ORE.key] },
+                { buildingType: 'COAL_MINE', produces: [RESOURCE_TYPES.COAL_ORE.key] },
+                { buildingType: 'IRON_SMELTER', consumes: [RESOURCE_TYPES.IRON_ORE.key, RESOURCE_TYPES.COAL_ORE.key], produces: [RESOURCE_TYPES.IRON_BARS.key] },
+                { buildingType: 'BLACKSMITH', consumes: [RESOURCE_TYPES.IRON_BARS.key], produces: [RESOURCE_TYPES.TOOL_AXE.key] }
             ]
         });
 
@@ -71,9 +71,9 @@ class ProductionChainManager {
             id: 'food_production',
             name: 'Food Production Chain',
             stages: [
-                { buildingType: 'FARM', produces: [RESOURCE_TYPES.GRAIN] },
-                { buildingType: 'WINDMILL', consumes: [RESOURCE_TYPES.GRAIN], produces: [RESOURCE_TYPES.FLOUR] },
-                { buildingType: 'BAKERY', consumes: [RESOURCE_TYPES.FLOUR, RESOURCE_TYPES.COAL_ORE], produces: [RESOURCE_TYPES.BREAD] }
+                { buildingType: 'FARM', produces: [RESOURCE_TYPES.GRAIN.key] },
+                { buildingType: 'WINDMILL', consumes: [RESOURCE_TYPES.GRAIN.key], produces: [RESOURCE_TYPES.FLOUR.key] },
+                { buildingType: 'BAKERY', consumes: [RESOURCE_TYPES.FLOUR.key, RESOURCE_TYPES.COAL_ORE.key], produces: [RESOURCE_TYPES.BREAD.key] }
             ]
         });
 
@@ -82,9 +82,9 @@ class ProductionChainManager {
             id: 'meat_production',
             name: 'Meat Production Chain',
             stages: [
-                { buildingType: 'FARM', produces: [RESOURCE_TYPES.GRAIN] },
-                { buildingType: 'PIG_FARM', consumes: [RESOURCE_TYPES.GRAIN], produces: [RESOURCE_TYPES.PIG] },
-                { buildingType: 'SLAUGHTERHOUSE', consumes: [RESOURCE_TYPES.PIG], produces: [RESOURCE_TYPES.MEAT] }
+                { buildingType: 'FARM', produces: [RESOURCE_TYPES.GRAIN.key] },
+                { buildingType: 'PIG_FARM', consumes: [RESOURCE_TYPES.GRAIN.key], produces: [RESOURCE_TYPES.PIG.key] },
+                { buildingType: 'SLAUGHTERHOUSE', consumes: [RESOURCE_TYPES.PIG.key], produces: [RESOURCE_TYPES.MEAT.key] }
             ]
         });
     }
@@ -97,51 +97,51 @@ class ProductionChainManager {
         // Sawmill auto-pickup from woodcutters
         this.autoTransferRules.set('SAWMILL', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.WOOD, fromBuildingTypes: ['WOODCUTTERS_HUT'], maxDistance: 10 }
+                { resourceType: RESOURCE_TYPES.WOOD.key, fromBuildingTypes: ['WOODCUTTERS_HUT'], maxDistance: 10 }
             ]
         });
 
         // Iron Smelter auto-pickup from mines
         this.autoTransferRules.set('IRON_SMELTER', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.IRON_ORE, fromBuildingTypes: ['IRON_MINE'], maxDistance: 15 },
-                { resourceType: RESOURCE_TYPES.COAL_ORE, fromBuildingTypes: ['COAL_MINE'], maxDistance: 15 }
+                { resourceType: RESOURCE_TYPES.IRON_ORE.key, fromBuildingTypes: ['IRON_MINE'], maxDistance: 15 },
+                { resourceType: RESOURCE_TYPES.COAL_ORE.key, fromBuildingTypes: ['COAL_MINE'], maxDistance: 15 }
             ]
         });
 
         // Blacksmith auto-pickup from iron smelter
         this.autoTransferRules.set('BLACKSMITH', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.IRON_BAR, fromBuildingTypes: ['IRON_SMELTER'], maxDistance: 12 }
+                { resourceType: RESOURCE_TYPES.IRON_BARS.key, fromBuildingTypes: ['IRON_SMELTER'], maxDistance: 12 }
             ]
         });
 
         // Bakery auto-pickup ingredients
         this.autoTransferRules.set('BAKERY', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.FLOUR, fromBuildingTypes: ['WINDMILL'], maxDistance: 10 },
-                { resourceType: RESOURCE_TYPES.COAL_ORE, fromBuildingTypes: ['COAL_MINE'], maxDistance: 15 }
+                { resourceType: RESOURCE_TYPES.FLOUR.key, fromBuildingTypes: ['WINDMILL'], maxDistance: 10 },
+                { resourceType: RESOURCE_TYPES.COAL_ORE.key, fromBuildingTypes: ['COAL_MINE'], maxDistance: 15 }
             ]
         });
 
         // Windmill auto-pickup from farms
         this.autoTransferRules.set('WINDMILL', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.GRAIN, fromBuildingTypes: ['FARM'], maxDistance: 10 }
+                { resourceType: RESOURCE_TYPES.GRAIN.key, fromBuildingTypes: ['FARM'], maxDistance: 10 }
             ]
         });
 
         // Pig Farm auto-pickup from farms
         this.autoTransferRules.set('PIG_FARM', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.GRAIN, fromBuildingTypes: ['FARM'], maxDistance: 10 }
+                { resourceType: RESOURCE_TYPES.GRAIN.key, fromBuildingTypes: ['FARM'], maxDistance: 10 }
             ]
         });
 
         // Slaughterhouse auto-pickup from pig farms
         this.autoTransferRules.set('SLAUGHTERHOUSE', {
             pickup: [
-                { resourceType: RESOURCE_TYPES.PIG, fromBuildingTypes: ['PIG_FARM'], maxDistance: 8 }
+                { resourceType: RESOURCE_TYPES.PIG.key, fromBuildingTypes: ['PIG_FARM'], maxDistance: 8 }
             ]
         });
     }
