@@ -1,6 +1,4 @@
 import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // May be needed for UI updates
-import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
-import { FORESTER_SAPLING_UPGRADE_AMOUNT } from '../config/unitConstants.js';
 import ProductionChainUI from './ProductionChainUI.js';
 import FlowControlPanel from './FlowControlPanel.js';
 
@@ -789,17 +787,6 @@ class UIManager {
 
         this.uiOverlay.appendChild(this.selectionInfoPanel);
     }
-
-    /* reateCenterInfoPanel() {
-        this.centerInfoPanel = document.createElement('div');
-        this.centerInfoPanel.style.cssText = `
-            grid-area: center;
-            pointer-events: none;
-            position: relative;
-        `;
-
-        this.uiOverlay.appendChild(this.centerInfoPanel);
-    } */
 
     setSerfSelectCallback(callback) {
         this.onSerfSelectCallback = callback;

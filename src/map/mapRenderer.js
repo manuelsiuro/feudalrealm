@@ -4,9 +4,6 @@
 import * as THREE from 'three';
 import { GameMap } from './map.js';
 import * as Terrains from '../entities/terrains.js';
-// Import building and resource creators if needed for direct rendering (though often entities manage their own meshes)
-// import * as Buildings from '../entities/buildings.js';
-// import * as Resources from '../entities/resources.js';
 
 const TILE_SIZE = 10; // Visual size of a tile in 3D space
 const TILE_GAP = 0.1; // Small gap between tiles to distinguish them

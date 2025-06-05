@@ -1,5 +1,4 @@
 // src/ui/ProductionChainUI.js
-import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 
 /**
  * @class ProductionChainUI

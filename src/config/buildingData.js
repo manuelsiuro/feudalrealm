@@ -2,8 +2,6 @@
 
 import { RESOURCE_TYPES } from './resourceTypes.js';
 import { SERF_PROFESSIONS } from './serfProfessions.js';
-//Removed: import { COLORS } from './colors.js'; - Visual properties are out of scope for this file now.
-//Removed: import * as Buildings from '../entities/buildings.js'; - Creator functions are removed.
 
 export const BUILDING_DATA = {
     // Note: constructionTime values are in seconds (will be converted to milliseconds internally)

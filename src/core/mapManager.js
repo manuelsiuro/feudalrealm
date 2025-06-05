@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as Terrains from '../entities/terrains.js'; // Import detailed terrain generators
-import * as Resources from '../entities/resources.js'; // Import resource generators
 import { findPathAStar } from '../utils/pathfinding.js'; // Import A* pathfinding
 import { TILE_SIZE, TERRAIN_TYPES, TERRAIN_COLORS } from '../config/mapConstants.js';
 

@@ -1,7 +1,5 @@
 import Task, { TASK_STATUS, TASK_TYPES } from './Task.js';
 import { SERF_ACTION_STATES } from '../../config/serfActionStates.js';
-import { SERF_PROFESSIONS } from '../../config/serfProfessions.js';
-import resourceManager from '../resourceManager.js'; // To add resources to global stockpile
 
 export default class TransportResourceTask extends Task {
     constructor(serfToTransport, destinationBuilding, priority = null) { // Higher priority than gathering

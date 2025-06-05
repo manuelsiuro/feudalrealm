@@ -1,16 +1,12 @@
 // src/core/constructionManager.js
 import * as THREE from 'three';
 import resourceManager from './resourceManager.js';
-// Removed: import * as Buildings from '../entities/buildings.js';
 import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js'; // Added TERRAIN_TYPES
-// SERF_PROFESSIONS and RESOURCE_TYPES might not be directly needed here anymore if Building class handles relevant logic
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; 
-// import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { BUILDING_DATA } from '../config/buildingData.js';
 import ConstructionEffectsManager from './ConstructionEffectsManager.js';
 
 // Import new Building classes
-import Building from '../entities/Building.js'; // Base class (if needed for type checking, though map uses specific)
 import Castle from '../entities/buildings/Castle.js';
 import WoodcuttersHut from '../entities/buildings/WoodcuttersHut.js';
 import TransportersHut from '../entities/buildings/TransportersHut.js';
@@ -92,8 +88,7 @@ class ConstructionManager {
         this.gameElementsGroup = gameElementsGroup;
         this.selectedBuildingType = null;
         this.placementIndicator = null;
-        this.isPlacing = false;
-        // this.buildingsUnderConstruction = []; // Replaced by constructionQueue
+        this.isPlacing = false;    
         this.constructionQueue = []; // Buildings waiting for a builder
         this.activeConstructions = []; // Buildings actively being constructed by a serf
         this.placedBuildings = []; // Fully constructed and operational buildings
@@ -226,13 +221,6 @@ class ConstructionManager {
             this.cancelPlacement(); // Cancel if no class defined for this building type
             return false;
         }
-
-        // Snapped positions already calculated above
-        // const snappedWorldX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
-        // const snappedWorldZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
-        // const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
-        // const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
-
         const newBuilding = new BuildingClass(placedGridX, placedGridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
         newBuilding.setResourceManager(resourceManager); // Pass the imported singleton
         newBuilding.setConstructionEffectsManager(this.constructionEffectsManager); // Set the effects manager
@@ -254,8 +242,6 @@ class ConstructionManager {
             this.gameElementsGroup.add(buildingsGroup);
         }        newBuilding.placeModel(buildingsGroup); // Model is created within constructor for CONSTRUCTED buildings
         
-        //const constructionTimeSeconds = buildingDataEntry.constructionTimeSeconds || 5; 
-        // newBuilding.startConstruction(constructionTimeSeconds); // Old direct start
         
         // Instead of starting construction directly, add to queue if it needs construction
         if (newBuilding.currentConstructionState === 'NEEDS_CONSTRUCTION') {
@@ -271,14 +257,7 @@ class ConstructionManager {
                 this.game.productionChainManager.registerBuilding(newBuilding);
                 console.log(`[CM confirmPlacement] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
             }
-        }
-
-        // SerfManager interaction is now handled by the update loop assigning tasks from the queue
-        // if (this.serfManager) { 
-        //     this.serfManager.addConstructionTask(newBuilding);
-        // } else {
-        //     console.warn(\\"ConstructionManager: SerfManager not set. Cannot add construction task.\\");
-        // }\n        
+        }   
         this._notifyUI();
         this.cancelPlacement();
         return true;
@@ -298,8 +277,6 @@ class ConstructionManager {
             .filter(key => buildingClassMap[key] && BUILDING_DATA[key].tier > 0) // Ensure class exists and tier > 0
             .map(key => ({ key, ...BUILDING_DATA[key] }));
     }
-
-    // _setBuildingOpacity removed, handled by Building class
 
     placeAndConstructInitialBuilding(buildingKey, gridX, gridZ) {
         const buildingDataEntry = BUILDING_DATA[buildingKey];
@@ -352,9 +329,6 @@ class ConstructionManager {
             this.addBuildingToConstructionQueue(newBuilding);
             console.log(`[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) added to construction queue.`);
         }
-        
-        // this.placedBuildings.push(newBuilding); // Moved to conditional logic above
-        
         console.log(`[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) setup processed.`);
         this._notifyUI();
         return newBuilding;
@@ -501,17 +475,6 @@ class ConstructionManager {
                 this.returnBuildingToQueue(building);
             }
         }
-
-        // Handle construction completion (OLD LOGIC - REMOVE/REFACTOR)
-        // for (let i = this.buildingsUnderConstruction.length - 1; i >= 0; i--) {
-        //     const building = this.buildingsUnderConstruction[i];
-        //     if (now >= building.constructionEndTime && !building.isConstructed) { 
-        //         building.finishConstruction();
-        //         this.placedBuildings.push(building);
-        //         this.buildingsUnderConstruction.splice(i, 1);
-        //         this._notifyUI(); 
-        //     }
-        // }
 
         // Update all placed (and constructed) buildings
         for (const building of this.placedBuildings) {

@@ -2,8 +2,6 @@ import * as THREE from 'three';
 // import * as Resources from './resources.js'; // No longer needed here
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TILE_SIZE } from '../config/mapConstants.js'; // Corrected import path for TILE_SIZE
-import resourceManager from '../core/resourceManager.js'; // Import resourceManager
-import { RESOURCE_TYPES } from '../config/resourceTypes.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js';
 import { MAX_SERF_INVENTORY_CAPACITY, DEFAULT_DROPOFF_POINT, BUILDER_WORK_INTERVAL, FORESTER_PLANTING_TIME, FORESTER_SAPLING_UPGRADE_COST } from '../config/unitConstants.js';
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
