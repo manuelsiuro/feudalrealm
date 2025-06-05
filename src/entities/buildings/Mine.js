@@ -1,3 +1,5 @@
+// UNUSED: This generic Mine class is not imported or used anywhere in the codebase
+// TODO: Consider removing this file as specific mine types (IronMine, CoalMine, GoldMine) are used instead
 import * as THREE from 'three';
 import Building from '../Building.js';
 import { TILE_SIZE } from '../../config/mapConstants.js';

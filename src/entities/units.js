@@ -278,10 +278,13 @@ export class Serf extends Unit {
         }
     }
 
+    // LEGACY/DEPRECATED: This method is being phased out in favor of direct task object assignment
+    // TODO: Consider removing this method once all legacy string-based task assignments are eliminated
     setTask(taskType, details = {}) {
-        // console.warn(`Serf.setTask (\${this.id}) called with type: \${taskType}. This method is being phased out by direct task object assignment.`);
-        // this.task = taskType; // The 'task' string might still be used by some UI or simple logic
-        // this.taskDetails = details; // Store for compatibility if needed
+        // LEGACY WARNING: This method is deprecated - SerfManager should assign currentTask directly
+        console.warn(`Serf.setTask (${this.id}) called with type: ${taskType}. This method is being phased out by direct task object assignment.`);
+        
+        // ...existing code...
         
         // If a full Task object is somehow passed here, handle it (unlikely given current SerfManager)
         // For this refactor, currentTask is expected to be set directly by SerfManager.

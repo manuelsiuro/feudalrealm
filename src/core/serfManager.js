@@ -583,13 +583,13 @@ class SerfManager {
     }
 
 
-    // tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) { // THIS METHOD IS NOW OBSOLETE AND SHOULD BE REMOVED
-    //     // ... (keep content for now if there's any part of it you want to refer to, but mark as obsolete)
+    // UNUSED/OBSOLETE METHOD: tryAssignForestersToPlantSaplings - Replaced by task system
+    // TODO: Remove this entire commented method block as it's no longer needed
+    // This method has been replaced by createPlantSaplingTasks() and generic task assignment
+    // tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) { 
     //     console.warn("SerfManager: tryAssignForestersToPlantSaplings is obsolete and should be removed. PlantSaplingTasks are now created by createPlantSaplingTasks and assigned generically.");
     //     return; 
-    //     // ... OLD LOGIC BELOW ...
-    //     // if (!this.game || !this.game.gameMap || !this.game.natureManager) {
-    //     // ... (rest of the old method's code)
+    //     // ... OLD LOGIC REMOVED ...
     // }
 
     isTileOccupiedForPlanting(tileX, tileY, serfIdToExclude = null) {
