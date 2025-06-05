@@ -773,7 +773,7 @@ class UIManager {
             border: 1px solid rgba(255,255,255,0.1);
             pointer-events: auto;
             padding: 20px;
-            width: 250px;
+            width: 300px;
             max-height: 200px;
             overflow-y: auto;
             display: none;
