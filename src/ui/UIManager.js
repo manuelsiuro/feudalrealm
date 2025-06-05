@@ -20,7 +20,7 @@ class UIManager {
         this.rightSidebar = null;
         this.bottomPanel = null;
         this.centerInfoPanel = null;
-        
+
         // Specific components
         this.resourceDisplay = null;
         this.gameActions = null;
@@ -109,10 +109,10 @@ class UIManager {
             // Clear only the UI overlay, not the entire container
             uiOverlay.innerHTML = '';
         }
-        
+
         // Use the overlay as our UI container
         this.uiOverlay = uiOverlay;
-        
+
         // Create main layout structure
         this.createTopBar();
         this.createLeftSidebar();
@@ -222,7 +222,7 @@ class UIManager {
     setupEventListeners() {
         // Subscribe to selection changes
         this._subscribeToSelectionChanges();
-        
+
         // Listen for serf changes
         if (this.serfManager && typeof this.serfManager.onChange === 'function') {
             this.serfManager.onChange(() => {
@@ -233,7 +233,7 @@ class UIManager {
 
     updateResourceDisplay(stockpiles) {
         if (!this.resourceDisplay) return;
-        
+
         // Clear existing resource items (keep title)
         const existingItems = this.resourceDisplay.querySelectorAll('.resource-item');
         existingItems.forEach(item => item.remove());
@@ -254,7 +254,7 @@ class UIManager {
             const amount = stockpiles[resourceType];
             const resourceItem = document.createElement('div');
             resourceItem.className = 'resource-item';
-            
+
             resourceItem.style.cssText = `
                 display: flex;
                 align-items: center;
@@ -303,13 +303,13 @@ class UIManager {
 
             resourceItem.appendChild(icon);
             resourceItem.appendChild(amountSpan);
-            
+
             // Hover effects
             resourceItem.addEventListener('mouseenter', () => {
                 resourceItem.style.transform = 'translateY(-2px)';
                 resourceItem.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
             });
-            
+
             resourceItem.addEventListener('mouseleave', () => {
                 resourceItem.style.transform = '';
                 resourceItem.style.boxShadow = '';
@@ -327,7 +327,7 @@ class UIManager {
     toggleDevMode() {
         this.isDevMode = !this.isDevMode;
         const devPanel = this.gameControlsPanel?.querySelector('.dev-panel');
-        
+
         if (this.isDevMode) {
             this.showDevPanel();
         } else {
@@ -353,11 +353,11 @@ class UIManager {
 
     showDevPanel() {
         if (!this.gameControlsPanel) return;
-        
+
         // Remove existing dev panel
         const existingDevPanel = this.gameControlsPanel.querySelector('.dev-panel');
         if (existingDevPanel) existingDevPanel.remove();
-        
+
         const devPanel = document.createElement('div');
         devPanel.className = 'dev-panel';
         devPanel.style.cssText = `
@@ -419,7 +419,7 @@ class UIManager {
 
         this.createSerfList();
         this.createBuildingList();
-        
+
         this.leftSidebar.appendChild(this.entityLists);
         this.uiOverlay.appendChild(this.leftSidebar);
     }
@@ -513,7 +513,7 @@ class UIManager {
         this.createMiniMap();
         this.createConstructionPanel();
         this.createConstructionEffectsPanel();
-        
+
         this.uiOverlay.appendChild(this.rightSidebar);
     }
 
@@ -601,7 +601,7 @@ class UIManager {
                 margin-top: 4px;
                 line-height: 1.4;
             `;
-            
+
             // Format cost with icons and proper display
             if (building.cost && Object.keys(building.cost).length > 0) {
                 const costItems = Object.entries(building.cost).map(([resourceKey, amount]) => {
@@ -609,7 +609,7 @@ class UIManager {
                     const icon = resourceType ? resourceType.icon : '📦';
                     const name = resourceType ? resourceType.name : resourceKey.replace(/_/g, ' ');
                     const title = resourceType ? resourceType.description : `${name} resource`;
-                    
+
                     return `<div style="
                         display: flex; 
                         align-items: center; 
@@ -659,12 +659,12 @@ class UIManager {
                 buildingBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
             });
 
-            this.buildingButtons.set(building.key, { 
-                button: buildingBtn, 
+            this.buildingButtons.set(building.key, {
+                button: buildingBtn,
                 cost: building.cost || {},
                 costDisplay: costDisplay
             });
-            
+
             buildingGrid.appendChild(buildingBtn);
         });
 
@@ -786,7 +786,7 @@ class UIManager {
 
         // Create the selection info content container
         this.selectionInfo = this.selectionInfoPanel;
-        
+
         this.uiOverlay.appendChild(this.selectionInfoPanel);
     }
 
@@ -849,7 +849,7 @@ class UIManager {
         this.serfListPanel.style.top = '10px';
         // Position it to the right of the resource panel.
         // Assuming resourcePanel is ~230px wide + 10px padding + 10px gap = 250px
-        this.serfListPanel.style.left = '250px'; 
+        this.serfListPanel.style.left = '250px';
         this.serfListPanel.style.minWidth = '200px';
         this.serfListPanel.style.maxHeight = 'calc(100vh - 20px)'; // Same height as resource panel
         this.serfListPanel.style.overflowY = 'auto'; // Scroll for the panel
@@ -867,7 +867,7 @@ class UIManager {
         this.serfListPanelContent = document.createElement('div');
         this.serfListPanelContent.classList.add('panel-content-area');
         this.serfListPanel.appendChild(this.serfListPanelContent);
-        
+
         serfListTitle.addEventListener('click', () => {
             const isHidden = this.serfListPanelContent.style.display === 'none';
             this.serfListPanelContent.style.display = isHidden ? '' : 'none';
@@ -883,7 +883,7 @@ class UIManager {
         this.buildingListPanel.style.top = '10px';
         // Position it to the right of the serf list panel.
         // serfListPanel.left (250px) + serfListPanel.minWidth (200px) + 10px gap = 460px
-        this.buildingListPanel.style.left = '460px'; 
+        this.buildingListPanel.style.left = '460px';
         this.buildingListPanel.style.minWidth = '220px';
         this.buildingListPanel.style.maxHeight = 'calc(100vh - 20px)';
         this.buildingListPanel.style.overflowY = 'auto';
@@ -1043,11 +1043,11 @@ class UIManager {
         this.selectedUnitInfoPanel.style.bottom = '10px';
         // Position it to the left of the construction panel
         // Assuming construction panel is ~220px wide + 10px gap = 230px from right
-        this.selectedUnitInfoPanel.style.right = '240px'; 
-        this.selectedUnitInfoPanel.style.width = '250px';        this.selectedUnitInfoPanel.style.minHeight = '100px';
+        this.selectedUnitInfoPanel.style.right = '240px';
+        this.selectedUnitInfoPanel.style.width = '250px'; this.selectedUnitInfoPanel.style.minHeight = '100px';
         this.selectedUnitInfoPanel.style.maxHeight = '300px';
         this.selectedUnitInfoPanel.style.overflowY = 'auto';
-        this.selectedUnitInfoPanel.style.display = 'none';        this.selectedUnitInfoPanel.style.padding = '10px';
+        this.selectedUnitInfoPanel.style.display = 'none'; this.selectedUnitInfoPanel.style.padding = '10px';
         this.selectedUnitInfoPanel.style.boxSizing = 'border-box';
 
         const unitInfoTitle = document.createElement('h3');
@@ -1062,7 +1062,7 @@ class UIManager {
         this.selectedUnitInfoContent = document.createElement('div');
         this.selectedUnitInfoContent.classList.add('panel-content-area');
         this.selectedUnitInfoPanel.appendChild(this.selectedUnitInfoContent);
-        
+
         this.uiContainer.appendChild(this.selectedUnitInfoPanel);
 
         // Selected Building Info Panel
@@ -1072,12 +1072,12 @@ class UIManager {
         this.selectedBuildingInfoPanel.style.position = 'absolute';
         this.selectedBuildingInfoPanel.style.bottom = '10px';
         // Position it to the left of the construction panel, same as unit info or adjust as needed
-        this.selectedBuildingInfoPanel.style.right = '240px'; 
-        this.selectedBuildingInfoPanel.style.width = '250px'; 
+        this.selectedBuildingInfoPanel.style.right = '240px';
+        this.selectedBuildingInfoPanel.style.width = '250px';
         this.selectedBuildingInfoPanel.style.minHeight = '100px';
         this.selectedBuildingInfoPanel.style.maxHeight = '300px';
         this.selectedBuildingInfoPanel.style.overflowY = 'auto';
-        this.selectedBuildingInfoPanel.style.display = 'none';        this.selectedBuildingInfoPanel.style.padding = '10px';
+        this.selectedBuildingInfoPanel.style.display = 'none'; this.selectedBuildingInfoPanel.style.padding = '10px';
         this.selectedBuildingInfoPanel.style.boxSizing = 'border-box';
 
         const buildingInfoTitle = document.createElement('h3');
@@ -1093,22 +1093,23 @@ class UIManager {
         this.selectedBuildingInfoContent.classList.add('panel-content-area');
         this.selectedBuildingInfoPanel.appendChild(this.selectedBuildingInfoContent);
 
-        this.uiContainer.appendChild(this.selectedBuildingInfoPanel);    }
+        this.uiContainer.appendChild(this.selectedBuildingInfoPanel);
+    }
 
     displayUnitInfo(unit) {
         if (!this.selectionInfo || !unit) {
             this.hideUnitInfo();
             return;
         }
-        
+
         // Clear and set up the panel with relative positioning for the close button
         this.selectionInfo.innerHTML = '';
         this.selectionInfo.style.position = 'relative';
-        
+
         // Add close button to the selection info panel
         const closeButton = this.createCloseButton();
         this.selectionInfo.appendChild(closeButton);
-        
+
         // Create modern header
         const header = document.createElement('h3');
         header.textContent = `👤 ${unit.serfType || 'Unit'}`;
@@ -1146,7 +1147,7 @@ class UIManager {
         if (unit.serfType === 'forester') {
             const plantedCount = unit.plantedSaplingsCount !== undefined ? unit.plantedSaplingsCount : 'N/A';
             const maxPlanted = unit.maxPlantedSaplings !== undefined ? unit.maxPlantedSaplings : 'N/A';
-            
+
             const foresterInfo = document.createElement('div');
             foresterInfo.style.cssText = `
                 background: rgba(76,175,80,0.1);
@@ -1160,7 +1161,7 @@ class UIManager {
             `;
             details.appendChild(foresterInfo);
         }
-        
+
         // Inventory display
         if (unit.inventory && Object.keys(unit.inventory).length > 0) {
             const inventorySection = document.createElement('div');
@@ -1170,10 +1171,10 @@ class UIManager {
                 padding: 12px;
                 margin: 8px 0;
             `;
-            
+
             let inventoryHTML = '<div style="margin-bottom: 8px; font-weight: 600; color: #FFB74D;">📦 Inventory:</div>';
             inventoryHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 4px;">';
-            
+
             for (const resource in unit.inventory) {
                 if (unit.inventory[resource] > 0) {
                     inventoryHTML += `<div style="padding: 4px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px;">${resource.replace(/_/g, ' ')}: ${unit.inventory[resource]}</div>`;
@@ -1203,15 +1204,15 @@ class UIManager {
             this.hideBuildingInfo();
             return;
         }
-        
+
         // Clear and set up the panel with relative positioning for the close button
         this.selectionInfo.innerHTML = '';
         this.selectionInfo.style.position = 'relative';
-        
+
         // Add close button to the selection info panel
         const closeButton = this.createCloseButton();
         this.selectionInfo.appendChild(closeButton);
-        
+
         // Create modern header
         const header = document.createElement('h3');
         let buildingName = 'Unknown Building';
@@ -1220,7 +1221,7 @@ class UIManager {
         } else if (building.type) {
             buildingName = building.type;
         }
-        
+
         header.textContent = `🏗️ ${buildingName}`;
         header.style.cssText = `
             margin: 0 0 16px 0;
@@ -1242,7 +1243,7 @@ class UIManager {
         `;
 
         let buildingStatus = 'N/A';
-        
+
         // Enhanced status with construction state support
         if (building.currentConstructionState) {
             switch (building.currentConstructionState) {
@@ -1272,7 +1273,7 @@ class UIManager {
                 }
             }
         }
-        
+
         // Basic building info with modern styling
         const basicInfo = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
@@ -1286,7 +1287,7 @@ class UIManager {
         if (building.health !== undefined && building.maxHealth !== undefined) {
             const healthPercent = Math.round((building.health / building.maxHealth) * 100);
             const healthColor = healthPercent > 75 ? '#4CAF50' : healthPercent > 50 ? '#FF9800' : '#F44336';
-            
+
             const healthSection = document.createElement('div');
             healthSection.style.cssText = `
                 background: rgba(255,255,255,0.05);
@@ -1315,15 +1316,15 @@ class UIManager {
                 margin: 8px 0;
                 border: 1px solid rgba(33,150,243,0.3);
             `;
-            
+
             let workerHTML = `<div style="margin-bottom: 8px; font-weight: 600; color: #2196F3;">👥 Workers: ${building.workers.length} / ${maxWorkers}</div>`;
-            
+
             building.workers.forEach((worker, index) => {
                 const workerName = worker.id || `Worker ${index + 1}`;
                 const workerStatus = worker.state || 'Active';
                 workerHTML += `<div style="margin-left: 12px; font-size: 12px; color: rgba(255,255,255,0.8);">• ${workerName} - ${workerStatus}</div>`;
             });
-            
+
             workerSection.innerHTML = workerHTML;
             details.appendChild(workerSection);
         }
@@ -1375,18 +1376,18 @@ class UIManager {
 
     updateResourceCounterBar(stockpiles) {
         if (!this.resourceCounterContainer) return;
-        
+
         // Store previous values for change detection
         if (!this.previousResourceValues) {
             this.previousResourceValues = {};
         }
-        
+
         this.resourceCounterContainer.innerHTML = ''; // Clear previous content
 
         // Define the most important resources to display in the counter bar
         const priorityResources = [
             RESOURCE_TYPES.WOOD.key,
-            RESOURCE_TYPES.STONE.key, 
+            RESOURCE_TYPES.STONE.key,
             RESOURCE_TYPES.GRAIN.key,
             RESOURCE_TYPES.IRON_ORE.key,
             RESOURCE_TYPES.COAL_ORE.key,
@@ -1403,13 +1404,13 @@ class UIManager {
             const amount = stockpiles[resourceType];
             const previousAmount = this.previousResourceValues[resourceType] || 0;
             const hasChanged = amount !== previousAmount;
-            
+
             const resourceItem = document.createElement('div');
             resourceItem.className = 'resource-item';
             if (hasChanged && previousAmount > 0) {
                 resourceItem.classList.add('resource-item-updated');
             }
-            
+
             resourceItem.style.display = 'flex';
             resourceItem.style.alignItems = 'center';
             resourceItem.style.gap = '6px';
@@ -1427,11 +1428,11 @@ class UIManager {
             const icon = document.createElement('span');
             icon.style.fontSize = '16px';
             icon.style.lineHeight = '1';
-            
+
             // Map resource types to icons
             const resourceIcons = {
                 [RESOURCE_TYPES.WOOD.key]: RESOURCE_TYPES.WOOD.icon,
-                [RESOURCE_TYPES.STONE.key]: RESOURCE_TYPES.STONE.icon, 
+                [RESOURCE_TYPES.STONE.key]: RESOURCE_TYPES.STONE.icon,
                 [RESOURCE_TYPES.GRAIN.key]: RESOURCE_TYPES.GRAIN.icon,
                 [RESOURCE_TYPES.IRON_ORE.key]: RESOURCE_TYPES.IRON_ORE.icon,
                 [RESOURCE_TYPES.COAL_ORE.key]: RESOURCE_TYPES.COAL_ORE.icon,
@@ -1441,7 +1442,7 @@ class UIManager {
                 [RESOURCE_TYPES.TOOL_AXE.key]: RESOURCE_TYPES.TOOL_AXE.icon,
                 [RESOURCE_TYPES.TOOL_PICKAXE.key]: RESOURCE_TYPES.TOOL_PICKAXE.icon
             };
-            
+
             icon.textContent = resourceIcons[resourceType] || '📦';
             resourceItem.appendChild(icon);
 
@@ -1452,7 +1453,7 @@ class UIManager {
             amountSpan.style.fontWeight = 'bold';
             amountSpan.style.fontSize = '14px';
             amountSpan.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.8)';
-            
+
             // Color coding based on amount
             if (amount === 0) {
                 amountSpan.style.color = '#FF6B6B'; // Red for empty
@@ -1475,7 +1476,7 @@ class UIManager {
                 resourceItem.style.transform = 'scale(1.05)';
                 resourceItem.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
             });
-            
+
             resourceItem.addEventListener('mouseleave', () => {
                 resourceItem.style.transform = 'scale(1)';
                 // Restore original background color based on amount
@@ -1495,7 +1496,7 @@ class UIManager {
             resourceItem.title = resourceName;
 
             this.resourceCounterContainer.appendChild(resourceItem);
-            
+
             // Store current value for next comparison
             this.previousResourceValues[resourceType] = amount;
         });
@@ -1613,7 +1614,7 @@ class UIManager {
         }
 
         this.buildingListContent.innerHTML = '';
-        
+
         // Combine all relevant building lists from ConstructionManager
         const buildings = [
             ...this.constructionManager.placedBuildings,
@@ -1638,7 +1639,7 @@ class UIManager {
         // Group buildings by type for better display
         const buildingsByType = buildings.reduce((acc, building) => {
             let typeName = 'Unknown Building';
-            
+
             if (building && building.info && building.info.name) {
                 typeName = building.info.name;
             } else if (building && building.type) {
@@ -1670,10 +1671,10 @@ class UIManager {
                 buildingGroup.forEach(building => {
                     const buildingItem = document.createElement('div');
                     buildingItem.className = 'building-list-item';
-                    
-                    const buildingId = (building.model && building.model.uuid) ? 
-                        building.model.uuid.substring(0,6) : (building.id || 'N/A');
-                    
+
+                    const buildingId = (building.model && building.model.uuid) ?
+                        building.model.uuid.substring(0, 6) : (building.id || 'N/A');
+
                     let status = 'Completed';
                     if (building.currentConstructionState) {
                         switch (building.currentConstructionState) {
@@ -1810,20 +1811,20 @@ class UIManager {
         document.querySelectorAll('.building-list-item.selected, .serf-list-item.selected').forEach(item => {
             item.classList.remove('selected', 'selection-pulse');
         });
-        
+
         // Remove selection classes from info panels
         document.querySelectorAll('.themed-panel.entity-selected').forEach(panel => {
             panel.classList.remove('entity-selected');
         });
-        
+
         document.querySelectorAll('.themed-panel-title.entity-selected').forEach(title => {
             title.classList.remove('entity-selected');
         });
     }
-    
+
     highlightSelectedBuilding(building) {
         if (!building || !building.model) return;
-        
+
         // Find and highlight the building in the building list
         const buildingItems = document.querySelectorAll('.building-list-item');
         buildingItems.forEach(item => {
@@ -1833,7 +1834,7 @@ class UIManager {
                 item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         });
-        
+
         // Enhance building info panel appearance
         if (this.selectedBuildingInfoPanel) {
             this.selectedBuildingInfoPanel.classList.add('entity-selected');
@@ -1841,10 +1842,10 @@ class UIManager {
             if (title) title.classList.add('entity-selected');
         }
     }
-    
+
     highlightSelectedSerf(serf) {
         if (!serf || !serf.id) return;
-        
+
         // Find and highlight the serf in the serf list
         const serfItems = document.querySelectorAll('.serf-list-item');
         serfItems.forEach(item => {
@@ -1854,7 +1855,7 @@ class UIManager {
                 item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         });
-        
+
         // Enhance serf info panel appearance
         if (this.selectedSerfInfoPanel) {
             this.selectedSerfInfoPanel.classList.add('entity-selected');
@@ -1862,7 +1863,7 @@ class UIManager {
             if (title) title.classList.add('entity-selected');
         }
     }
-    
+
     showSelectionStatus(entity) {
         // Create or update selection status indicator
         let statusElement = document.getElementById('selection-status');
@@ -1872,7 +1873,7 @@ class UIManager {
             statusElement.className = 'selection-status';
             document.body.appendChild(statusElement);
         }
-        
+
         let statusText = '';
         if (entity.info && entity.info.name) {
             const state = entity.isConstructed ? 'Ready' : 'Building';
@@ -1881,17 +1882,17 @@ class UIManager {
             const state = entity.currentTask ? 'Working' : 'Idle';
             statusText = `👷 ${entity.serfType} - ${state}`;
         }
-        
+
         statusElement.textContent = statusText;
         statusElement.classList.add('visible');
-        
+
         // Auto-hide after 3 seconds
         clearTimeout(this.selectionStatusTimeout);
         this.selectionStatusTimeout = setTimeout(() => {
             this.hideSelectionStatus();
         }, 3000);
     }
-    
+
     hideSelectionStatus() {
         const statusElement = document.getElementById('selection-status');
         if (statusElement) {
@@ -1926,20 +1927,20 @@ class UIManager {
             z-index: 10;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         `;
-        
+
         // Add hover effects
         closeButton.addEventListener('mouseenter', () => {
             closeButton.style.background = 'rgba(244, 67, 54, 1)';
             closeButton.style.transform = 'scale(1.1)';
             closeButton.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.4)';
         });
-        
+
         closeButton.addEventListener('mouseleave', () => {
             closeButton.style.background = 'rgba(244, 67, 54, 0.8)';
             closeButton.style.transform = 'scale(1)';
             closeButton.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
         });
-        
+
         closeButton.onclick = () => {
             this.hideUnitInfo();
             this.hideBuildingInfo();
@@ -1948,7 +1949,7 @@ class UIManager {
                 this.selectionManager.clearSelection();
             }
         };
-        
+
         return closeButton;
     }
 
@@ -1976,28 +1977,28 @@ class UIManager {
             z-index: 10;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         `;
-        
+
         // Add hover effects
         closeButton.addEventListener('mouseenter', () => {
             closeButton.style.background = 'rgba(244, 67, 54, 1)';
             closeButton.style.transform = 'scale(1.1)';
             closeButton.style.boxShadow = '0 4px 12px rgba(244, 67, 54, 0.4)';
         });
-        
+
         closeButton.addEventListener('mouseleave', () => {
             closeButton.style.background = 'rgba(244, 67, 54, 0.8)';
             closeButton.style.transform = 'scale(1)';
             closeButton.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
         });
-        
+
         closeButton.onclick = () => {
-                       if (customHandler) {
+            if (customHandler) {
                 customHandler();
             } else if (targetPanel) {
                 targetPanel.style.display = 'none';
             }
         };
-        
+
         return closeButton;
     }
 
@@ -2014,43 +2015,43 @@ class UIManager {
         }
     }
 
-_subscribeToSelectionChanges() {
-    if (this.selectionManager && typeof this.selectionManager.onSelectionChange === 'function') {
-        this.selectionManager.onSelectionChange((selectedEntity) => {
-            // Clear previous selection highlights
-            this.clearSelectionHighlights();
-            
-            if (selectedEntity) {
-                // Show selection status indicator
-                this.showSelectionStatus(selectedEntity);
-                
-                // Determine if it's a Serf or Building based on its properties
-                if (selectedEntity.unitType === 'serf' || selectedEntity.serfType) { // serfType is on Serf instance
-                    this.displayUnitInfo(selectedEntity); // Pass the Serf instance
-                    this.highlightSelectedSerf(selectedEntity);
-                } else if (selectedEntity.info && selectedEntity.info.name) { // Building instances have 'info.name'
-                    this.displayBuildingInfo(selectedEntity); // Pass the Building instance
-                    this.highlightSelectedBuilding(selectedEntity);
+    _subscribeToSelectionChanges() {
+        if (this.selectionManager && typeof this.selectionManager.onSelectionChange === 'function') {
+            this.selectionManager.onSelectionChange((selectedEntity) => {
+                // Clear previous selection highlights
+                this.clearSelectionHighlights();
+
+                if (selectedEntity) {
+                    // Show selection status indicator
+                    this.showSelectionStatus(selectedEntity);
+
+                    // Determine if it's a Serf or Building based on its properties
+                    if (selectedEntity.unitType === 'serf' || selectedEntity.serfType) { // serfType is on Serf instance
+                        this.displayUnitInfo(selectedEntity); // Pass the Serf instance
+                        this.highlightSelectedSerf(selectedEntity);
+                    } else if (selectedEntity.info && selectedEntity.info.name) { // Building instances have 'info.name'
+                        this.displayBuildingInfo(selectedEntity); // Pass the Building instance
+                        this.highlightSelectedBuilding(selectedEntity);
+                    } else {
+                        console.warn("UIManager: Selected entity type not recognized.", selectedEntity);
+                        this.hideUnitInfo();
+                        this.hideBuildingInfo();
+                        this.hideSelectionStatus();
+                    }
                 } else {
-                    console.warn("UIManager: Selected entity type not recognized.", selectedEntity);
                     this.hideUnitInfo();
                     this.hideBuildingInfo();
                     this.hideSelectionStatus();
                 }
-            } else {
-                this.hideUnitInfo();
-                this.hideBuildingInfo();
-                this.hideSelectionStatus();
-            }
-        });
-        console.log("UIManager: Subscribed to SelectionManager changes.");
-    } else {
-        console.warn("UIManager: SelectionManager not provided or 'onSelectionChange' is not available. UI will not update on selection.");
+            });
+            console.log("UIManager: Subscribed to SelectionManager changes.");
+        } else {
+            console.warn("UIManager: SelectionManager not provided or 'onSelectionChange' is not available. UI will not update on selection.");
+        }
     }
-}
 
-// Removed handleCanvasClick method
-// Removed handleOverlayClick method
+    // Removed handleCanvasClick method
+    // Removed handleOverlayClick method
 }
 
 export default UIManager;

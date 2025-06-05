@@ -1,14 +1,12 @@
 // src/core/serfManager.js
 import * as THREE from 'three';
 import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
-import { TILE_SIZE } from '../config/mapConstants.js'; // Assuming TILE_SIZE might be used or is contextually relevant
 import * as Units from '../entities/units.js'; // Assuming Units.Serf is used
 import ConstructBuildingTask from './tasks/ConstructBuildingTask.js';
 import GatherResourceTask from './tasks/GatherResourceTask.js'; // Added import
 import TransportResourceTask from './tasks/TransportResourceTask.js'; // Added import for TransportResourceTask
 import PlantSaplingTask from './tasks/PlantSaplingTask.js'; // Import PlantSaplingTask
 import ProcessItemsTask from './tasks/ProcessItemsTask.js'; // Import ProcessItemsTask
-import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // Added import
 import { TASK_STATUS } from './tasks/Task.js';
 import { SERF_ACTION_STATES } from '../config/serfActionStates.js';
 import resourceManager from './resourceManager.js';
@@ -33,11 +31,6 @@ class SerfManager {
         this.gameElementsGroup.add(this.serfVisualsGroup);
 
         this.onChangeCallback = null;
-
-        // Ensure initial structures are set up before spawning serfs that might depend on them
-        // this.constructionManager.setupInitialStructures(); // Assuming this is called elsewhere or before SerfManager instantiation
-        
-        //this.spawnInitialSerfs();
     }
 
     addConstructionTask(buildingInstance, specificBuilderId = null) { // Added specificBuilderId
@@ -79,37 +72,6 @@ class SerfManager {
 
         let spawnX = centerX;
         let spawnZ = centerZ;
-
-        // Find the Transporter Hut placed by setupInitialStructures
-        /*
-        const transporterHut = this.constructionManager.placedBuildings.find(
-            b => b.type === 'TRANSPORTER_HUT' && b.isConstructed
-        );
-
-        
-
-        if (transporterHut) {
-            spawnX = Math.round(transporterHut.model.position.x / TILE_SIZE);
-            spawnZ = Math.round(transporterHut.model.position.z / TILE_SIZE);
-            console.log(`Found Transporter Hut for initial serf spawn at grid (${spawnX}, ${spawnZ})`);
-        } else {
-            console.warn("No Transporter Hut found for initial serf spawn. Spawning at map center.");
-        }
-
-        // Spawn 1 Woodcutter serf
-        // Offset slightly from where transporters might cluster
-        let woodcutterSpawnX = spawnX + 1; 
-        let woodcutterSpawnZ = spawnZ + 1;
-
-        // Ensure spawn position is within map bounds
-        woodcutterSpawnX = Math.max(0, Math.min(woodcutterSpawnX, this.gameMap.width - 1));
-        woodcutterSpawnZ = Math.max(0, Math.min(woodcutterSpawnZ, this.gameMap.height - 1));
-        
-        const woodcutterSerf = this.createSerf(SERF_PROFESSIONS.WOODCUTTER, woodcutterSpawnX, woodcutterSpawnZ);
-        if (woodcutterSerf) {
-            console.log(`Initial Woodcutter serf ${woodcutterSerf.id} spawned at (${woodcutterSpawnX}, ${woodcutterSpawnZ}).`);
-        }
-            */
 
         // Spawn 1 Builder serf
         let builderSpawnX = spawnX - 1;
@@ -162,35 +124,6 @@ class SerfManager {
             console.log(`Initial Woodcutter serf ${woodcutterSerf.id} spawned at (${woodcutterSpawnX}, ${woodcutterSpawnZ}).`);
             woodcutterSerf.setProfession
         }
-
-
-        /*
-        // Spawn X Transporter serfs
-        const amountOfTransporters = 1; // Number of Transporter serfs to spawn
-        for (let i = 0; i < amountOfTransporters; i++) {
-            // Offset them slightly so they don't all spawn on the exact same spot
-            const offsetX = i % 2 === 0 ? Math.floor(i / 2) : -Math.floor((i + 1) / 2);
-            const offsetZ = i % 3 === 0 ? 0 : (i % 3 === 1 ? 1 : -1);
-            
-            let finalSpawnX = spawnX + offsetX;
-            let finalSpawnZ = spawnZ + offsetZ;
-
-            // Ensure spawn position is within map bounds
-            finalSpawnX = Math.max(0, Math.min(finalSpawnX, this.gameMap.width - 1));
-            finalSpawnZ = Math.max(0, Math.min(finalSpawnZ, this.gameMap.height - 1));
-            
-            const newSerf = this.createSerf(SERF_PROFESSIONS.TRANSPORTER, finalSpawnX, finalSpawnZ);
-            if (newSerf && transporterHut) {
-                // Optionally, directly assign them to the Transporter Hut if game logic requires
-                // For now, the general job assignment logic should pick them up if the hut has slots.
-                // newSerf.job = transporterHut; // This might be too direct, let assignJobsAndTasks handle it.
-                // transporterHut.workers.push(newSerf.id); // Also potentially too direct.
-                console.log(`Initial Transporter serf ${newSerf.id} spawned near Transporter Hut at (${finalSpawnX}, ${finalSpawnZ}).`);
-            } else if (newSerf) {
-                console.log(`Initial Transporter serf ${newSerf.id} spawned at (${finalSpawnX}, ${finalSpawnZ}) (no hut found).`);
-            }
-        }
-            */
     }
 
     createSerf(type, gridX, gridY) {
@@ -294,7 +227,7 @@ class SerfManager {
             }
         });
         this.assignJobsAndTasks();
-        this.cleanUpCompletedTasks(); // Add this line
+        this.cleanUpCompletedTasks();
     }
 
     cleanUpCompletedTasks() {
@@ -408,15 +341,6 @@ class SerfManager {
             serf.currentState.name === SERF_ACTION_STATES.IDLE &&
             (!serf.task || serf.task === 'idle') // Old task string check for this specific logic
         );
-        
-        // Builders are now handled by the new Task system (ConstructBuildingTask).
-        // The old tryAssignBuildersToConstruction call is removed.
-
-        // The following line is now obsolete as PlantSaplingTasks are created by createPlantSaplingTasks 
-        // and assigned through the generic task assignment loop.
-        // if (forestersAtHutReadyToPlant.length > 0) { 
-        //     this.tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant);
-        // }
 
         let candidatesForProfessionJobs = stillUnassignedIdleSerfs.filter(serf => { // Modified filter
             return serf.serfType !== SERF_PROFESSIONS.BUILDER && // Builders now handled by Task system
@@ -581,16 +505,6 @@ class SerfManager {
             }
         }
     }
-
-
-    // UNUSED/OBSOLETE METHOD: tryAssignForestersToPlantSaplings - Replaced by task system
-    // TODO: Remove this entire commented method block as it's no longer needed
-    // This method has been replaced by createPlantSaplingTasks() and generic task assignment
-    // tryAssignForestersToPlantSaplings(forestersAtHutReadyToPlant) { 
-    //     console.warn("SerfManager: tryAssignForestersToPlantSaplings is obsolete and should be removed. PlantSaplingTasks are now created by createPlantSaplingTasks and assigned generically.");
-    //     return; 
-    //     // ... OLD LOGIC REMOVED ...
-    // }
 
     isTileOccupiedForPlanting(tileX, tileY, serfIdToExclude = null) {
         // Check if any other serf (excluding serfIdToExclude) is ALREADY assigned a PlantSaplingTask targeting this tile
