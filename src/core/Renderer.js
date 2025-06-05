@@ -162,7 +162,7 @@ class Renderer {
         });
     }
     
-    createGroundIndicator(buildingModel) {
+    createGroundIndicator(entityModel) {
         // Create a subtle ring indicator on the ground
         const ringGeometry = new THREE.RingGeometry(2, 2.5, 32);
         const ringMaterial = new THREE.MeshBasicMaterial({
@@ -174,24 +174,30 @@ class Renderer {
         
         const ring = new THREE.Mesh(ringGeometry, ringMaterial);
         ring.rotation.x = -Math.PI / 2; // Lay flat on ground
-        ring.position.copy(buildingModel.position);
+        ring.position.copy(entityModel.position);
         ring.position.y += 0.1; // Slightly above ground to avoid z-fighting
         ring.userData.isSelectionIndicator = true;
-        ring.userData.parentBuilding = buildingModel;
+        ring.userData.parentEntity = entityModel; // Changed from parentBuilding to parentEntity
         
         this.scene.add(ring);
         
         // Store reference for animation
-        if (!buildingModel.userData.selectionIndicators) {
-            buildingModel.userData.selectionIndicators = [];
+        if (!entityModel.userData.selectionIndicators) {
+            entityModel.userData.selectionIndicators = [];
         }
-        buildingModel.userData.selectionIndicators.push(ring);
+        entityModel.userData.selectionIndicators.push(ring);
     }
     
     // Update method to animate selection indicators (called from Game.js animate loop)
     updateSelectionAnimations(deltaTime) {
         this.scene.traverse((child) => {
             if (child.userData.isSelectionIndicator) {
+                // Update position to follow the parent entity
+                if (child.userData.parentEntity) {
+                    child.position.copy(child.userData.parentEntity.position);
+                    child.position.y += 0.1; // Keep slightly above ground
+                }
+                
                 // Animate the ring indicator
                 const time = Date.now() * 0.002;
                 const pulseFactor = 0.3 + 0.2 * Math.sin(time * 2);
