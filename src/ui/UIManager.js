@@ -96,8 +96,8 @@ class UIManager {
                 display: grid;
                 grid-template-areas: 
                     "topbar topbar topbar"
-                    "left center right"
-                    "bottom bottom bottom";
+                    "left selection-info right"
+                    ". . bottom-right";
                 grid-template-rows: 60px 1fr 120px;
                 grid-template-columns: 280px 1fr 280px;
                 gap: 8px;
@@ -117,8 +117,8 @@ class UIManager {
         this.createTopBar();
         this.createLeftSidebar();
         this.createRightSidebar();
-        this.createBottomPanel();
-        this.createCenterInfoPanel();
+        this.createGameControlsPanel();
+        this.createSelectionInfoPanel();
     }
 
     createTopBar() {
@@ -326,7 +326,7 @@ class UIManager {
 
     toggleDevMode() {
         this.isDevMode = !this.isDevMode;
-        const devPanel = this.bottomPanel?.querySelector('.dev-panel');
+        const devPanel = this.gameControlsPanel?.querySelector('.dev-panel');
         
         if (this.isDevMode) {
             this.showDevPanel();
@@ -352,10 +352,10 @@ class UIManager {
     }
 
     showDevPanel() {
-        if (!this.bottomPanel) return;
+        if (!this.gameControlsPanel) return;
         
         // Remove existing dev panel
-        const existingDevPanel = this.bottomPanel.querySelector('.dev-panel');
+        const existingDevPanel = this.gameControlsPanel.querySelector('.dev-panel');
         if (existingDevPanel) existingDevPanel.remove();
         
         const devPanel = document.createElement('div');
@@ -390,7 +390,7 @@ class UIManager {
         });
 
         devPanel.appendChild(addResourcesBtn);
-        this.bottomPanel.appendChild(devPanel);
+        this.gameControlsPanel.appendChild(devPanel);
     }
 
     createLeftSidebar() {
@@ -747,10 +747,10 @@ class UIManager {
         this.rightSidebar.appendChild(effectsPanel);
     }
 
-    createBottomPanel() {
-        this.bottomPanel = document.createElement('div');
-        this.bottomPanel.style.cssText = `
-            grid-area: bottom;
+    createGameControlsPanel() {
+        this.gameControlsPanel = document.createElement('div');
+        this.gameControlsPanel.style.cssText = `
+            grid-area: bottom-right;
             background: rgba(25,35,45,0.9);
             border-radius: 12px;
             backdrop-filter: blur(10px);
@@ -762,38 +762,44 @@ class UIManager {
             align-items: center;
         `;
 
-        this.uiOverlay.appendChild(this.bottomPanel);
+        this.uiOverlay.appendChild(this.gameControlsPanel);
     }
 
-    createCenterInfoPanel() {
-        this.centerInfoPanel = document.createElement('div');
-        this.centerInfoPanel.style.cssText = `
-            grid-area: center;
-            pointer-events: none;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-
-        this.selectionInfo = document.createElement('div');
-        this.selectionInfo.style.cssText = `
+    createSelectionInfoPanel() {
+        this.selectionInfoPanel = document.createElement('div');
+        this.selectionInfoPanel.style.cssText = `
+            grid-area: selection-info;
             background: rgba(25,35,45,0.95);
             border-radius: 12px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
             pointer-events: auto;
             padding: 20px;
-            max-width: 400px;
-            max-height: 300px;
+            width: 250px;
+            max-height: 200px;
             overflow-y: auto;
             display: none;
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            justify-self: start;
+            align-self: start;
         `;
 
-        this.centerInfoPanel.appendChild(this.selectionInfo);
-        this.uiOverlay.appendChild(this.centerInfoPanel);
+        // Create the selection info content container
+        this.selectionInfo = this.selectionInfoPanel;
+        
+        this.uiOverlay.appendChild(this.selectionInfoPanel);
     }
+
+    /* reateCenterInfoPanel() {
+        this.centerInfoPanel = document.createElement('div');
+        this.centerInfoPanel.style.cssText = `
+            grid-area: center;
+            pointer-events: none;
+            position: relative;
+        `;
+
+        this.uiOverlay.appendChild(this.centerInfoPanel);
+    } */
 
     setSerfSelectCallback(callback) {
         this.onSerfSelectCallback = callback;
