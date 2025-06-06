@@ -158,6 +158,7 @@ class SerfManager {
         }
 
         // Spawn 1 Woodcutter serf
+        /*
         let woodcutterSpawnX = spawnX + 1;
         let woodcutterSpawnZ = spawnZ + 1;
 
@@ -185,6 +186,7 @@ class SerfManager {
             );
             woodcutterSerf.setProfession;
         }
+        */
     }
 
     createSerf(type, gridX, gridY) {
