@@ -14,30 +14,47 @@ export const BUILDING_DATA = {
         maxHealth: 2000,
         jobSlots: 0,
         // Castle acts as a global drop-off, so its maxStock reflects that.
-        maxStock: { 
+        maxStock: {
             default: 100,
-            [RESOURCE_TYPES.WOOD.key]: 200, [RESOURCE_TYPES.STONE.key]: 200, [RESOURCE_TYPES.IRON_ORE.key]: 100,
-            [RESOURCE_TYPES.COAL_ORE.key]: 100, [RESOURCE_TYPES.GOLD_ORE.key]: 50, [RESOURCE_TYPES.PLANKS.key]: 150,
-            [RESOURCE_TYPES.IRON_BARS.key]: 100, [RESOURCE_TYPES.GOLD_BARS.key]: 50, [RESOURCE_TYPES.TOOL_AXE.key]: 20,
-            [RESOURCE_TYPES.TOOL_PICKAXE.key]: 20, [RESOURCE_TYPES.GRAIN.key]: 100, [RESOURCE_TYPES.FLOUR.key]: 80,
-            [RESOURCE_TYPES.BREAD.key]: 100, [RESOURCE_TYPES.FISH.key]: 100, [RESOURCE_TYPES.PIG.key]: 30,
-            [RESOURCE_TYPES.MEAT.key]: 80, [RESOURCE_TYPES.SWORD.key]: 20, [RESOURCE_TYPES.SHIELD.key]: 20,
+            [RESOURCE_TYPES.WOOD.key]: 200,
+            [RESOURCE_TYPES.STONE.key]: 200,
+            [RESOURCE_TYPES.IRON_ORE.key]: 100,
+            [RESOURCE_TYPES.COAL_ORE.key]: 100,
+            [RESOURCE_TYPES.GOLD_ORE.key]: 50,
+            [RESOURCE_TYPES.PLANKS.key]: 150,
+            [RESOURCE_TYPES.IRON_BARS.key]: 100,
+            [RESOURCE_TYPES.GOLD_BARS.key]: 50,
+            [RESOURCE_TYPES.TOOL_AXE.key]: 20,
+            [RESOURCE_TYPES.TOOL_PICKAXE.key]: 20,
+            [RESOURCE_TYPES.GRAIN.key]: 100,
+            [RESOURCE_TYPES.FLOUR.key]: 80,
+            [RESOURCE_TYPES.BREAD.key]: 100,
+            [RESOURCE_TYPES.FISH.key]: 100,
+            [RESOURCE_TYPES.PIG.key]: 30,
+            [RESOURCE_TYPES.MEAT.key]: 80,
+            [RESOURCE_TYPES.SWORD.key]: 20,
+            [RESOURCE_TYPES.SHIELD.key]: 20,
+            [RESOURCE_TYPES.WOOD_LOG.key]: 50,
+            [RESOURCE_TYPES.TOOL_SCYTHE.key]: 20,
+            [RESOURCE_TYPES.TOOL_HAMMER.key]: 20,
+            [RESOURCE_TYPES.TOOL_FISHING_ROD.key]: 20,
+            [RESOURCE_TYPES.SAPLING.key]: 50,
         },
         outputBufferCapacity: { default: 0 }, // Castle doesn't produce into an output buffer
         producesMaterials: [], // Renamed from 'produces' for clarity with Building.js
-        consumesMaterials: []  // Renamed from 'consumes' for clarity with Building.js
+        consumesMaterials: [], // Renamed from 'consumes' for clarity with Building.js
     },
     BUILDERS_HUT: {
         key: 'BUILDERS_HUT',
         name: "Builder's Hut",
         cost: { [RESOURCE_TYPES.WOOD.key]: 5 },
         tier: 1,
-        constructionTime: 2, // 2 seconds 
+        constructionTime: 2, // 2 seconds
         maxHealth: 100,
         jobSlots: 3,
         jobProfession: SERF_PROFESSIONS.BUILDER,
-        maxStock: { default: 10 }, // For small amounts of materials builders might temporarily hold
-        outputBufferCapacity: { default: 0 }
+        maxStock: { default: 10 }, // For small numbers of materials builders might temporarily hold
+        outputBufferCapacity: { default: 0 },
     },
     WOODCUTTERS_HUT: {
         key: 'WOODCUTTERS_HUT',
@@ -47,7 +64,7 @@ export const BUILDING_DATA = {
         constructionTime: 3, // 3 seconds
         maxHealth: 150, // Added maxHealth
         producesResource: RESOURCE_TYPES.WOOD.key, // Simple direct production
-        productionIntervalMs: 10000,         // Interval for simple production
+        productionIntervalMs: 10000, // Interval for simple production
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.WOODCUTTER,
         requiredTool: RESOURCE_TYPES.TOOL_AXE.key,
@@ -55,7 +72,7 @@ export const BUILDING_DATA = {
         foodConsumptionRate: 0.1,
         foodCheckIntervalMs: 15000,
         maxStock: { [RESOURCE_TYPES.WOOD.key]: 10, default: 5 }, // Local storage for output
-        outputBufferCapacity: { [RESOURCE_TYPES.WOOD.key]: 5 }
+        outputBufferCapacity: { [RESOURCE_TYPES.WOOD.key]: 5 },
     },
     FORESTERS_HUT: {
         key: 'FORESTERS_HUT',
@@ -70,7 +87,7 @@ export const BUILDING_DATA = {
         saplingGrowthTime: 60000,
         maxSaplingsToPlantPerForester: 10, // Added configuration for PlantSaplingTask
         maxStock: { default: 5 }, // Small storage for potential items like saplings if they become items
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
     TRANSPORTER_HUT: {
         key: 'TRANSPORTER_HUT',
@@ -82,7 +99,7 @@ export const BUILDING_DATA = {
         jobSlots: 5,
         jobProfession: SERF_PROFESSIONS.TRANSPORTER,
         maxStock: { default: 20 }, // General storage for items being transported
-        outputBufferCapacity: { default: 0 } // Transporters pick up and drop off, don't produce to buffer
+        outputBufferCapacity: { default: 0 }, // Transporters pick up and drop off, don't produce to buffer
     },
     QUARRY: {
         key: 'QUARRY',
@@ -92,7 +109,7 @@ export const BUILDING_DATA = {
         constructionTime: 8, // 8 seconds
         maxHealth: 180, // Added maxHealth
         producesResource: RESOURCE_TYPES.STONE.key, // Simple direct production
-        productionIntervalMs: 12000,        // Interval for simple production
+        productionIntervalMs: 12000, // Interval for simple production
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.STONEMASON,
         requiredTool: RESOURCE_TYPES.TOOL_PICKAXE.key,
@@ -100,22 +117,22 @@ export const BUILDING_DATA = {
         foodConsumptionRate: 0.1,
         foodCheckIntervalMs: 10000,
         maxStock: { [RESOURCE_TYPES.STONE.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.STONE.key]: 5 }
+        outputBufferCapacity: { [RESOURCE_TYPES.STONE.key]: 5 },
     },
-    FISHERMANS_HUT: {
-        key: 'FISHERMANS_HUT',
+    FISHERMAN_HUT: {
+        key: 'FISHERMAN_HUT',
         name: "Fisherman's Hut",
         cost: { [RESOURCE_TYPES.WOOD.key]: 15 },
         tier: 1,
         constructionTime: 4.5, // 4.5 seconds
         maxHealth: 120, // Added maxHealth
         producesResource: RESOURCE_TYPES.FISH.key, // Simple direct production
-        productionIntervalMs: 18000,         // Interval for simple production
+        productionIntervalMs: 18000, // Interval for simple production
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.FISHERMAN,
         requiredTool: RESOURCE_TYPES.TOOL_FISHING_ROD.key,
         maxStock: { [RESOURCE_TYPES.FISH.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.FISH.key]: 5 }
+        outputBufferCapacity: { [RESOURCE_TYPES.FISH.key]: 5 },
     },
     GEOLOGISTS_HUT: {
         key: 'GEOLOGISTS_HUT',
@@ -128,9 +145,10 @@ export const BUILDING_DATA = {
         jobProfession: SERF_PROFESSIONS.GEOLOGIST,
         // Geologists find spots, not direct production
         maxStock: { default: 5 },
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
-    BLACKSMITH: { // This is Tier 2, specific to tools like axes
+    BLACKSMITH: {
+        // This is Tier 2, specific to tools like axes
         key: 'BLACKSMITH',
         name: 'Blacksmith',
         cost: { [RESOURCE_TYPES.WOOD.key]: 30, [RESOURCE_TYPES.STONE.key]: 10 },
@@ -138,8 +156,12 @@ export const BUILDING_DATA = {
         constructionTime: 10, // 10 seconds
         maxHealth: 250, // Added maxHealth
         // This Blacksmith produces TOOLS_AXE via processing
-        consumesMaterials: [{resource: RESOURCE_TYPES.IRON_BARS.key, quantity: 1}], 
-        producesMaterials: [{resource: RESOURCE_TYPES.TOOL_AXE.key, quantity:1}], 
+        consumesMaterials: [
+            { resource: RESOURCE_TYPES.IRON_BARS.key, quantity: 1 },
+        ],
+        producesMaterials: [
+            { resource: RESOURCE_TYPES.TOOL_AXE.key, quantity: 1 },
+        ],
         processingTime: 10000, // ms, example
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.BLACKSMITH,
@@ -147,8 +169,12 @@ export const BUILDING_DATA = {
         consumesFood: [RESOURCE_TYPES.BREAD.key, RESOURCE_TYPES.FISH.key],
         foodConsumptionRate: 0.1,
         foodCheckIntervalMs: 10000,
-        maxStock: { [RESOURCE_TYPES.IRON_BARS.key]: 5, [RESOURCE_TYPES.TOOL_AXE.key]: 3, default: 2 },
-        outputBufferCapacity: { [RESOURCE_TYPES.TOOL_AXE.key]: 3 }
+        maxStock: {
+            [RESOURCE_TYPES.IRON_BARS.key]: 5,
+            [RESOURCE_TYPES.TOOL_AXE.key]: 3,
+            default: 2,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.TOOL_AXE.key]: 3 },
     },
     BAKERY: {
         key: 'BAKERY',
@@ -157,19 +183,26 @@ export const BUILDING_DATA = {
         tier: 2,
         constructionTime: 9, // 9 seconds
         maxHealth: 200, // Added maxHealth
-        consumesMaterials: [ 
+        consumesMaterials: [
             { resource: RESOURCE_TYPES.FLOUR.key, quantity: 1 },
-            { resource: RESOURCE_TYPES.COAL_ORE.key, quantity: 1 } 
+            { resource: RESOURCE_TYPES.COAL_ORE.key, quantity: 1 },
         ],
-        producesMaterials: [{ resource: RESOURCE_TYPES.BREAD.key, quantity: 3 }], 
+        producesMaterials: [
+            { resource: RESOURCE_TYPES.BREAD.key, quantity: 3 },
+        ],
         processingTime: 20000, // ms
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.BAKER,
-        consumesFood: [RESOURCE_TYPES.GRAIN.key], 
-        foodConsumptionRate: 0.1, 
-        foodCheckIntervalMs: 10000, 
-        maxStock: { [RESOURCE_TYPES.FLOUR.key]: 5, [RESOURCE_TYPES.COAL_ORE.key]: 5, [RESOURCE_TYPES.BREAD.key]: 15, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.BREAD.key]: 15 }
+        consumesFood: [RESOURCE_TYPES.GRAIN.key],
+        foodConsumptionRate: 0.1,
+        foodCheckIntervalMs: 10000,
+        maxStock: {
+            [RESOURCE_TYPES.FLOUR.key]: 5,
+            [RESOURCE_TYPES.COAL_ORE.key]: 5,
+            [RESOURCE_TYPES.BREAD.key]: 15,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.BREAD.key]: 15 },
     },
     PIG_FARM: {
         key: 'PIG_FARM',
@@ -178,33 +211,39 @@ export const BUILDING_DATA = {
         tier: 2,
         constructionTime: 7.5, // 7.5 seconds
         maxHealth: 180, // Added maxHealth
-        consumesMaterials: [{ resource: RESOURCE_TYPES.GRAIN.key, quantity: 1 }], 
-        producesMaterials: [{ resource: RESOURCE_TYPES.PIG.key, quantity: 1 }], 
+        consumesMaterials: [
+            { resource: RESOURCE_TYPES.GRAIN.key, quantity: 1 },
+        ],
+        producesMaterials: [{ resource: RESOURCE_TYPES.PIG.key, quantity: 1 }],
         processingTime: 35000, // ms
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.PIG_FARMER,
-        requiredTool: RESOURCE_TYPES.TOOL_SCYTHE.key, 
-        consumesFood: [RESOURCE_TYPES.GRAIN.key], 
+        requiredTool: RESOURCE_TYPES.TOOL_SCYTHE.key,
+        consumesFood: [RESOURCE_TYPES.GRAIN.key],
         foodConsumptionRate: 0.05,
         foodCheckIntervalMs: 10000,
-        maxStock: { [RESOURCE_TYPES.GRAIN.key]: 10, [RESOURCE_TYPES.PIG.key]: 3, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.PIG.key]: 3 }
+        maxStock: {
+            [RESOURCE_TYPES.GRAIN.key]: 10,
+            [RESOURCE_TYPES.PIG.key]: 3,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.PIG.key]: 3 },
     },
     FARM: {
         key: 'FARM',
         name: 'Farm',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 20 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 20 },
         tier: 1,
         constructionTime: 5.5, // 5.5 seconds
         maxHealth: 150, // Added maxHealth
         producesResource: RESOURCE_TYPES.GRAIN.key, // Simple direct production
-        productionIntervalMs: 25000,         // Interval for simple production
-        jobSlots: 1, 
+        productionIntervalMs: 25000, // Interval for simple production
+        jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.FARMER,
         requiredTool: RESOURCE_TYPES.TOOL_SCYTHE.key,
-        cropGrowthTime: 25000, 
+        cropGrowthTime: 25000,
         maxStock: { [RESOURCE_TYPES.GRAIN.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.GRAIN.key]: 10 }
+        outputBufferCapacity: { [RESOURCE_TYPES.GRAIN.key]: 10 },
     },
     IRON_MINE: {
         key: 'IRON_MINE',
@@ -214,16 +253,16 @@ export const BUILDING_DATA = {
         constructionTime: 12, // 12 seconds
         maxHealth: 220, // Added maxHealth
         producesResource: RESOURCE_TYPES.IRON_ORE.key, // Simple direct production
-        productionIntervalMs: 20000,         // Interval for simple production
-        jobSlots: 2, 
+        productionIntervalMs: 20000, // Interval for simple production
+        jobSlots: 2,
         jobProfession: SERF_PROFESSIONS.MINER,
         requiredTool: RESOURCE_TYPES.TOOL_PICKAXE.key,
         consumesFood: [RESOURCE_TYPES.BREAD.key, RESOURCE_TYPES.FISH.key],
         foodConsumptionRate: 0.2,
         foodCheckIntervalMs: 12000,
-        mineType: 'iron', 
+        mineType: 'iron',
         maxStock: { [RESOURCE_TYPES.IRON_ORE.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.IRON_ORE.key]: 5 }
+        outputBufferCapacity: { [RESOURCE_TYPES.IRON_ORE.key]: 5 },
     },
     COAL_MINE: {
         key: 'COAL_MINE',
@@ -233,16 +272,16 @@ export const BUILDING_DATA = {
         constructionTime: 11, // 11 seconds
         maxHealth: 220, // Added maxHealth
         producesResource: RESOURCE_TYPES.COAL_ORE.key, // Simple direct production
-        productionIntervalMs: 18000,        // Interval for simple production
-        jobSlots: 2, 
+        productionIntervalMs: 18000, // Interval for simple production
+        jobSlots: 2,
         jobProfession: SERF_PROFESSIONS.MINER,
         requiredTool: RESOURCE_TYPES.TOOL_PICKAXE.key,
         consumesFood: [RESOURCE_TYPES.BREAD.key, RESOURCE_TYPES.FISH.key],
         foodConsumptionRate: 0.2,
         foodCheckIntervalMs: 12000,
-        mineType: 'coal', 
+        mineType: 'coal',
         maxStock: { [RESOURCE_TYPES.COAL_ORE.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.COAL_ORE.key]: 5 }
+        outputBufferCapacity: { [RESOURCE_TYPES.COAL_ORE.key]: 5 },
     },
     GOLD_MINE: {
         key: 'GOLD_MINE',
@@ -252,51 +291,65 @@ export const BUILDING_DATA = {
         constructionTime: 15, // 15 seconds
         maxHealth: 280, // Added maxHealth
         producesResource: RESOURCE_TYPES.GOLD_ORE.key, // Simple direct production
-        productionIntervalMs: 30000,        // Interval for simple production
-        jobSlots: 2, 
+        productionIntervalMs: 30000, // Interval for simple production
+        jobSlots: 2,
         jobProfession: SERF_PROFESSIONS.MINER,
         requiredTool: RESOURCE_TYPES.TOOL_PICKAXE.key,
         consumesFood: [RESOURCE_TYPES.BREAD.key, RESOURCE_TYPES.FISH.key],
         foodConsumptionRate: 0.2,
         foodCheckIntervalMs: 12000,
-        mineType: 'gold', 
+        mineType: 'gold',
         maxStock: { [RESOURCE_TYPES.GOLD_ORE.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.GOLD_ORE.key]: 5 }
+        outputBufferCapacity: { [RESOURCE_TYPES.GOLD_ORE.key]: 5 },
     },
     SAWMILL: {
         key: 'SAWMILL',
         name: 'Sawmill',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 25, [RESOURCE_TYPES.STONE.key]: 10 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 25, [RESOURCE_TYPES.STONE.key]: 10 },
         tier: 2,
         constructionTime: 9.5, // 9.5 seconds
         maxHealth: 200, // Added maxHealth
-        consumesMaterials: [{ resource: RESOURCE_TYPES.WOOD.key, quantity: 1 }], 
-        producesMaterials: [{ resource: RESOURCE_TYPES.PLANKS.key, quantity: 2 }], 
+        consumesMaterials: [{ resource: RESOURCE_TYPES.WOOD.key, quantity: 1 }],
+        producesMaterials: [
+            { resource: RESOURCE_TYPES.PLANKS.key, quantity: 2 },
+        ],
         processingTime: 15000, // ms
-        jobSlots: 1, 
+        jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.SAWMILL_WORKER,
         requiredTool: RESOURCE_TYPES.TOOL_HAMMER.key,
         consumesFood: [RESOURCE_TYPES.BREAD.key],
         foodConsumptionRate: 0.1,
         foodCheckIntervalMs: 15000,
-        maxStock: { [RESOURCE_TYPES.WOOD.key]: 10, [RESOURCE_TYPES.PLANKS.key]: 12, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.PLANKS.key]: 6 }
+        maxStock: {
+            [RESOURCE_TYPES.WOOD.key]: 10,
+            [RESOURCE_TYPES.PLANKS.key]: 12,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.PLANKS.key]: 6 },
     },
     WINDMILL: {
         key: 'WINDMILL',
         name: 'Windmill',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 25, [RESOURCE_TYPES.STONE.key]: 15 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 25, [RESOURCE_TYPES.STONE.key]: 15 },
         tier: 2,
         constructionTime: 8.5, // 8.5 seconds
         maxHealth: 180, // Added maxHealth
-        consumesMaterials: [{ resource: RESOURCE_TYPES.GRAIN.key, quantity: 2 }], 
-        producesMaterials: [{ resource: RESOURCE_TYPES.FLOUR.key, quantity: 1 }], 
+        consumesMaterials: [
+            { resource: RESOURCE_TYPES.GRAIN.key, quantity: 2 },
+        ],
+        producesMaterials: [
+            { resource: RESOURCE_TYPES.FLOUR.key, quantity: 1 },
+        ],
         processingTime: 18000, // ms
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.MILLER,
-        requiredTool: RESOURCE_TYPES.TOOL_HAMMER.key, 
-        maxStock: { [RESOURCE_TYPES.GRAIN.key]: 10, [RESOURCE_TYPES.FLOUR.key]: 5, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.FLOUR.key]: 5 }
+        requiredTool: RESOURCE_TYPES.TOOL_HAMMER.key,
+        maxStock: {
+            [RESOURCE_TYPES.GRAIN.key]: 10,
+            [RESOURCE_TYPES.FLOUR.key]: 5,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.FLOUR.key]: 5 },
     },
     SLAUGHTERHOUSE: {
         key: 'SLAUGHTERHOUSE',
@@ -305,40 +358,51 @@ export const BUILDING_DATA = {
         tier: 2,
         constructionTime: 7, // 7 seconds
         maxHealth: 160, // Added maxHealth
-        consumesMaterials: [{ resource: RESOURCE_TYPES.PIG.key, quantity: 1 }], 
-        producesMaterials: [{ resource: RESOURCE_TYPES.MEAT.key, quantity: 2 }], 
+        consumesMaterials: [{ resource: RESOURCE_TYPES.PIG.key, quantity: 1 }],
+        producesMaterials: [{ resource: RESOURCE_TYPES.MEAT.key, quantity: 2 }],
         processingTime: 12000, // ms
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.BUTCHER,
-        requiredTool: RESOURCE_TYPES.TOOL_AXE.key, 
-        maxStock: { [RESOURCE_TYPES.PIG.key]: 3, [RESOURCE_TYPES.MEAT.key]: 10, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.MEAT.key]: 10 }
+        requiredTool: RESOURCE_TYPES.TOOL_AXE.key,
+        maxStock: {
+            [RESOURCE_TYPES.PIG.key]: 3,
+            [RESOURCE_TYPES.MEAT.key]: 10,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.MEAT.key]: 10 },
     },
     IRON_SMELTER: {
         key: 'IRON_SMELTER',
         name: 'Iron Smelter',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 30, [RESOURCE_TYPES.STONE.key]: 20 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 30, [RESOURCE_TYPES.STONE.key]: 20 },
         tier: 2,
         constructionTime: 13, // 13 seconds
         maxHealth: 250, // Added maxHealth
-        consumesMaterials: [ 
+        consumesMaterials: [
             { resource: RESOURCE_TYPES.IRON_ORE.key, quantity: 2 },
-            { resource: RESOURCE_TYPES.COAL_ORE.key, quantity: 1 }
+            { resource: RESOURCE_TYPES.COAL_ORE.key, quantity: 1 },
         ],
-        producesMaterials: [{ resource: RESOURCE_TYPES.IRON_BARS.key, quantity: 1 }], 
+        producesMaterials: [
+            { resource: RESOURCE_TYPES.IRON_BARS.key, quantity: 1 },
+        ],
         processingTime: 22000, // ms
-        jobSlots: 1, 
+        jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.SMELTER_WORKER,
         consumesFood: [RESOURCE_TYPES.BREAD.key],
         foodConsumptionRate: 0.1,
         foodCheckIntervalMs: 20000,
-        maxStock: { [RESOURCE_TYPES.IRON_ORE.key]: 10, [RESOURCE_TYPES.COAL_ORE.key]: 5, [RESOURCE_TYPES.IRON_BARS.key]: 5, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.IRON_BARS.key]: 5 }
+        maxStock: {
+            [RESOURCE_TYPES.IRON_ORE.key]: 10,
+            [RESOURCE_TYPES.COAL_ORE.key]: 5,
+            [RESOURCE_TYPES.IRON_BARS.key]: 5,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.IRON_BARS.key]: 5 },
     },
-    TOOLMAKERS_WORKSHOP: { 
+    TOOLMAKERS_WORKSHOP: {
         key: 'TOOLMAKERS_WORKSHOP',
         name: "Toolmaker's Workshop",
-        cost: { [RESOURCE_TYPES.WOOD.key]: 25, [RESOURCE_TYPES.STONE.key]: 10 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 25, [RESOURCE_TYPES.STONE.key]: 10 },
         tier: 3,
         constructionTime: 14, // 14 seconds
         maxHealth: 280, // Added maxHealth
@@ -351,67 +415,86 @@ export const BUILDING_DATA = {
         jobProfession: SERF_PROFESSIONS.TOOLMAKER,
         requiredTool: RESOURCE_TYPES.TOOL_HAMMER.key,
         // Max stock for various inputs and potential outputs
-        maxStock: { 
-            [RESOURCE_TYPES.IRON_BARS.key]: 10, [RESOURCE_TYPES.PLANKS.key]: 10, 
-            [RESOURCE_TYPES.TOOL_AXE.key]: 2, [RESOURCE_TYPES.TOOL_PICKAXE.key]: 2, 
-            [RESOURCE_TYPES.TOOL_SCYTHE.key]: 2, [RESOURCE_TYPES.TOOL_HAMMER.key]: 2,
+        maxStock: {
+            [RESOURCE_TYPES.IRON_BARS.key]: 10,
+            [RESOURCE_TYPES.PLANKS.key]: 10,
+            [RESOURCE_TYPES.TOOL_AXE.key]: 2,
+            [RESOURCE_TYPES.TOOL_PICKAXE.key]: 2,
+            [RESOURCE_TYPES.TOOL_SCYTHE.key]: 2,
+            [RESOURCE_TYPES.TOOL_HAMMER.key]: 2,
             [RESOURCE_TYPES.TOOL_FISHING_ROD.key]: 2,
-            default: 5 
+            default: 5,
         },
-        outputBufferCapacity: { 
-            [RESOURCE_TYPES.TOOL_AXE.key]: 2, [RESOURCE_TYPES.TOOL_PICKAXE.key]: 2, 
-            [RESOURCE_TYPES.TOOL_SCYTHE.key]: 2, [RESOURCE_TYPES.TOOL_HAMMER.key]: 2,
+        outputBufferCapacity: {
+            [RESOURCE_TYPES.TOOL_AXE.key]: 2,
+            [RESOURCE_TYPES.TOOL_PICKAXE.key]: 2,
+            [RESOURCE_TYPES.TOOL_SCYTHE.key]: 2,
+            [RESOURCE_TYPES.TOOL_HAMMER.key]: 2,
             [RESOURCE_TYPES.TOOL_FISHING_ROD.key]: 2,
-            default: 2
-        }
+            default: 2,
+        },
     },
-    GOLDSMITHS_MINT: { 
+    GOLDSMITHS_MINT: {
         key: 'GOLDSMITHS_MINT',
         name: "Goldsmith's Mint",
-        cost: { [RESOURCE_TYPES.WOOD.key]: 20, [RESOURCE_TYPES.STONE.key]: 20 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 20, [RESOURCE_TYPES.STONE.key]: 20 },
         tier: 3,
         constructionTime: 16, // 16 seconds
         maxHealth: 260, // Added maxHealth
-        consumesMaterials: [ 
+        consumesMaterials: [
             { resource: RESOURCE_TYPES.GOLD_ORE.key, quantity: 1 },
-            { resource: RESOURCE_TYPES.COAL_ORE.key, quantity: 1 }
+            { resource: RESOURCE_TYPES.COAL_ORE.key, quantity: 1 },
         ],
-        producesMaterials: [{ resource: RESOURCE_TYPES.GOLD_BARS.key, quantity: 1 }], 
+        producesMaterials: [
+            { resource: RESOURCE_TYPES.GOLD_BARS.key, quantity: 1 },
+        ],
         processingTime: 25000, // ms
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GOLDSMITH,
-        maxStock: { [RESOURCE_TYPES.GOLD_ORE.key]: 5, [RESOURCE_TYPES.COAL_ORE.key]: 5, [RESOURCE_TYPES.GOLD_BARS.key]: 5, default: 5 },
-        outputBufferCapacity: { [RESOURCE_TYPES.GOLD_BARS.key]: 5 }
+        maxStock: {
+            [RESOURCE_TYPES.GOLD_ORE.key]: 5,
+            [RESOURCE_TYPES.COAL_ORE.key]: 5,
+            [RESOURCE_TYPES.GOLD_BARS.key]: 5,
+            default: 5,
+        },
+        outputBufferCapacity: { [RESOURCE_TYPES.GOLD_BARS.key]: 5 },
     },
-    BLACKSMITH_ARMORY: { 
+    BLACKSMITH_ARMORY: {
         key: 'BLACKSMITH_ARMORY',
-        name: 'Blacksmith Armory', 
-        cost: { [RESOURCE_TYPES.WOOD.key]: 30, [RESOURCE_TYPES.STONE.key]: 15 }, 
+        name: 'Blacksmith Armory',
+        cost: { [RESOURCE_TYPES.WOOD.key]: 30, [RESOURCE_TYPES.STONE.key]: 15 },
         tier: 3,
         constructionTime: 17, // 17 seconds
         maxHealth: 300, // Added maxHealth
-        // Similar to Toolmaker, specific production (swords, shields) will be chosen by player.
+        // Similar to Toolmaker, the player will choose a specific production (swords, shields).
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.BLACKSMITH,
         requiredTool: RESOURCE_TYPES.TOOL_HAMMER.key,
-        maxStock: { 
-            [RESOURCE_TYPES.IRON_BARS.key]: 10, [RESOURCE_TYPES.COAL_ORE.key]: 5, [RESOURCE_TYPES.PLANKS.key]: 10,
-            [RESOURCE_TYPES.SWORD.key]: 3, [RESOURCE_TYPES.SHIELD.key]: 3,
-            default: 5
+        maxStock: {
+            [RESOURCE_TYPES.IRON_BARS.key]: 10,
+            [RESOURCE_TYPES.COAL_ORE.key]: 5,
+            [RESOURCE_TYPES.PLANKS.key]: 10,
+            [RESOURCE_TYPES.SWORD.key]: 3,
+            [RESOURCE_TYPES.SHIELD.key]: 3,
+            default: 5,
         },
-        outputBufferCapacity: { [RESOURCE_TYPES.SWORD.key]: 3, [RESOURCE_TYPES.SHIELD.key]: 3, default: 2 }
+        outputBufferCapacity: {
+            [RESOURCE_TYPES.SWORD.key]: 3,
+            [RESOURCE_TYPES.SHIELD.key]: 3,
+            default: 2,
+        },
     },
     GUARD_HUT: {
         key: 'GUARD_HUT',
         name: 'Guard Hut',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 15, [RESOURCE_TYPES.STONE.key]: 5 }, 
+        cost: { [RESOURCE_TYPES.WOOD.key]: 15, [RESOURCE_TYPES.STONE.key]: 5 },
         tier: 1,
         constructionTime: 3, // 3 seconds
         maxHealth: 120, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GUARD, // Assuming GUARD profession
         maxStock: { default: 5 }, // For guard's equipment if any
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
     WATCHTOWER: {
         key: 'WATCHTOWER',
@@ -422,23 +505,26 @@ export const BUILDING_DATA = {
         maxHealth: 180, // Added maxHealth
         jobSlots: 1,
         jobProfession: SERF_PROFESSIONS.GUARD, // Assuming GUARD profession
-        territoryIncrease: 5, 
+        territoryIncrease: 5,
         maxStock: { default: 5 },
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
     BARRACKS_FORTRESS: {
         key: 'BARRACKS_FORTRESS',
         name: 'Barracks/Fortress',
-        cost: { [RESOURCE_TYPES.STONE.key]: 100, [RESOURCE_TYPES.WOOD.key]: 50 }, 
+        cost: {
+            [RESOURCE_TYPES.STONE.key]: 100,
+            [RESOURCE_TYPES.WOOD.key]: 50,
+        },
         tier: 3,
         constructionTime: 20, // 20 seconds
         maxHealth: 500, // Added maxHealth
         jobSlots: 5, // For training or stationing units
         // jobProfession: SERF_PROFESSIONS.KNIGHT, // Or trainer
-        canTrain: ['KNIGHT'], 
-        territoryIncrease: 10, 
+        canTrain: ['KNIGHT'],
+        territoryIncrease: 10,
         maxStock: { default: 20 }, // For equipment used in training
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
     WAREHOUSE_STOREHOUSE: {
         key: 'WAREHOUSE_STOREHOUSE',
@@ -453,16 +539,28 @@ export const BUILDING_DATA = {
         jobSlots: 0, // Usually no direct workers, managed by transporters
         maxStock: { default: 10 }, // Small buffer for items being moved
         outputBufferCapacity: { default: 0 },
-        storageCapacityIncrease: { 
-            [RESOURCE_TYPES.WOOD.key]: 200, [RESOURCE_TYPES.STONE.key]: 200, [RESOURCE_TYPES.IRON_ORE.key]: 100,
-            [RESOURCE_TYPES.COAL_ORE.key]: 100, [RESOURCE_TYPES.GOLD_ORE.key]: 50, [RESOURCE_TYPES.PLANKS.key]: 150,
-            [RESOURCE_TYPES.IRON_BARS.key]: 100, [RESOURCE_TYPES.GOLD_BARS.key]: 50, [RESOURCE_TYPES.TOOL_AXE.key]: 20,
-            [RESOURCE_TYPES.TOOL_PICKAXE.key]: 20, [RESOURCE_TYPES.GRAIN.key]: 100, [RESOURCE_TYPES.FLOUR.key]: 80,
-            [RESOURCE_TYPES.BREAD.key]: 100, [RESOURCE_TYPES.FISH.key]: 100, [RESOURCE_TYPES.PIG.key]: 30,
-            [RESOURCE_TYPES.MEAT.key]: 80, [RESOURCE_TYPES.SWORD.key]: 20, [RESOURCE_TYPES.SHIELD.key]: 20,
-        }
+        storageCapacityIncrease: {
+            [RESOURCE_TYPES.WOOD.key]: 200,
+            [RESOURCE_TYPES.STONE.key]: 200,
+            [RESOURCE_TYPES.IRON_ORE.key]: 100,
+            [RESOURCE_TYPES.COAL_ORE.key]: 100,
+            [RESOURCE_TYPES.GOLD_ORE.key]: 50,
+            [RESOURCE_TYPES.PLANKS.key]: 150,
+            [RESOURCE_TYPES.IRON_BARS.key]: 100,
+            [RESOURCE_TYPES.GOLD_BARS.key]: 50,
+            [RESOURCE_TYPES.TOOL_AXE.key]: 20,
+            [RESOURCE_TYPES.TOOL_PICKAXE.key]: 20,
+            [RESOURCE_TYPES.GRAIN.key]: 100,
+            [RESOURCE_TYPES.FLOUR.key]: 80,
+            [RESOURCE_TYPES.BREAD.key]: 100,
+            [RESOURCE_TYPES.FISH.key]: 100,
+            [RESOURCE_TYPES.PIG.key]: 30,
+            [RESOURCE_TYPES.MEAT.key]: 80,
+            [RESOURCE_TYPES.SWORD.key]: 20,
+            [RESOURCE_TYPES.SHIELD.key]: 20,
+        },
     },
-    
+
     HARBOR: {
         key: 'HARBOR',
         name: 'Harbor',
@@ -470,12 +568,12 @@ export const BUILDING_DATA = {
         tier: 3,
         constructionTime: 180, // 180 seconds
         maxHealth: 350, // Added maxHealth
-        jobSlots: 2, 
+        jobSlots: 2,
         // jobProfession: SERF_PROFESSIONS.TRADER, // Add if exists
         maxStock: { default: 50 }, // For goods being traded
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
-    MARKETPLACE: { 
+    MARKETPLACE: {
         key: 'MARKETPLACE',
         name: 'Marketplace',
         cost: { [RESOURCE_TYPES.WOOD.key]: 40, [RESOURCE_TYPES.STONE.key]: 10 },
@@ -484,37 +582,53 @@ export const BUILDING_DATA = {
         maxHealth: 200, // Added maxHealth
         jobSlots: 0, // Or 1 for a market tender if that's a role
         maxStock: { default: 100 }, // For various goods available at market
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
-    CHURCH_TEMPLE: { 
+    CHURCH_TEMPLE: {
         key: 'CHURCH_TEMPLE',
         name: 'Church/Temple',
-        cost: { [RESOURCE_TYPES.STONE.key]: 150, [RESOURCE_TYPES.WOOD.key]: 50, [RESOURCE_TYPES.GOLD_BARS.key]: 10 },
+        cost: {
+            [RESOURCE_TYPES.STONE.key]: 150,
+            [RESOURCE_TYPES.WOOD.key]: 50,
+            [RESOURCE_TYPES.GOLD_BARS.key]: 10,
+        },
         tier: 3,
         constructionTime: 22, // 22 seconds
         maxHealth: 400, // Added maxHealth
         jobSlots: 1, // Example (Priest)
         // jobProfession: SERF_PROFESSIONS.PRIEST, // If exists
         maxStock: { default: 10 },
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
     SHIPYARD: {
         key: 'SHIPYARD',
         name: 'Shipyard',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 100, [RESOURCE_TYPES.STONE.key]: 50 },
+        cost: {
+            [RESOURCE_TYPES.WOOD.key]: 100,
+            [RESOURCE_TYPES.STONE.key]: 50,
+        },
         tier: 3,
         constructionTime: 25, // 25 seconds
         maxHealth: 320, // Added maxHealth
         // Produces ships (special logic, not simple resource)
         jobSlots: 2, // Example
         // jobProfession: SERF_PROFESSIONS.SHIPWRIGHT, // If exists
-        maxStock: { [RESOURCE_TYPES.PLANKS.key]: 100, [RESOURCE_TYPES.WOOD.key]: 50, [RESOURCE_TYPES.IRON_BARS.key]: 10, default: 5 },
-        outputBufferCapacity: { default: 0 } // Output is a ship, not resource items
+        maxStock: {
+            [RESOURCE_TYPES.PLANKS.key]: 100,
+            [RESOURCE_TYPES.WOOD.key]: 50,
+            [RESOURCE_TYPES.IRON_BARS.key]: 10,
+            default: 5,
+        },
+        outputBufferCapacity: { default: 0 }, // Output is a ship, not resource items
     },
-    UNIVERSITY_LIBRARY: { 
+    UNIVERSITY_LIBRARY: {
         key: 'UNIVERSITY_LIBRARY',
         name: 'University/Library',
-        cost: { [RESOURCE_TYPES.STONE.key]: 120, [RESOURCE_TYPES.WOOD.key]: 60, [RESOURCE_TYPES.GOLD_BARS.key]: 20 },
+        cost: {
+            [RESOURCE_TYPES.STONE.key]: 120,
+            [RESOURCE_TYPES.WOOD.key]: 60,
+            [RESOURCE_TYPES.GOLD_BARS.key]: 20,
+        },
         tier: 4,
         constructionTime: 20, // 20 seconds
         maxHealth: 350, // Added maxHealth
@@ -522,31 +636,43 @@ export const BUILDING_DATA = {
         jobSlots: 1, // Example (Scholar)
         // jobProfession: SERF_PROFESSIONS.SCHOLAR, // If exists
         maxStock: { default: 20 }, // For books or research materials
-        outputBufferCapacity: { default: 0 }
+        outputBufferCapacity: { default: 0 },
     },
-    SIEGE_WORKSHOP: { 
+    SIEGE_WORKSHOP: {
         key: 'SIEGE_WORKSHOP',
         name: 'Siege Workshop',
-        cost: { [RESOURCE_TYPES.WOOD.key]: 70, [RESOURCE_TYPES.STONE.key]: 30, [RESOURCE_TYPES.IRON_BARS.key]: 20 },
+        cost: {
+            [RESOURCE_TYPES.WOOD.key]: 70,
+            [RESOURCE_TYPES.STONE.key]: 30,
+            [RESOURCE_TYPES.IRON_BARS.key]: 20,
+        },
         tier: 4,
         constructionTime: 20, // 20 seconds
         maxHealth: 280, // Added maxHealth
         // Produces siege engines (special logic)
         jobSlots: 1, // Example
         // jobProfession: SERF_PROFESSIONS.ENGINEER, // If exists
-        maxStock: { [RESOURCE_TYPES.PLANKS.key]: 50, [RESOURCE_TYPES.IRON_BARS.key]: 20, [RESOURCE_TYPES.WOOD.key]: 30, default: 5 },
-        outputBufferCapacity: { default: 0 } // Output is a siege engine
+        maxStock: {
+            [RESOURCE_TYPES.PLANKS.key]: 50,
+            [RESOURCE_TYPES.IRON_BARS.key]: 20,
+            [RESOURCE_TYPES.WOOD.key]: 30,
+            default: 5,
+        },
+        outputBufferCapacity: { default: 0 }, // Output is a siege engine
     },
-    TREASURY_MINT: { 
+    TREASURY_MINT: {
         key: 'TREASURY_MINT',
         name: 'Treasury/Mint',
-        cost: { [RESOURCE_TYPES.STONE.key]: 100, [RESOURCE_TYPES.GOLD_BARS.key]: 50 },
+        cost: {
+            [RESOURCE_TYPES.STONE.key]: 100,
+            [RESOURCE_TYPES.GOLD_BARS.key]: 50,
+        },
         tier: 4,
         constructionTime: 20, // 20 seconds
         maxHealth: 320, // Added maxHealth
         // Could produce coins or increase gold storage (special logic)
         jobSlots: 1, // Example (Mint Master)
         maxStock: { [RESOURCE_TYPES.GOLD_BARS.key]: 100, default: 10 }, // For storing gold
-        outputBufferCapacity: { default: 0 } // Or produces COIN resource
-    }
+        outputBufferCapacity: { default: 0 }, // Or produces COIN resource
+    },
 };

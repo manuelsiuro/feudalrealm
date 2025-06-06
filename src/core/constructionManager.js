@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import resourceManager from './resourceManager.js';
 import { TILE_SIZE, TERRAIN_TYPES } from '../config/mapConstants.js'; // Added TERRAIN_TYPES
-import { SERF_PROFESSIONS } from '../config/serfProfessions.js'; 
+import { SERF_PROFESSIONS } from '../config/serfProfessions.js';
 import { BUILDING_DATA } from '../config/buildingData.js';
 import ConstructionEffectsManager from './ConstructionEffectsManager.js';
 
@@ -82,34 +82,41 @@ const buildingClassMap = {
 // ---- REMOVE DEBUG LOGS for old Buildings module ----
 
 class ConstructionManager {
-    constructor(scene, gameMap, gameElementsGroup) { // SerfManager will be set via setSerfManager
-        this.scene = scene; 
+    constructor(scene, gameMap, gameElementsGroup) {
+        // SerfManager will be set via setSerfManager
+        this.scene = scene;
         this.gameMap = gameMap;
         this.gameElementsGroup = gameElementsGroup;
         this.selectedBuildingType = null;
         this.placementIndicator = null;
-        this.isPlacing = false;    
+        this.isPlacing = false;
         this.constructionQueue = []; // Buildings waiting for a builder
         this.activeConstructions = []; // Buildings actively being constructed by a serf
         this.placedBuildings = []; // Fully constructed and operational buildings
         this.serfManager = null; // Added serfManager property
         this.resourceFlowManager = null; // Added resourceFlowManager property
-        this.constructionEffectsManager = new ConstructionEffectsManager(scene, gameElementsGroup); // Add construction effects
+        this.constructionEffectsManager = new ConstructionEffectsManager(
+            scene,
+            gameElementsGroup
+        ); // Add construction effects
 
         this.onChangeCallback = null;
 
         this._setupPlacementIndicator();
     }
 
-    setSerfManager(serfManager) { // Added method to set SerfManager
+    setSerfManager(serfManager) {
+        // Added method to set SerfManager
         this.serfManager = serfManager;
     }
 
-    setGame(game) { // Added method to set Game instance
+    setGame(game) {
+        // Added method to set Game instance
         this.game = game;
     }
 
-    setResourceFlowManager(resourceFlowManager) { // Added method to set ResourceFlowManager
+    setResourceFlowManager(resourceFlowManager) {
+        // Added method to set ResourceFlowManager
         this.resourceFlowManager = resourceFlowManager;
     }
 
@@ -119,7 +126,7 @@ class ConstructionManager {
             color: 0x00ff00,
             transparent: true,
             opacity: 0.5,
-            wireframe: true
+            wireframe: true,
         });
         this.placementIndicator = new THREE.Mesh(geometry, material);
         this.placementIndicator.visible = false;
@@ -129,11 +136,15 @@ class ConstructionManager {
     startPlacement(buildingKey) {
         // Creator function check is removed as it's handled by Building class now
         if (!BUILDING_DATA[buildingKey]) {
-            console.error(`ConstructionManager: Building type ${buildingKey} not found in BUILDING_DATA.`);
+            console.error(
+                `ConstructionManager: Building type ${buildingKey} not found in BUILDING_DATA.`
+            );
             return;
         }
         if (!buildingClassMap[buildingKey]) {
-            console.error(`ConstructionManager: No class mapping for building type ${buildingKey}. Ensure it's added to buildingClassMap and imported.`);
+            console.error(
+                `ConstructionManager: No class mapping for building type ${buildingKey}. Ensure it's added to buildingClassMap and imported.`
+            );
             // Optionally, allow placement if a generic Building class or a placeholder is intended,
             // but for now, strict checking is better.
             return;
@@ -141,7 +152,9 @@ class ConstructionManager {
         this.selectedBuildingType = buildingKey;
         this.isPlacing = true;
         this.placementIndicator.visible = true;
-        console.log(`ConstructionManager: Started placement for ${BUILDING_DATA[buildingKey].name}`);
+        console.log(
+            `ConstructionManager: Started placement for ${BUILDING_DATA[buildingKey].name}`
+        );
     }
 
     updatePlacementIndicator(worldPosition) {
@@ -151,8 +164,12 @@ class ConstructionManager {
         const snappedZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
         this.placementIndicator.position.set(snappedX, 0.1, snappedZ);
 
-        const gridX = Math.round(snappedX / TILE_SIZE + (this.gameMap.width - 1) / 2);
-        const gridZ = Math.round(snappedZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
+        const gridX = Math.round(
+            snappedX / TILE_SIZE + (this.gameMap.width - 1) / 2
+        );
+        const gridZ = Math.round(
+            snappedZ / TILE_SIZE + (this.gameMap.height - 1) / 2
+        );
 
         if (this.isBuildable(gridX, gridZ)) {
             this.placementIndicator.material.color.set(0x00ff00); // Green
@@ -162,25 +179,30 @@ class ConstructionManager {
     }
 
     isBuildable(gridX, gridZ) {
-        if (gridX < 0 || gridX >= this.gameMap.width || gridZ < 0 || gridZ >= this.gameMap.height) {
+        if (
+            gridX < 0 ||
+            gridX >= this.gameMap.width ||
+            gridZ < 0 ||
+            gridZ >= this.gameMap.height
+        ) {
             return false; // Out of bounds
         }
         const tile = this.gameMap.getTile(gridX, gridZ);
         if (!tile) return false; // Should not happen if bounds check is correct
 
         // Define non-buildable terrain types
-        const nonBuildableTerrains = [TERRAIN_TYPES.MOUNTAIN, TERRAIN_TYPES.WATER, TERRAIN_TYPES.FOREST]; 
-        
+        const nonBuildableTerrains = [
+            TERRAIN_TYPES.MOUNTAIN,
+            TERRAIN_TYPES.WATER,
+            TERRAIN_TYPES.FOREST,
+        ];
+
         if (nonBuildableTerrains.includes(tile.terrainType)) {
             return false;
         }
 
         // Check if tile is already occupied by another building
-        if (tile.isOccupied) { // Assuming GameMap.getTile returns a tile object with an isOccupied property
-            return false;
-        }
-
-        return true;
+        return !tile.isOccupied;
     }
 
     confirmPlacement(worldPosition) {
@@ -190,20 +212,33 @@ class ConstructionManager {
         const buildingDataEntry = BUILDING_DATA[buildingKey];
 
         // 0. Check if the location is buildable BEFORE resource checks
-        const snappedWorldX = Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
-        const snappedWorldZ = Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
-        const placedGridX = Math.round(snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2);
-        const placedGridZ = Math.round(snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2);
+        const snappedWorldX =
+            Math.round(worldPosition.x / TILE_SIZE) * TILE_SIZE;
+        const snappedWorldZ =
+            Math.round(worldPosition.z / TILE_SIZE) * TILE_SIZE;
+        const placedGridX = Math.round(
+            snappedWorldX / TILE_SIZE + (this.gameMap.width - 1) / 2
+        );
+        const placedGridZ = Math.round(
+            snappedWorldZ / TILE_SIZE + (this.gameMap.height - 1) / 2
+        );
 
         if (!this.isBuildable(placedGridX, placedGridZ)) {
-            console.warn(`ConstructionManager: Cannot place ${buildingDataEntry.name} at (${placedGridX}, ${placedGridZ}). Location not buildable.`);
-            return false; 
+            console.warn(
+                `ConstructionManager: Cannot place ${buildingDataEntry.name} at (${placedGridX}, ${placedGridZ}). Location not buildable.`
+            );
+            return false;
         }
 
         // 1. Check resource costs
         for (const resourceType in buildingDataEntry.cost) {
-            if (resourceManager.getResourceCount(resourceType) < buildingDataEntry.cost[resourceType]) {
-                console.warn(`ConstructionManager: Not enough ${resourceType} to build ${buildingDataEntry.name}.`);
+            if (
+                resourceManager.getResourceCount(resourceType) <
+                buildingDataEntry.cost[resourceType]
+            ) {
+                console.warn(
+                    `ConstructionManager: Not enough ${resourceType} to build ${buildingDataEntry.name}.`
+                );
                 alert(`Not enough ${resourceType}!`); // Consider replacing alert with in-game UI message
                 this.cancelPlacement();
                 return false;
@@ -212,52 +247,80 @@ class ConstructionManager {
 
         // 2. Deduct resources
         for (const resourceType in buildingDataEntry.cost) {
-            resourceManager.removeResource(resourceType, buildingDataEntry.cost[resourceType]);
+            resourceManager.removeResource(
+                resourceType,
+                buildingDataEntry.cost[resourceType]
+            );
         }
-        
+
         const BuildingClass = buildingClassMap[buildingKey];
         if (!BuildingClass) {
-            console.error(`ConstructionManager: No class mapping for building type ${buildingKey}`);
+            console.error(
+                `ConstructionManager: No class mapping for building type ${buildingKey}`
+            );
             this.cancelPlacement(); // Cancel if no class defined for this building type
             return false;
         }
-        const newBuilding = new BuildingClass(placedGridX, placedGridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
+        const newBuilding = new BuildingClass(
+            placedGridX,
+            placedGridZ,
+            this.gameMap,
+            buildingDataEntry,
+            this.resourceFlowManager
+        );
         newBuilding.setResourceManager(resourceManager); // Pass the imported singleton
-        newBuilding.setConstructionEffectsManager(this.constructionEffectsManager); // Set the effects manager
-        console.log(`[CM confirmPlacement] New building ${newBuilding.id} (${newBuilding.name}) created. Initial state: ${newBuilding.currentConstructionState}, Required time: ${newBuilding.constructionRequiredTime}`);
-
+        newBuilding.setConstructionEffectsManager(
+            this.constructionEffectsManager
+        ); // Set the effects manager
+        console.log(
+            `[CM confirmPlacement] New building ${newBuilding.id} (${newBuilding.name}) created. Initial state: ${newBuilding.currentConstructionState}, Required time: ${newBuilding.constructionRequiredTime}`
+        );
 
         // Ensure the map tile is marked as occupied immediately
-        const placementSuccessfulOnMap = this.gameMap.placeBuilding(placedGridX, placedGridZ, newBuilding);
+        const placementSuccessfulOnMap = this.gameMap.placeBuilding(
+            placedGridX,
+            placedGridZ,
+            newBuilding
+        );
         if (!placementSuccessfulOnMap) {
-            console.warn(`ConstructionManager: GameMap rejected placement for ${buildingDataEntry.name} at (${placedGridX}, ${placedGridZ}) even after isBuildable check. Aborting.`);
+            console.warn(
+                `ConstructionManager: GameMap rejected placement for ${buildingDataEntry.name} at (${placedGridX}, ${placedGridZ}) even after isBuildable check. Aborting.`
+            );
             // Note: Resources were already deducted. Consider rollback logic if this state is critical and frequent.
             this.cancelPlacement();
             return false;
         }
 
-        const buildingsGroup = this.gameElementsGroup.getObjectByName("GameBuildings") || new THREE.Group();
+        const buildingsGroup =
+            this.gameElementsGroup.getObjectByName('GameBuildings') ||
+            new THREE.Group();
         if (!buildingsGroup.parent) {
-            buildingsGroup.name = "GameBuildings";
+            buildingsGroup.name = 'GameBuildings';
             this.gameElementsGroup.add(buildingsGroup);
-        }        newBuilding.placeModel(buildingsGroup); // Model is created within constructor for CONSTRUCTED buildings
-        
-        
+        }
+        newBuilding.placeModel(buildingsGroup); // Model is created within constructor for CONSTRUCTED buildings
+
         // Instead of starting construction directly, add to queue if it needs construction
         if (newBuilding.currentConstructionState === 'NEEDS_CONSTRUCTION') {
             this.addBuildingToConstructionQueue(newBuilding);
-            console.log(`[CM confirmPlacement] ${newBuilding.name} (ID: ${newBuilding.id}) added to construction queue.`);
+            console.log(
+                `[CM confirmPlacement] ${newBuilding.name} (ID: ${newBuilding.id}) added to construction queue.`
+            );
         } else if (newBuilding.currentConstructionState === 'CONSTRUCTED') {
             // This case is for pre-built things like Castle, or if constructionTime is 0
             this.placedBuildings.push(newBuilding);
-            console.log(`[CM confirmPlacement] ${newBuilding.name} (ID: ${newBuilding.id}) is already constructed.`);
-            
+            console.log(
+                `[CM confirmPlacement] ${newBuilding.name} (ID: ${newBuilding.id}) is already constructed.`
+            );
+
             // Register the building with ProductionChainManager
             if (this.game && this.game.productionChainManager) {
                 this.game.productionChainManager.registerBuilding(newBuilding);
-                console.log(`[CM confirmPlacement] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
+                console.log(
+                    `[CM confirmPlacement] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`
+                );
             }
-        }   
+        }
         this._notifyUI();
         this.cancelPlacement();
         return true;
@@ -269,43 +332,65 @@ class ConstructionManager {
         if (this.placementIndicator) {
             this.placementIndicator.visible = false;
         }
-        console.log("ConstructionManager: Placement cancelled or completed.");
+        console.log('ConstructionManager: Placement cancelled or completed.');
     }
 
     getAvailableBuildings() {
         return Object.keys(BUILDING_DATA)
-            .filter(key => buildingClassMap[key] && BUILDING_DATA[key].tier > 0) // Ensure class exists and tier > 0
-            .map(key => ({ key, ...BUILDING_DATA[key] }));
+            .filter(
+                (key) => buildingClassMap[key] && BUILDING_DATA[key].tier > 0
+            ) // Ensure class exists and tier > 0
+            .map((key) => ({ key, ...BUILDING_DATA[key] }));
     }
 
     placeAndConstructInitialBuilding(buildingKey, gridX, gridZ) {
         const buildingDataEntry = BUILDING_DATA[buildingKey];
         if (!buildingDataEntry) {
-            console.error(`[InitialSetup] Building type ${buildingKey} not found in BUILDING_DATA.`);
+            console.error(
+                `[InitialSetup] Building type ${buildingKey} not found in BUILDING_DATA.`
+            );
             return null;
         }
-        
+
         const BuildingClass = buildingClassMap[buildingKey];
         if (!BuildingClass) {
-            console.error(`[InitialSetup] No class mapping for building type ${buildingKey}.`);
+            console.error(
+                `[InitialSetup] No class mapping for building type ${buildingKey}.`
+            );
             return null;
         }
 
-        console.log(`[InitialSetup] Placing and constructing ${buildingDataEntry.name} at grid (${gridX}, ${gridZ})`);
+        console.log(
+            `[InitialSetup] Placing and constructing ${buildingDataEntry.name} at grid (${gridX}, ${gridZ})`
+        );
 
-        const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
+        const newBuilding = new BuildingClass(
+            gridX,
+            gridZ,
+            this.gameMap,
+            buildingDataEntry,
+            this.resourceFlowManager
+        );
         newBuilding.setResourceManager(resourceManager);
 
         // Ensure the map tile is marked as occupied
-        const placementSuccessfulOnMap = this.gameMap.placeBuilding(gridX, gridZ, newBuilding);
+        const placementSuccessfulOnMap = this.gameMap.placeBuilding(
+            gridX,
+            gridZ,
+            newBuilding
+        );
         if (!placementSuccessfulOnMap) {
-            console.error(`[InitialSetup] GameMap rejected placement for ${buildingDataEntry.name} at (${gridX}, ${gridZ}). This should not happen for initial setup.`);
-            return null; 
+            console.error(
+                `[InitialSetup] GameMap rejected placement for ${buildingDataEntry.name} at (${gridX}, ${gridZ}). This should not happen for initial setup.`
+            );
+            return null;
         }
 
-        const buildingsGroup = this.gameElementsGroup.getObjectByName("GameBuildings") || new THREE.Group();
+        const buildingsGroup =
+            this.gameElementsGroup.getObjectByName('GameBuildings') ||
+            new THREE.Group();
         if (!buildingsGroup.parent) {
-            buildingsGroup.name = "GameBuildings";
+            buildingsGroup.name = 'GameBuildings';
             this.gameElementsGroup.add(buildingsGroup);
         }
         newBuilding.placeModel(buildingsGroup); // Model is created for CONSTRUCTED buildings in constructor
@@ -317,71 +402,105 @@ class ConstructionManager {
         // For this example, we assume Castle is correctly set to CONSTRUCTED by its own logic or data.
         if (newBuilding.currentConstructionState === 'CONSTRUCTED') {
             this.placedBuildings.push(newBuilding);
-            console.log(`[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) successfully placed and is operational.`);
-            
+            console.log(
+                `[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) successfully placed and is operational.`
+            );
+
             // Register the initial building with ProductionChainManager
             if (this.game && this.game.productionChainManager) {
                 this.game.productionChainManager.registerBuilding(newBuilding);
-                console.log(`[InitialSetup] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
+                console.log(
+                    `[InitialSetup] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`
+                );
             }
         } else {
             // If an initial building somehow needs construction (e.g. for testing), add it to the queue.
             this.addBuildingToConstructionQueue(newBuilding);
-            console.log(`[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) added to construction queue.`);
+            console.log(
+                `[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) added to construction queue.`
+            );
         }
-        console.log(`[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) setup processed.`);
+        console.log(
+            `[InitialSetup] ${newBuilding.name} (ID: ${newBuilding.id}) setup processed.`
+        );
         this._notifyUI();
         return newBuilding;
     }
 
     setupInitialStructures() {
-        console.log("[ConstructionManager] Setting up initial structures...");
+        console.log('[ConstructionManager] Setting up initial structures...');
         const mapCenterX = Math.floor(this.gameMap.width / 2);
         const mapCenterZ = Math.floor(this.gameMap.height / 2);
 
         // Ensure Castle is placed if not already
-        let castleInstance = this.placedBuildings.find(b => b.type === 'CASTLE');
+        let castleInstance = this.placedBuildings.find(
+            (b) => b.type === BUILDING_DATA.CASTLE.key
+        );
         if (!castleInstance) {
-            console.log("[ConstructionManager] No Castle found, placing one initially.");
-            this.placeAndConstructInitialBuilding('CASTLE', mapCenterX, mapCenterZ);
+            console.log(
+                '[ConstructionManager] No Castle found, placing one initially.'
+            );
+            this.placeAndConstructInitialBuilding(
+                BUILDING_DATA.CASTLE.key,
+                mapCenterX,
+                mapCenterZ
+            );
         } else {
-            console.log("[ConstructionManager] Castle already exists.");
+            console.log('[ConstructionManager] Castle already exists.');
         }
-        
+
         // Place a Builder Hut nearby to test construction cycle
         const builderHutGridX = mapCenterX - 3;
-        const builderHutGridZ = mapCenterZ;
-        this.placeAndConstructInitialBuilding('BUILDERS_HUT', builderHutGridX, builderHutGridZ);
-        
+        this.placeAndConstructInitialBuilding(
+            BUILDING_DATA.BUILDERS_HUT.key,
+            builderHutGridX,
+            mapCenterZ
+        );
+
         // Place a Transporter Hut to test priority queue
         const transporterHutGridX = mapCenterX + 3;
-        const transporterHutGridZ = mapCenterZ;
-        this.placeAndConstructInitialBuilding('TRANSPORTER_HUT', transporterHutGridX, transporterHutGridZ);
-        
-        console.log("[ConstructionManager] Initial structures setup complete.");
+        this.placeAndConstructInitialBuilding(
+            BUILDING_DATA.TRANSPORTER_HUT.key,
+            transporterHutGridX,
+            mapCenterZ
+        );
+
+        console.log('[ConstructionManager] Initial structures setup complete.');
     }
 
-    update(deltaTime) { // deltaTime is passed from Game loop
+    update(deltaTime) {
+        // deltaTime is passed from Game loop
         // const now = Date.now(); // Not directly used with new progress system
 
         // 1. Assign tasks from constructionQueue to available builders
         if (this.constructionQueue.length > 0 && this.serfManager) {
-            const availableBuilders = this.serfManager.getAvailableSerfsByProfession(SERF_PROFESSIONS.BUILDER);
-            
+            const availableBuilders =
+                this.serfManager.getAvailableSerfsByProfession(
+                    SERF_PROFESSIONS.BUILDER
+                );
+
             for (const builder of availableBuilders) {
                 if (this.constructionQueue.length === 0) break; // All queued items assigned
 
                 const buildingToConstruct = this.constructionQueue.shift(); // Get the next building
-                
+
                 // Double-check the building still needs construction and isn't already assigned
-                if (buildingToConstruct.currentConstructionState !== 'NEEDS_CONSTRUCTION' || 
-                    buildingToConstruct.assignedBuilderId) {
-                    console.warn(`[CM Update] Building ${buildingToConstruct.id} is no longer eligible for construction assignment. Skipping.`);
+                if (
+                    buildingToConstruct.currentConstructionState !==
+                        'NEEDS_CONSTRUCTION' ||
+                    buildingToConstruct.assignedBuilderId
+                ) {
+                    console.warn(
+                        `[CM Update] Building ${buildingToConstruct.id} is no longer eligible for construction assignment. Skipping.`
+                    );
                     continue;
                 }
-                
+
                 //console.log(`[CM Update] Assigning Builder ${builder.id} to construct ${buildingToConstruct.name} (ID: ${buildingToConstruct.id}). Building state: ${buildingToConstruct.currentConstructionState}`);
-                this.serfManager.addConstructionTask(buildingToConstruct, builder.id); // Assign to specific builder
+                this.serfManager.addConstructionTask(
+                    buildingToConstruct,
+                    builder.id
+                ); // Assign to specific builder
                 this.activeConstructions.push(buildingToConstruct);
             }
         }
@@ -389,45 +508,63 @@ class ConstructionManager {
         // 2. Update progress for active constructions and handle error recovery
         for (let i = this.activeConstructions.length - 1; i >= 0; i--) {
             const building = this.activeConstructions[i];
-            
+
             if (building.currentConstructionState === 'UNDER_CONSTRUCTION') {
                 // Error recovery: Check if assigned builder still exists and is working on this building
                 if (building.assignedBuilderId) {
-                    const assignedBuilder = this.serfManager.getSerfById(building.assignedBuilderId);
+                    const assignedBuilder = this.serfManager.getSerfById(
+                        building.assignedBuilderId
+                    );
                     if (!assignedBuilder) {
-                        console.warn(`[CM Error Recovery] Builder ${building.assignedBuilderId} no longer exists. Returning ${building.name} (${building.id}) to queue.`);
+                        console.warn(
+                            `[CM Error Recovery] Builder ${building.assignedBuilderId} no longer exists. Returning ${building.name} (${building.id}) to queue.`
+                        );
                         this.returnBuildingToQueue(building);
                         continue;
                     }
-                    
+
                     // Check if builder is still working on this specific building
                     const currentTask = assignedBuilder.currentTask;
-                    if (!currentTask || currentTask.type !== 'CONSTRUCT_BUILDING' || 
-                        currentTask.targetEntity.id !== building.id) {
-                        console.warn(`[CM Error Recovery] Builder ${building.assignedBuilderId} is no longer working on ${building.name} (${building.id}). Returning to queue.`);
+                    if (
+                        !currentTask ||
+                        currentTask.type !== 'CONSTRUCT_BUILDING' ||
+                        currentTask.targetEntity.id !== building.id
+                    ) {
+                        console.warn(
+                            `[CM Error Recovery] Builder ${building.assignedBuilderId} is no longer working on ${building.name} (${building.id}). Returning to queue.`
+                        );
                         this.returnBuildingToQueue(building);
                         continue;
                     }
                 }
-                
+
                 // Check if a builder is assigned. If not, something is wrong (e.g. builder died/reassigned mid-task)
                 if (!building.assignedBuilderId) {
-                    console.warn(`[CM Update] Building ${building.id} (${building.name}) is UNDER_CONSTRUCTION but has no assignedBuilderId. Moving back to queue.`);
+                    console.warn(
+                        `[CM Update] Building ${building.id} (${building.name}) is UNDER_CONSTRUCTION but has no assignedBuilderId. Moving back to queue.`
+                    );
                     this.returnBuildingToQueue(building);
                     continue; // Move to the next building
                 }
 
                 // Update construction progress - only if builder is actively working
-                const assignedBuilder = this.serfManager.getSerfById(building.assignedBuilderId);
+                const assignedBuilder = this.serfManager.getSerfById(
+                    building.assignedBuilderId
+                );
                 let shouldUpdateProgress = false;
-                
+
                 if (assignedBuilder) {
                     // Check if builder is actively constructing
-                    if (assignedBuilder.currentState.name === 'CONSTRUCTING_BUILDING') {
+                    if (
+                        assignedBuilder.currentState.name ===
+                        'CONSTRUCTING_BUILDING'
+                    ) {
                         // Also check if builder is at the construction site
                         const entryPoint = building.getEntryPointGridPosition();
-                        const builderAtSite = (assignedBuilder.x === entryPoint.x && assignedBuilder.y === entryPoint.z);
-                        
+                        const builderAtSite =
+                            assignedBuilder.x === entryPoint.x &&
+                            assignedBuilder.y === entryPoint.z;
+
                         if (builderAtSite) {
                             shouldUpdateProgress = true;
                         } else {
@@ -439,38 +576,54 @@ class ConstructionManager {
                         // console.log(`[CM Update] Builder ${building.assignedBuilderId} not in CONSTRUCTING_BUILDING state yet (${assignedBuilder.currentState.name}) for ${building.name}`);
                     }
                 } else {
-                    console.warn(`[CM Update] Assigned builder ${building.assignedBuilderId} not found for ${building.name}`);
+                    console.warn(
+                        `[CM Update] Assigned builder ${building.assignedBuilderId} not found for ${building.name}`
+                    );
                 }
-                
+
                 if (shouldUpdateProgress) {
                     //console.log(`[CM Update] Updating progress for ${building.name}: Builder ${building.assignedBuilderId} is working. Delta: ${deltaTime}ms`);
                     // Building.updateConstructionProgress returns true if construction is complete
                     if (building.updateConstructionProgress(deltaTime)) {
                         // building.completeConstructionProcess() is called by updateConstructionProgress itself.
-                        console.log(`[CM Update] ${building.name} (ID: ${building.id}) construction reported complete by updateConstructionProgress.`);
+                        console.log(
+                            `[CM Update] ${building.name} (ID: ${building.id}) construction reported complete by updateConstructionProgress.`
+                        );
                         this.placedBuildings.push(building);
                         this.activeConstructions.splice(i, 1);
                         this._notifyUI();
-                        
+
                         // Register the completed building with the ProductionChainManager
                         if (this.game && this.game.productionChainManager) {
-                            this.game.productionChainManager.registerBuilding(building);
-                            console.log(`[CM Update] Registered ${building.name} (ID: ${building.id}) with ProductionChainManager`);
+                            this.game.productionChainManager.registerBuilding(
+                                building
+                            );
+                            console.log(
+                                `[CM Update] Registered ${building.name} (ID: ${building.id}) with ProductionChainManager`
+                            );
                         }
-                        
+
                         // The builder's task will automatically complete and they will return to their hut
                         // through the ConstructBuildingTask completion logic
                     }
                 } else {
                     // Log why progress isn't updating (but not too frequently)
-                    if (Math.random() < 0.01) { // 1% chance to log to reduce spam
-                        const builderState = assignedBuilder ? assignedBuilder.currentState.name : 'BUILDER_NOT_FOUND';
+                    if (Math.random() < 0.01) {
+                        // 1% chance to log to reduce spam
+                        /*const builderState = assignedBuilder
+                            ? assignedBuilder.currentState.name
+                            : 'BUILDER_NOT_FOUND';*/
                         //console.log(`[CM Update] Not updating progress for ${building.name}: Builder state is ${builderState}`);
                     }
                 }
-            } else if (building.currentConstructionState === 'NEEDS_CONSTRUCTION' && building.assignedBuilderId) {
+            } else if (
+                building.currentConstructionState === 'NEEDS_CONSTRUCTION' &&
+                building.assignedBuilderId
+            ) {
                 // This case might indicate that startConstructionProcess was not called or failed.
-                console.warn(`[CM Update] Building ${building.id} (${building.name}) is in activeConstructions, has builder ${building.assignedBuilderId}, but state is still NEEDS_CONSTRUCTION. This might be an issue.`);
+                console.warn(
+                    `[CM Update] Building ${building.id} (${building.name}) is in activeConstructions, has builder ${building.assignedBuilderId}, but state is still NEEDS_CONSTRUCTION. This might be an issue.`
+                );
                 // Return to queue for re-assignment
                 this.returnBuildingToQueue(building);
             }
@@ -486,18 +639,34 @@ class ConstructionManager {
     }
 
     addBuildingToConstructionQueue(buildingInstance) {
-        if (buildingInstance && buildingInstance.currentConstructionState === 'NEEDS_CONSTRUCTION') {
+        if (
+            buildingInstance &&
+            buildingInstance.currentConstructionState === 'NEEDS_CONSTRUCTION'
+        ) {
             // Avoid adding duplicates
-            if (!this.constructionQueue.some(b => b.id === buildingInstance.id) && 
-                !this.activeConstructions.some(b => b.id === buildingInstance.id)) {
+            if (
+                !this.constructionQueue.some(
+                    (b) => b.id === buildingInstance.id
+                ) &&
+                !this.activeConstructions.some(
+                    (b) => b.id === buildingInstance.id
+                )
+            ) {
                 this.constructionQueue.push(buildingInstance);
                 this._sortConstructionQueue(); // Sort queue by priority after adding
-                console.log(`[CM] Added ${buildingInstance.name} (${buildingInstance.id}) to construction queue. Queue size: ${this.constructionQueue.length}`);
+                console.log(
+                    `[CM] Added ${buildingInstance.name} (${buildingInstance.id}) to construction queue. Queue size: ${this.constructionQueue.length}`
+                );
             } else {
-                console.warn(`ConstructionManager: Building ${buildingInstance.id} is already in construction queue or active.`);
+                console.warn(
+                    `ConstructionManager: Building ${buildingInstance.id} is already in construction queue or active.`
+                );
             }
         } else {
-            console.error('ConstructionManager: Invalid building instance or building does not need construction.', buildingInstance);
+            console.error(
+                'ConstructionManager: Invalid building instance or building does not need construction.',
+                buildingInstance
+            );
         }
     }
 
@@ -510,7 +679,11 @@ class ConstructionManager {
     _sortConstructionQueue() {
         this.constructionQueue.sort((a, b) => {
             // Define essential building types that should be built first
-            const essentialBuildings = ['CASTLE', 'BUILDERS_HUT', 'TRANSPORTER_HUT'];
+            const essentialBuildings = [
+                'CASTLE',
+                'BUILDERS_HUT',
+                'TRANSPORTER_HUT',
+            ];
             const aIsEssential = essentialBuildings.includes(a.type);
             const bIsEssential = essentialBuildings.includes(b.type);
 
@@ -521,13 +694,20 @@ class ConstructionManager {
             // If both or neither are essential, sort by tier (lower tier = higher priority)
             const aTier = a.info?.tier || 999;
             const bTier = b.info?.tier || 999;
-            
+
             if (aTier !== bTier) {
                 return aTier - bTier; // Lower tier first
             }
 
             // If same tier, prioritize resource production buildings
-            const resourceBuildings = ['WOODCUTTERS_HUT', 'QUARRY', 'FARM', 'IRON_MINE', 'COAL_MINE', 'GOLD_MINE'];
+            const resourceBuildings = [
+                'WOODCUTTERS_HUT',
+                'QUARRY',
+                'FARM',
+                'IRON_MINE',
+                'COAL_MINE',
+                'GOLD_MINE',
+            ];
             const aIsResource = resourceBuildings.includes(a.type);
             const bIsResource = resourceBuildings.includes(b.type);
 
@@ -535,7 +715,10 @@ class ConstructionManager {
             if (!aIsResource && bIsResource) return 1;
 
             // Finally, sort by construction time (shorter time first for quick wins)
-            return (a.constructionRequiredTime || 0) - (b.constructionRequiredTime || 0);
+            return (
+                (a.constructionRequiredTime || 0) -
+                (b.constructionRequiredTime || 0)
+            );
         });
     }
 
@@ -545,31 +728,53 @@ class ConstructionManager {
         if (!buildingInstance) return;
 
         // Remove from activeConstructions if it's there
-        const activeIndex = this.activeConstructions.findIndex(b => b.id === buildingInstance.id);
+        const activeIndex = this.activeConstructions.findIndex(
+            (b) => b.id === buildingInstance.id
+        );
         if (activeIndex > -1) {
             this.activeConstructions.splice(activeIndex, 1);
         }
 
         // Add to constructionQueue if it still needs construction
-        if (buildingInstance.currentConstructionState === 'NEEDS_CONSTRUCTION' || 
-            (buildingInstance.currentConstructionState === 'UNDER_CONSTRUCTION' && !buildingInstance.assignedBuilderId)) {
-            
-            if (!this.constructionQueue.some(b => b.id === buildingInstance.id)) {
+        if (
+            buildingInstance.currentConstructionState ===
+                'NEEDS_CONSTRUCTION' ||
+            (buildingInstance.currentConstructionState ===
+                'UNDER_CONSTRUCTION' &&
+                !buildingInstance.assignedBuilderId)
+        ) {
+            if (
+                !this.constructionQueue.some(
+                    (b) => b.id === buildingInstance.id
+                )
+            ) {
                 // Reset construction state to NEEDS_CONSTRUCTION if it was UNDER_CONSTRUCTION
-                if (buildingInstance.currentConstructionState === 'UNDER_CONSTRUCTION') {
-                    buildingInstance.currentConstructionState = 'NEEDS_CONSTRUCTION';
+                if (
+                    buildingInstance.currentConstructionState ===
+                    'UNDER_CONSTRUCTION'
+                ) {
+                    buildingInstance.currentConstructionState =
+                        'NEEDS_CONSTRUCTION';
                     buildingInstance.assignedBuilderId = null;
-                    console.log(`[CM] Reset ${buildingInstance.name} (${buildingInstance.id}) state to NEEDS_CONSTRUCTION`);
+                    console.log(
+                        `[CM] Reset ${buildingInstance.name} (${buildingInstance.id}) state to NEEDS_CONSTRUCTION`
+                    );
                 }
-                
+
                 this.constructionQueue.unshift(buildingInstance); // Add to the front for quicker re-assignment
                 this._sortConstructionQueue(); // Re-sort queue to maintain priority
-                console.log(`[CM] Building ${buildingInstance.id} (${buildingInstance.name}) returned to construction queue with priority sorting.`);
+                console.log(
+                    `[CM] Building ${buildingInstance.id} (${buildingInstance.name}) returned to construction queue with priority sorting.`
+                );
             } else {
-                 console.log(`[CM] Building ${buildingInstance.id} (${buildingInstance.name}) was already in the queue.`);
+                console.log(
+                    `[CM] Building ${buildingInstance.id} (${buildingInstance.name}) was already in the queue.`
+                );
             }
         } else {
-            console.log(`[CM] Building ${buildingInstance.id} (${buildingInstance.name}) not returned to queue. State: ${buildingInstance.currentConstructionState}`);
+            console.log(
+                `[CM] Building ${buildingInstance.id} (${buildingInstance.name}) not returned to queue. State: ${buildingInstance.currentConstructionState}`
+            );
         }
     }
 
@@ -584,7 +789,9 @@ class ConstructionManager {
     }
 
     getAllBuildings() {
-        return this.placedBuildings.concat(this.activeConstructions).concat(this.constructionQueue);
+        return this.placedBuildings
+            .concat(this.activeConstructions)
+            .concat(this.constructionQueue);
         // return this.placedBuildings.concat(this.buildingsUnderConstruction); // Old line
     }
 
@@ -605,33 +812,53 @@ class ConstructionManager {
     queueBuilding(buildingType, gridX, gridZ) {
         const buildingDataEntry = BUILDING_DATA[buildingType];
         if (!buildingDataEntry) {
-            throw new Error(`Building type ${buildingType} not found in BUILDING_DATA.`);
+            throw new Error(
+                `Building type ${buildingType} not found in BUILDING_DATA.`
+            );
         }
-        
+
         const BuildingClass = buildingClassMap[buildingType];
         if (!BuildingClass) {
-            throw new Error(`No class mapping for building type ${buildingType}.`);
+            throw new Error(
+                `No class mapping for building type ${buildingType}.`
+            );
         }
 
         // Check if location is buildable
         if (!this.isBuildable(gridX, gridZ)) {
-            throw new Error(`Cannot place building at (${gridX}, ${gridZ}). Location not buildable.`);
+            throw new Error(
+                `Cannot place building at (${gridX}, ${gridZ}). Location not buildable.`
+            );
         }
 
         // Create building instance
-        const newBuilding = new BuildingClass(gridX, gridZ, this.gameMap, buildingDataEntry, this.resourceFlowManager);
+        const newBuilding = new BuildingClass(
+            gridX,
+            gridZ,
+            this.gameMap,
+            buildingDataEntry,
+            this.resourceFlowManager
+        );
         newBuilding.setResourceManager(resourceManager);
 
         // Mark map tile as occupied
-        const placementSuccessful = this.gameMap.placeBuilding(gridX, gridZ, newBuilding);
+        const placementSuccessful = this.gameMap.placeBuilding(
+            gridX,
+            gridZ,
+            newBuilding
+        );
         if (!placementSuccessful) {
-            throw new Error(`Failed to place building on map at (${gridX}, ${gridZ}).`);
+            throw new Error(
+                `Failed to place building on map at (${gridX}, ${gridZ}).`
+            );
         }
 
         // Create and place the 3D model
-        const buildingsGroup = this.gameElementsGroup.getObjectByName("GameBuildings") || new THREE.Group();
+        const buildingsGroup =
+            this.gameElementsGroup.getObjectByName('GameBuildings') ||
+            new THREE.Group();
         if (!buildingsGroup.parent) {
-            buildingsGroup.name = "GameBuildings";
+            buildingsGroup.name = 'GameBuildings';
             this.gameElementsGroup.add(buildingsGroup);
         }
         newBuilding.placeModel(buildingsGroup); // Only places model if it exists (CONSTRUCTED buildings)
@@ -641,11 +868,13 @@ class ConstructionManager {
             this.addBuildingToConstructionQueue(newBuilding);
         } else if (newBuilding.currentConstructionState === 'CONSTRUCTED') {
             this.placedBuildings.push(newBuilding);
-            
+
             // Register the building with ProductionChainManager
             if (this.game && this.game.productionChainManager) {
                 this.game.productionChainManager.registerBuilding(newBuilding);
-                console.log(`[queueBuilding] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`);
+                console.log(
+                    `[queueBuilding] Registered ${newBuilding.name} (ID: ${newBuilding.id}) with ProductionChainManager`
+                );
             }
         }
 

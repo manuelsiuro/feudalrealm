@@ -12,6 +12,7 @@ import { SERF_ACTION_STATES } from '../config/serfActionStates.js';
 import resourceManager from './resourceManager.js';
 import { FORESTER_PLANTING_RADIUS } from '../config/unitConstants.js';
 import ReturnToJobBuildingTask from './tasks/ReturnToJobBuildingTask.js';
+import { BUILDING_DATA } from '../config/buildingData.js';
 
 class SerfManager {
     constructor(
@@ -123,7 +124,7 @@ class SerfManager {
             );
             // Find the BUILDERS_HUT
             const buildersHut = this.constructionManager.placedBuildings.find(
-                (b) => b.type === 'BUILDERS_HUT' // Assuming 'BUILDERS_HUT' is the correct type key
+                (b) => b.type === BUILDING_DATA.BUILDERS_HUT.key
             );
 
             if (buildersHut) {
