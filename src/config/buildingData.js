@@ -40,9 +40,11 @@ export const BUILDING_DATA = {
             [RESOURCE_TYPES.TOOL_FISHING_ROD.key]: 20,
             [RESOURCE_TYPES.SAPLING.key]: 50,
         },
-        outputBufferCapacity: { default: 0 }, // Castle doesn't produce into an output buffer
-        producesMaterials: [], // Renamed from 'produces' for clarity with Building.js
-        consumesMaterials: [], // Renamed from 'consumes' for clarity with Building.js
+        outputBufferCapacity: { default: 0 },
+        producesMaterials: [],
+        consumesMaterials: [],
+        population: 0,
+        maxPopulation: 100, // Initial population capacity
     },
     BUILDERS_HUT: {
         key: 'BUILDERS_HUT',

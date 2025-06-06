@@ -376,22 +376,22 @@ class Building {
      * @param {string} serfId - The ID of the serf to remove.
      * @returns {boolean} True if the serf was successfully removed, false otherwise.
      */
-    /*removeWorker(serfId) {
+    removeWorker(serfId) {
         const index = this.workers.indexOf(serfId);
         if (index > -1) {
             this.workers.splice(index, 1);
             return true;
         }
         return false;
-    }*/
+    }
 
     /**
      * Checks if there are any open job slots in this building.
      * @returns {boolean} True if there are open job slots.
      */
-    /*hasOpenJobSlots() {
+    hasOpenJobSlots() {
         return this.workers.length < this.jobSlots;
-    }*/
+    }
 
     /**
      * Validates if a complete production cycle can be started.
@@ -935,13 +935,6 @@ class Building {
         // Reposition to grow from left to right
         this.progressBarMesh.position.x =
             -(barWidth / 2) + (barWidth * progressPercentage) / 2;
-
-        // Debug log for first few updates - now shows both actual and visual progress
-        //if (this.currentConstructionProgress < 1000) {
-        //    const actualProgress = (this.currentConstructionProgress / this.constructionRequiredTime * 100).toFixed(1);
-        //    const visualProgress = (visualProgressPercentage * 100).toFixed(1);
-        //    console.log(`[Building _updateProgressBar] ${this.name}: Actual: ${actualProgress}% | Visual: ${visualProgress}% | Scale: ${this.progressBarMesh.scale.x.toFixed(3)}`);
-        //}
     }
 
     /**
