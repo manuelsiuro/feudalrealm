@@ -23,7 +23,7 @@ class MovingToTargetState extends SerfState {
                 serf.targetNode = { x: serf.targetPos.x, y: serf.targetPos.y }; // Use the coordinates from targetPos
                 // console.log(`${serf.id} (${serf.serfType}) path found to targetPos. Path length: ${serf.path.length}. TargetNode set to (${serf.targetNode.x}, ${serf.targetNode.y})`);
                 // serf.playAnimation('walk');
-                return; // Ready to move
+                 // Ready to move
             } else {
                 // Enhanced logging for pathfinding failure
                 const targetTile = serf.mapManager.getTile(serf.targetPos.x, serf.targetPos.y);
@@ -32,13 +32,13 @@ class MovingToTargetState extends SerfState {
                 serf.targetPos = null; // Clear targetPos as pathfinding failed
                 serf.targetNode = null; // Ensure targetNode is also clear
                 serf.changeState(SERF_ACTION_STATES.IDLE);
-                return;
+
             }
         } else if (!serf.targetNode || !serf.path || serf.path.length === 0) {
             // This is the original check, for cases where targetNode and path are expected to be pre-set (e.g., by a Task)
             console.warn(`${serf.id} (${serf.serfType}) entering ${this.name} without valid targetNode/path (and no targetPos). Reverting to IDLE.`);
             serf.changeState(SERF_ACTION_STATES.IDLE);
-            return;
+
         }
         // If neither of the above conditions met (i.e., targetNode and path were already validly set by something else)
         // console.log(`${serf.id} (${serf.serfType}) entering ${this.name} with pre-set targetNode and path.`);

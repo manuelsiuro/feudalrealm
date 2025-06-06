@@ -17,7 +17,7 @@ export default class ReturningCarriedResourceState extends SerfState {
         if (!this.serf.carriedResource) {
             console.warn(`${this.serf.id} (${this.serf.serfType}): Entered ReturningCarriedResourceState without a carriedResource. Returning to IDLE.`);
             this.serf.changeState(SERF_ACTION_STATES.IDLE); // Fallback
-            return;
+
         }
     }
 

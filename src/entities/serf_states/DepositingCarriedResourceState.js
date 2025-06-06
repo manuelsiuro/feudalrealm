@@ -21,7 +21,7 @@ export default class DepositingCarriedResourceState extends SerfState {
         if (!this.serf.carriedResource) {
             console.warn(`${this.serf.id} (${this.serf.serfType}): Entered DepositingCarriedResourceState without a carriedResource. Idling.`);
             this.serf.changeState(SERF_ACTION_STATES.IDLE);
-            return;
+
         }
     }
 
@@ -118,7 +118,7 @@ export default class DepositingCarriedResourceState extends SerfState {
                 // A more robust system might have the serf wait or find alternative storage.
                 this.serf.setState(new IdleState(this.serf));
             }
-            return; // This return is for the `if (this.elapsedTime >= this.depositDuration)` block
+             // This return is for the `if (this.elapsedTime >= this.depositDuration)` block
         }
     }
 

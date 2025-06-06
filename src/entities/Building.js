@@ -23,6 +23,7 @@ class Building {
      * @param {number} gridZ - The 0-indexed Z grid coordinate.
      * @param {GameMap} gameMap - Reference to the game's map instance.
      * @param {object} buildingDataEntry - Configuration data for this building type from `buildingData.js`.
+     * @param resourceFlowManager
      * @property {string} id - Unique identifier for this building instance.
      * @property {string} type - Building type key.
      * @property {number} gridX - Grid X coordinate.
@@ -62,36 +63,44 @@ class Building {
      * @property {string|null} assignedBuilderId - ID of the serf assigned to construct this building.
      * @property {THREE.Mesh|null} progressBarMesh - The UI mesh for the construction progress bar.
      */
-    constructor(type, gridX, gridZ, gameMap, buildingDataEntry, resourceFlowManager = null) {
+    constructor(
+        type,
+        gridX,
+        gridZ,
+        gameMap,
+        buildingDataEntry,
+        resourceFlowManager = null
+    ) {
         this.id = `building-${nextBuildingId++}`;
-        this.type = type; 
+        this.type = type;
         this.gridX = gridX;
         this.gridZ = gridZ;
-        this.gameMap = gameMap; 
-        
-        this.model = null; 
+        this.gameMap = gameMap;
+
+        this.model = null;
         this.isConstructed = false; // Will be managed by currentConstructionState
         this.constructionEndTime = 0; // Deprecated in favor of progress tracking
-        this.health = buildingDataEntry.maxHealth || 100; 
+        this.health = buildingDataEntry.maxHealth || 100;
         this.maxHealth = buildingDataEntry.maxHealth || 100;
 
-        this.info = buildingDataEntry; 
+        this.info = buildingDataEntry;
         this.name = buildingDataEntry.name;
         this.cost = buildingDataEntry.cost;
         this.jobSlots = buildingDataEntry.jobSlots || 0;
         this.jobProfession = buildingDataEntry.jobProfession || null;
         this.requiredTool = buildingDataEntry.requiredTool || null;
-        
-        this.maxStock = buildingDataEntry.maxStock || { default: 50 }; 
-        this.outputBufferCapacity = buildingDataEntry.outputBufferCapacity || this.maxStock;
-        this.inventory = {}; 
 
-        this.workers = []; 
+        this.maxStock = buildingDataEntry.maxStock || { default: 50 };
+        this.outputBufferCapacity =
+            buildingDataEntry.outputBufferCapacity || this.maxStock;
+        this.inventory = {};
 
-        this.producesResource = buildingDataEntry.producesResource || null; 
-        this.productionIntervalMs = buildingDataEntry.productionIntervalMs || 0; 
+        this.workers = [];
+
+        this.producesResource = buildingDataEntry.producesResource || null;
+        this.productionIntervalMs = buildingDataEntry.productionIntervalMs || 0;
         this.lastProductionTime = 0;
-        
+
         this.consumesFood = buildingDataEntry.consumesFood || [];
         this.foodConsumptionRate = buildingDataEntry.foodConsumptionRate || 0;
         this.foodCheckIntervalMs = buildingDataEntry.foodCheckIntervalMs || 0;
@@ -101,13 +110,16 @@ class Building {
         this.consumesMaterials = buildingDataEntry.consumesMaterials || []; // Corrected from buildingDataEntry.consumes
         this.producesMaterials = buildingDataEntry.producesMaterials || []; // Corrected from buildingDataEntry.produces
         this.processingTime = buildingDataEntry.processingTime || 0; // Corrected from processingTimeMs
-        this.currentProcessingProgress = 0; 
+        this.currentProcessingProgress = 0;
 
-        this.resourceManager = null; 
-        this.resourceFlowManager = resourceFlowManager; // Store reference to ResourceFlowManager 
+        this.resourceManager = null;
+        this.resourceFlowManager = resourceFlowManager; // Store reference to ResourceFlowManager
 
         // Initialize new construction properties
-        this.constructionRequiredTime = buildingDataEntry.constructionTime === undefined ? 5000 : buildingDataEntry.constructionTime; // Default if not specified
+        this.constructionRequiredTime =
+            buildingDataEntry.constructionTime === undefined
+                ? 5000
+                : buildingDataEntry.constructionTime; // Default if not specified
         this.currentConstructionProgress = 0;
         this.assignedBuilderId = null;
         this.progressBarMesh = null; // Will be created when construction starts
@@ -121,17 +133,19 @@ class Building {
         if (this.type === 'CASTLE' || this.constructionRequiredTime === 0) {
             this.currentConstructionState = BUILDING_STATE_CONSTRUCTED;
             this.isConstructed = true; // Keep isConstructed for compatibility for now
-            
+
             // Create the model immediately for constructed buildings
             this.model = this.createModel();
         } else {
             this.currentConstructionState = BUILDING_STATE_NEEDS_CONSTRUCTION;
             this.isConstructed = false;
-            
+
             // Don't create the model yet - it will be created when construction starts
             this.model = null;
         }
-        console.log(`[Building CONSTRUCTOR] ${this.id} (${this.name}): Initial constructionRequiredTime: ${this.constructionRequiredTime}, currentConstructionState: ${this.currentConstructionState}`);
+        console.log(
+            `[Building CONSTRUCTOR] ${this.id} (${this.name}): Initial constructionRequiredTime: ${this.constructionRequiredTime}, currentConstructionState: ${this.currentConstructionState}`
+        );
     }
 
     /**
@@ -150,7 +164,7 @@ class Building {
      * @returns {THREE.Object3D} The Three.js model for the building.
      */
     createModel() {
-        throw new Error("Subclasses must implement createModel()");
+        throw new Error('Subclasses must implement createModel()');
     }
 
     /**
@@ -175,7 +189,9 @@ class Building {
      */
     placeModel(buildingsGroup) {
         if (!this.model) {
-            console.warn(`Building ${this.id} (${this.name}): Cannot place model - model not created yet (construction state: ${this.currentConstructionState}).`);
+            console.warn(
+                `Building ${this.id} (${this.name}): Cannot place model - model not created yet (construction state: ${this.currentConstructionState}).`
+            );
             return;
         }
 
@@ -203,27 +219,24 @@ class Building {
      * @returns {number} The amount of the resource actually added.
      */
     addResource(resourceType, amount) {
-        if (!this.isConstructed && this.type !== 'CONSTRUCTION_SITE') { // Allow adding to construction site
-            console.warn(`${this.name} (${this.id}): Not constructed yet, cannot add resources normally.`);
+        if (!this.isConstructed && this.type !== 'CONSTRUCTION_SITE') {
+            // Allow adding to construction site
+            console.warn(
+                `${this.name} (${this.id}): Not constructed yet, cannot add resources normally.`
+            );
             // return 0; // Or handle differently for initial resource delivery to site
         }
-        
+
         const currentAmount = this.inventory[resourceType] || 0;
         // Use outputBufferCapacity for the specific resource if defined, else default maxStock
-        const maxCap = (this.outputBufferCapacity && this.outputBufferCapacity[resourceType]) 
-                       ? this.outputBufferCapacity[resourceType] 
-                       : (this.maxStock && this.maxStock[resourceType]) 
-                           ? this.maxStock[resourceType]
-                           : (this.maxStock && this.maxStock.default) 
-                               ? this.maxStock.default 
-                               : 0;
+        const maxCap = this.getMaxCapacity(resourceType);
 
         const availableSpace = maxCap - currentAmount;
         const amountToAdd = Math.min(amount, availableSpace);
 
         if (amountToAdd > 0) {
             this.inventory[resourceType] = currentAmount + amountToAdd;
-            
+
             // Record resource flow for visualization (incoming resources)
             if (this.resourceFlowManager && this.model?.position) {
                 // This records resources being added to the building from an external source
@@ -236,7 +249,7 @@ class Building {
                     'external_to_building'
                 );
             }
-            
+
             // console.log(`${this.name} (${this.id}) added ${amountToAdd} of ${resourceType}. New stock: ${this.inventory[resourceType]} / ${maxCap}`);
         } else if (amount > 0 && availableSpace <= 0) {
             // console.log(`${this.name} (${this.id}) cannot add ${resourceType}, stock is full (${currentAmount} / ${maxCap}).`);
@@ -252,7 +265,9 @@ class Building {
      */
     pickupResource(resourceType, amountRequested) {
         if (!this.isConstructed) {
-            console.warn(`${this.name} (${this.id}): Not constructed yet, cannot pick up resources.`);
+            console.warn(
+                `${this.name} (${this.id}): Not constructed yet, cannot pick up resources.`
+            );
             return 0;
         }
         const currentAmount = this.inventory[resourceType] || 0;
@@ -260,7 +275,7 @@ class Building {
 
         if (amountToPickup > 0) {
             this.inventory[resourceType] = currentAmount - amountToPickup;
-            
+
             // Record resource flow for visualization (outgoing resources)
             if (this.resourceFlowManager && this.model?.position) {
                 // This records resources being picked up from the building
@@ -273,7 +288,7 @@ class Building {
                     'building_to_external'
                 );
             }
-            
+
             // console.log(`${this.name} (${this.id}) picked up ${amountToPickup} of ${resourceType}. Remaining stock: ${this.inventory[resourceType]}`);
             if (this.inventory[resourceType] === 0) {
                 // delete this.inventory[resourceType]; // Optional: clean up empty entries
@@ -283,15 +298,42 @@ class Building {
     }
 
     /**
+     * Gets the maximum capacity for a given resource type.
+     * Checks in priority order: outputBufferCapacity, maxStock for resource, default maxStock.
+     * @param {string} resourceType - The type of resource.
+     * @returns {number} The maximum capacity for the resource.
+     */
+    getMaxCapacity(resourceType) {
+        if (
+            this.outputBufferCapacity &&
+            this.outputBufferCapacity[resourceType]
+        ) {
+            return this.outputBufferCapacity[resourceType];
+        }
+
+        if (this.maxStock && this.maxStock[resourceType]) {
+            return this.maxStock[resourceType];
+        }
+
+        if (this.maxStock && this.maxStock.default) {
+            return this.maxStock.default;
+        }
+
+        return 0;
+    }
+
+    /**
      * Checks if the building's inventory contains sufficient quantities of specified resources.
      * @param {Array<object>} resourceList - An array of resource objects, e.g., [{ resource: 'WOOD', quantity: 10 }].
      * @returns {boolean} True if all specified resources are available in sufficient quantities.
      */
-    hasResources(resourceList) { 
+    hasResources(resourceList) {
         if (!resourceList || resourceList.length === 0) return true;
-        return resourceList.every(item => (this.inventory[item.resource] || 0) >= item.quantity);
+        return resourceList.every(
+            (item) => (this.inventory[item.resource] || 0) >= item.quantity
+        );
     }
-    
+
     /**
      * Checks if there is enough space in the inventory/output buffer for a given resource and quantity.
      * @param {string} resourceType - The type of resource.
@@ -300,13 +342,8 @@ class Building {
      */
     hasSpaceFor(resourceType, quantity) {
         const currentAmount = this.inventory[resourceType] || 0;
-        const maxCap = (this.outputBufferCapacity && this.outputBufferCapacity[resourceType]) 
-                       ? this.outputBufferCapacity[resourceType] 
-                       : (this.maxStock && this.maxStock[resourceType]) 
-                           ? this.maxStock[resourceType]
-                           : (this.maxStock && this.maxStock.default) 
-                               ? this.maxStock.default 
-                               : 0;
+        const maxCap = this.getMaxCapacity(resourceType);
+
         return currentAmount + quantity <= maxCap;
     }
 
@@ -339,22 +376,22 @@ class Building {
      * @param {string} serfId - The ID of the serf to remove.
      * @returns {boolean} True if the serf was successfully removed, false otherwise.
      */
-    removeWorker(serfId) {
+    /*removeWorker(serfId) {
         const index = this.workers.indexOf(serfId);
         if (index > -1) {
             this.workers.splice(index, 1);
             return true;
         }
         return false;
-    }
-    
+    }*/
+
     /**
      * Checks if there are any open job slots in this building.
      * @returns {boolean} True if there are open job slots.
      */
-    hasOpenJobSlots() {
+    /*hasOpenJobSlots() {
         return this.workers.length < this.jobSlots;
-    }
+    }*/
 
     /**
      * Validates if a complete production cycle can be started.
@@ -389,16 +426,28 @@ class Building {
         // Check input material availability
         if (!this.hasResources(this.consumesMaterials)) {
             const missingResources = this.consumesMaterials
-                .filter(item => (this.inventory[item.resource] || 0) < item.quantity)
-                .map(item => `${item.resource}(${(this.inventory[item.resource] || 0)}/${item.quantity})`)
+                .filter(
+                    (item) =>
+                        (this.inventory[item.resource] || 0) < item.quantity
+                )
+                .map(
+                    (item) =>
+                        `${item.resource}(${this.inventory[item.resource] || 0}/${item.quantity})`
+                )
                 .join(', ');
-            return { canStart: false, reason: `Insufficient input materials: ${missingResources}` };
+            return {
+                canStart: false,
+                reason: `Insufficient input materials: ${missingResources}`,
+            };
         }
 
         // Check output storage capacity
         for (const product of this.producesMaterials) {
             if (!this.hasSpaceFor(product.resource, product.quantity)) {
-                return { canStart: false, reason: `Insufficient storage space for ${product.resource}` };
+                return {
+                    canStart: false,
+                    reason: `Insufficient storage space for ${product.resource}`,
+                };
             }
         }
 
@@ -413,7 +462,9 @@ class Building {
     executeProductionCycle() {
         const validation = this.validateProductionCycle();
         if (!validation.canStart) {
-            console.warn(`${this.name} (${this.id}): Cannot execute production cycle - ${validation.reason}`);
+            console.warn(
+                `${this.name} (${this.id}): Cannot execute production cycle - ${validation.reason}`
+            );
             return { success: false, consumed: [], produced: [] };
         }
 
@@ -422,24 +473,38 @@ class Building {
 
         // Consume input materials
         for (const item of this.consumesMaterials) {
-            const actualConsumed = this.pickupResource(item.resource, item.quantity);
+            const actualConsumed = this.pickupResource(
+                item.resource,
+                item.quantity
+            );
             if (actualConsumed > 0) {
-                consumed.push({ resource: item.resource, quantity: actualConsumed });
+                consumed.push({
+                    resource: item.resource,
+                    quantity: actualConsumed,
+                });
             }
         }
 
         // Produce output materials
         for (const product of this.producesMaterials) {
-            const actualProduced = this.addResource(product.resource, product.quantity);
+            const actualProduced = this.addResource(
+                product.resource,
+                product.quantity
+            );
             if (actualProduced > 0) {
-                produced.push({ resource: product.resource, quantity: actualProduced });
-                
+                produced.push({
+                    resource: product.resource,
+                    quantity: actualProduced,
+                });
+
                 // Record resource flow for visualization
                 if (this.resourceFlowManager && this.model?.position) {
                     const buildingPosition = this.model.position.clone();
                     this.resourceFlowManager.recordFlow(
                         buildingPosition,
-                        buildingPosition.clone().add(new THREE.Vector3(0, 1, 0)), // Slightly above for production flow
+                        buildingPosition
+                            .clone()
+                            .add(new THREE.Vector3(0, 1, 0)), // Slightly above for production flow
                         product.resource,
                         actualProduced,
                         'production'
@@ -457,7 +522,10 @@ class Building {
      */
     getProcessingProgress() {
         if (this.processingTime <= 0) return 0;
-        return Math.min(this.currentProcessingProgress / this.processingTime, 1.0);
+        return Math.min(
+            this.currentProcessingProgress / this.processingTime,
+            1.0
+        );
     }
 
     /**
@@ -466,7 +534,10 @@ class Building {
      */
     getProcessingTimeRemaining() {
         if (this.processingTime <= 0) return 0;
-        return Math.max(this.processingTime - this.currentProcessingProgress, 0);
+        return Math.max(
+            this.processingTime - this.currentProcessingProgress,
+            0
+        );
     }
 
     /**
@@ -479,29 +550,31 @@ class Building {
         const timeRemaining = this.getProcessingTimeRemaining();
 
         // Calculate input material status
-        const inputStatus = this.consumesMaterials.map(item => ({
+        const inputStatus = this.consumesMaterials.map((item) => ({
             resource: item.resource,
             required: item.quantity,
             available: this.inventory[item.resource] || 0,
-            sufficient: (this.inventory[item.resource] || 0) >= item.quantity
+            sufficient: (this.inventory[item.resource] || 0) >= item.quantity,
         }));
 
         // Calculate output storage status
-        const outputStatus = this.producesMaterials.map(product => {
+        const outputStatus = this.producesMaterials.map((product) => {
             const currentAmount = this.inventory[product.resource] || 0;
-            const maxCap = (this.outputBufferCapacity && this.outputBufferCapacity[product.resource]) 
-                           ? this.outputBufferCapacity[product.resource] 
-                           : (this.maxStock && this.maxStock[product.resource]) 
-                               ? this.maxStock[product.resource]
-                               : (this.maxStock && this.maxStock.default) 
-                                   ? this.maxStock.default 
-                                   : 0;
+            const maxCap =
+                this.outputBufferCapacity &&
+                this.outputBufferCapacity[product.resource]
+                    ? this.outputBufferCapacity[product.resource]
+                    : this.maxStock && this.maxStock[product.resource]
+                      ? this.maxStock[product.resource]
+                      : this.maxStock && this.maxStock.default
+                        ? this.maxStock.default
+                        : 0;
             return {
                 resource: product.resource,
                 produced: product.quantity,
                 current: currentAmount,
                 capacity: maxCap,
-                hasSpace: currentAmount + product.quantity <= maxCap
+                hasSpace: currentAmount + product.quantity <= maxCap,
             };
         });
 
@@ -515,7 +588,7 @@ class Building {
             maxWorkers: this.jobSlots,
             isHaltedByNoFood: this.isHaltedByNoFood,
             inputStatus: inputStatus,
-            outputStatus: outputStatus
+            outputStatus: outputStatus,
         };
     }
 
@@ -528,27 +601,45 @@ class Building {
      */
     transferResourceTo(targetBuilding, resourceType, amount) {
         if (!this.isConstructed) {
-            return { transferred: 0, reason: 'Source building not constructed' };
+            return {
+                transferred: 0,
+                reason: 'Source building not constructed',
+            };
         }
 
         if (!targetBuilding.isConstructed) {
-            return { transferred: 0, reason: 'Target building not constructed' };
+            return {
+                transferred: 0,
+                reason: 'Target building not constructed',
+            };
         }
 
         const availableAmount = this.inventory[resourceType] || 0;
         if (availableAmount <= 0) {
-            return { transferred: 0, reason: 'No resources available to transfer' };
+            return {
+                transferred: 0,
+                reason: 'No resources available to transfer',
+            };
         }
 
         const amountToTransfer = Math.min(amount, availableAmount);
-        const actualPickedUp = this.pickupResource(resourceType, amountToTransfer);
-        
+        const actualPickedUp = this.pickupResource(
+            resourceType,
+            amountToTransfer
+        );
+
         if (actualPickedUp <= 0) {
-            return { transferred: 0, reason: 'Failed to pickup resources from source' };
+            return {
+                transferred: 0,
+                reason: 'Failed to pickup resources from source',
+            };
         }
 
-        const actualDelivered = targetBuilding.addResource(resourceType, actualPickedUp);
-        
+        const actualDelivered = targetBuilding.addResource(
+            resourceType,
+            actualPickedUp
+        );
+
         // If we couldn't deliver all resources, add the remainder back
         if (actualDelivered < actualPickedUp) {
             const remainder = actualPickedUp - actualDelivered;
@@ -556,7 +647,11 @@ class Building {
         }
 
         // Record resource flow for visualization
-        if (this.resourceFlowManager && this.model?.position && targetBuilding.model?.position) {
+        if (
+            this.resourceFlowManager &&
+            this.model?.position &&
+            targetBuilding.model?.position
+        ) {
             this.resourceFlowManager.recordFlow(
                 this.model.position.clone(),
                 targetBuilding.model.position.clone(),
@@ -566,9 +661,12 @@ class Building {
             );
         }
 
-        return { 
-            transferred: actualDelivered, 
-            reason: actualDelivered > 0 ? 'Success' : 'Target building has no space' 
+        return {
+            transferred: actualDelivered,
+            reason:
+                actualDelivered > 0
+                    ? 'Success'
+                    : 'Target building has no space',
         };
     }
 
@@ -591,18 +689,26 @@ class Building {
      * @returns {boolean} True if construction started successfully, false otherwise.
      */
     startConstructionProcess(serfId, scene) {
-        if (this.currentConstructionState !== BUILDING_STATE_NEEDS_CONSTRUCTION) {
-            console.warn(`${this.name} (${this.id}): Cannot start construction - current state is ${this.currentConstructionState}`);
+        if (
+            this.currentConstructionState !== BUILDING_STATE_NEEDS_CONSTRUCTION
+        ) {
+            console.warn(
+                `${this.name} (${this.id}): Cannot start construction - current state is ${this.currentConstructionState}`
+            );
             return false;
         }
 
         if (this.assignedBuilderId) {
-            console.warn(`${this.name} (${this.id}): Cannot start construction - already assigned to builder ${this.assignedBuilderId}`);
+            console.warn(
+                `${this.name} (${this.id}): Cannot start construction - already assigned to builder ${this.assignedBuilderId}`
+            );
             return false;
         }
 
-        console.log(`[Building startConstructionProcess] Starting construction of ${this.name} (${this.id}) with builder ${serfId}`);
-        
+        console.log(
+            `[Building startConstructionProcess] Starting construction of ${this.name} (${this.id}) with builder ${serfId}`
+        );
+
         this.assignedBuilderId = serfId;
         this.currentConstructionState = BUILDING_STATE_UNDER_CONSTRUCTION;
         this.currentConstructionProgress = 0;
@@ -613,21 +719,25 @@ class Building {
         // Create the 3D model now that construction has started
         if (!this.model) {
             this.model = this.createModel();
-            console.log(`[Building startConstructionProcess] Created 3D model for ${this.name} (${this.id})`);
-            
+            console.log(
+                `[Building startConstructionProcess] Created 3D model for ${this.name} (${this.id})`
+            );
+
             // Place the model in the scene if we have access to buildingsGroup
             if (scene && this.model) {
                 // Find or create the GameBuildings group
                 let buildingsGroup = null;
                 scene.traverse((child) => {
-                    if (child.name === "GameBuildings") {
+                    if (child.name === 'GameBuildings') {
                         buildingsGroup = child;
                     }
                 });
-                
+
                 if (buildingsGroup) {
                     this.placeModel(buildingsGroup);
-                    console.log(`[Building startConstructionProcess] Placed model for ${this.name} (${this.id}) in scene`);
+                    console.log(
+                        `[Building startConstructionProcess] Placed model for ${this.name} (${this.id}) in scene`
+                    );
                 }
             }
         }
@@ -650,12 +760,16 @@ class Building {
      * @returns {boolean} True if construction is complete, false otherwise.
      */
     updateConstructionProgress(deltaTime) {
-        if (this.currentConstructionState !== BUILDING_STATE_UNDER_CONSTRUCTION) {
+        if (
+            this.currentConstructionState !== BUILDING_STATE_UNDER_CONSTRUCTION
+        ) {
             return false; // Not under construction
         }
 
         if (!this.assignedBuilderId) {
-            console.warn(`${this.name} (${this.id}): No builder assigned but state is UNDER_CONSTRUCTION`);
+            console.warn(
+                `${this.name} (${this.id}): No builder assigned but state is UNDER_CONSTRUCTION`
+            );
             return false;
         }
 
@@ -663,7 +777,7 @@ class Building {
         // We need access to the serfManager to check builder state
         // For now, we'll assume progress should only happen when builder is at the site
         // This check will be done by the ConstructionManager or we trust the task system
-        
+
         // Increment construction progress
         this.currentConstructionProgress += deltaTime;
 
@@ -686,7 +800,7 @@ class Building {
      */
     completeConstructionProcess() {
         //console.log(`[Building completeConstructionProcess] Completing construction of ${this.name} (${this.id})`);
-        
+
         this.currentConstructionState = BUILDING_STATE_CONSTRUCTED;
         this.isConstructed = true; // Keep for compatibility
         this.currentConstructionProgress = this.constructionRequiredTime; // Ensure it's exactly at completion
@@ -732,7 +846,9 @@ class Building {
         }
 
         if (!this.model) {
-            console.warn(`${this.name} (${this.id}): Cannot create progress bar - no model available`);
+            console.warn(
+                `${this.name} (${this.id}): Cannot create progress bar - no model available`
+            );
             return;
         }
 
@@ -752,25 +868,40 @@ class Building {
         this.progressBarGroup.position.y += modelHeight + 0.5;
 
         // Background bar (red/dark)
-        const backgroundGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth);
-        const backgroundMaterial = new THREE.MeshPhongMaterial({ 
+        const backgroundGeometry = new THREE.BoxGeometry(
+            barWidth,
+            barHeight,
+            barDepth
+        );
+        const backgroundMaterial = new THREE.MeshPhongMaterial({
             color: 0x444444,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.8,
         });
-        const backgroundMesh = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+        const backgroundMesh = new THREE.Mesh(
+            backgroundGeometry,
+            backgroundMaterial
+        );
         this.progressBarGroup.add(backgroundMesh);
 
         // Progress bar (green) - create at full width but scale it down
-        const progressGeometry = new THREE.BoxGeometry(barWidth, barHeight, barDepth + 0.01); 
-        const progressMaterial = new THREE.MeshPhongMaterial({ 
+        const progressGeometry = new THREE.BoxGeometry(
+            barWidth,
+            barHeight,
+            barDepth + 0.01
+        );
+        const progressMaterial = new THREE.MeshPhongMaterial({
             color: 0x00ff00,
             transparent: true,
-            opacity: 0.9
+            opacity: 0.9,
         });
-        this.progressBarMesh = new THREE.Mesh(progressGeometry, progressMaterial);
+        this.progressBarMesh = new THREE.Mesh(
+            progressGeometry,
+            progressMaterial
+        );
         this.progressBarMesh.scale.x = 0.01; // Start at minimum scale
-        this.progressBarMesh.position.x = -(barWidth / 2) + (barWidth * 0.01 / 2); // Start from left edge
+        this.progressBarMesh.position.x =
+            -(barWidth / 2) + (barWidth * 0.01) / 2; // Start from left edge
         this.progressBarGroup.add(this.progressBarMesh);
 
         // Add to scene
@@ -790,17 +921,21 @@ class Building {
         }
 
         // Calculate progress percentage based on actual construction progress
-        const progressPercentage = Math.min(this.currentConstructionProgress / this.constructionRequiredTime, 1.0);
-        
+        const progressPercentage = Math.min(
+            this.currentConstructionProgress / this.constructionRequiredTime,
+            1.0
+        );
+
         // Update progress bar using scale instead of recreating geometry
         const barWidth = TILE_SIZE * 0.8;
-        
+
         // Use scale to change the width instead of recreating geometry
         this.progressBarMesh.scale.x = Math.max(progressPercentage, 0.01); // Minimum scale to keep it visible
-        
+
         // Reposition to grow from left to right
-        this.progressBarMesh.position.x = -(barWidth / 2) + (barWidth * progressPercentage / 2);
-        
+        this.progressBarMesh.position.x =
+            -(barWidth / 2) + (barWidth * progressPercentage) / 2;
+
         // Debug log for first few updates - now shows both actual and visual progress
         //if (this.currentConstructionProgress < 1000) {
         //    const actualProgress = (this.currentConstructionProgress / this.constructionRequiredTime * 100).toFixed(1);
@@ -822,7 +957,9 @@ class Building {
                 }
                 if (child.material) {
                     if (Array.isArray(child.material)) {
-                        child.material.forEach(material => material.dispose());
+                        child.material.forEach((material) =>
+                            material.dispose()
+                        );
                     } else {
                         child.material.dispose();
                     }
@@ -842,19 +979,25 @@ class Building {
      * Gets the current construction progress as a percentage.
      * @returns {number} Progress percentage (0.0 to 1.0)
      */
-    getConstructionProgress() {
+    /*getConstructionProgress() {
         if (this.constructionRequiredTime <= 0) return 1.0;
-        return Math.min(this.currentConstructionProgress / this.constructionRequiredTime, 1.0);
-    }
+        return Math.min(
+            this.currentConstructionProgress / this.constructionRequiredTime,
+            1.0
+        );
+    }*/
 
     /**
      * Estimates time remaining for construction.
      * @returns {number} Time remaining in milliseconds
      */
-    getConstructionTimeRemaining() {
+    /*getConstructionTimeRemaining() {
         if (this.constructionRequiredTime <= 0) return 0;
-        return Math.max(this.constructionRequiredTime - this.currentConstructionProgress, 0);
-    }
+        return Math.max(
+            this.constructionRequiredTime - this.currentConstructionProgress,
+            0
+        );
+    }*/
 
     /**
      * Enhanced update method with improved production chain processing.
@@ -876,12 +1019,15 @@ class Building {
         }
 
         // Handle processing chain logic
-        if (this.consumesMaterials && this.consumesMaterials.length > 0 && 
-            this.producesMaterials && this.producesMaterials.length > 0 && 
-            this.processingTime > 0) {
-
+        if (
+            this.consumesMaterials &&
+            this.consumesMaterials.length > 0 &&
+            this.producesMaterials &&
+            this.producesMaterials.length > 0 &&
+            this.processingTime > 0
+        ) {
             const validation = this.validateProductionCycle();
-            
+
             if (validation.canStart) {
                 // Continue or start processing
                 this.currentProcessingProgress += deltaTime;
@@ -889,27 +1035,35 @@ class Building {
                 if (this.currentProcessingProgress >= this.processingTime) {
                     // Complete the production cycle
                     const result = this.executeProductionCycle();
-                    
+
                     if (result.success) {
                         // Log production result
-                        const consumedStr = result.consumed.map(item => `${item.quantity} ${item.resource}`).join(', ');
-                        const producedStr = result.produced.map(item => `${item.quantity} ${item.resource}`).join(', ');
-                        console.log(`${this.name} (${this.id}) completed production: consumed [${consumedStr}] → produced [${producedStr}]`);
+                        const consumedStr = result.consumed
+                            .map((item) => `${item.quantity} ${item.resource}`)
+                            .join(', ');
+                        const producedStr = result.produced
+                            .map((item) => `${item.quantity} ${item.resource}`)
+                            .join(', ');
+                        console.log(
+                            `${this.name} (${this.id}) completed production: consumed [${consumedStr}] → produced [${producedStr}]`
+                        );
                     }
-                    
+
                     // Reset progress for next cycle
                     this.currentProcessingProgress = 0;
                 }
             } else {
                 // Cannot start or continue processing, reset progress
                 if (this.currentProcessingProgress > 0) {
-                    console.log(`${this.name} (${this.id}) production halted: ${validation.reason}`);
+                    console.log(
+                        `${this.name} (${this.id}) production halted: ${validation.reason}`
+                    );
                 }
                 this.currentProcessingProgress = 0;
             }
         }
     }
-    
+
     /**
      * Checks and consumes food for workers if necessary.
      * This method handles the food consumption logic that halts production when workers don't have food.
@@ -918,57 +1072,67 @@ class Building {
      */
     _checkAndConsumeFood(currentTime) {
         // Only check food if this building consumes food and has workers
-        if (!this.consumesFood || this.consumesFood.length === 0 || this.workers.length === 0) {
+        if (
+            !this.consumesFood ||
+            this.consumesFood.length === 0 ||
+            this.workers.length === 0
+        ) {
             this.isHaltedByNoFood = false;
             return;
         }
-        
+
         // Check if it's time for a food check
         if (this.lastFoodCheckTime === 0) {
             this.lastFoodCheckTime = currentTime;
         }
-        
+
         if (currentTime - this.lastFoodCheckTime < this.foodCheckIntervalMs) {
             return; // Not time for food check yet
         }
-        
+
         // Calculate food needed based on workers and consumption rate
         const foodNeeded = this.workers.length * this.foodConsumptionRate;
-        
+
         if (foodNeeded <= 0) {
             this.isHaltedByNoFood = false;
             this.lastFoodCheckTime = currentTime;
             return;
         }
-        
+
         // Try to find and consume any available food type
         let foodConsumed = false;
         for (const foodType of this.consumesFood) {
             const availableFood = this.inventory[foodType] || 0;
-            
+
             if (availableFood >= foodNeeded) {
                 // Consume the food
                 this.inventory[foodType] = availableFood - foodNeeded;
                 foodConsumed = true;
-                console.log(`${this.name} (${this.id}) consumed ${foodNeeded} ${foodType} for ${this.workers.length} workers`);
+                console.log(
+                    `${this.name} (${this.id}) consumed ${foodNeeded} ${foodType} for ${this.workers.length} workers`
+                );
                 break;
             }
         }
-        
+
         if (!foodConsumed) {
             // No food available, halt production
             if (!this.isHaltedByNoFood) {
-                console.log(`${this.name} (${this.id}) halted: No food available for ${this.workers.length} workers`);
+                console.log(
+                    `${this.name} (${this.id}) halted: No food available for ${this.workers.length} workers`
+                );
             }
             this.isHaltedByNoFood = true;
         } else {
             // Food consumed successfully, resume production
             if (this.isHaltedByNoFood) {
-                console.log(`${this.name} (${this.id}) resumed: Food consumed for workers`);
+                console.log(
+                    `${this.name} (${this.id}) resumed: Food consumed for workers`
+                );
             }
             this.isHaltedByNoFood = false;
         }
-        
+
         this.lastFoodCheckTime = currentTime;
     }
 
@@ -982,7 +1146,7 @@ class Building {
         // Buildings are typically accessed from the south (positive Z direction)
         return {
             x: this.gridX,
-            z: this.gridZ + 1
+            z: this.gridZ + 1,
         };
     }
 }

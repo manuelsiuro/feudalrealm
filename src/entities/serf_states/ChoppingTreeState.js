@@ -54,7 +54,7 @@ export default class ChoppingTreeState extends SerfState {
                 // Serf will keep the resource and idle. This might require manual intervention or further logic.
                 this.serf.setState(new IdleState(this.serf));
             }
-            return;
+
         }
         // Continue chopping animation or logic
     }

@@ -34,7 +34,7 @@ class PlantingSaplingState extends SerfState {
         if (!tile || tile.terrainType !== TERRAIN_TYPES.GRASSLAND || tile.resource || serf.game.serfManager.isTileOccupiedForPlanting(targetTileInfo.x, targetTileInfo.y, serf.id)) {
             // console.warn(`Serf ${serf.id} cannot plant at (${targetTileInfo.x}, ${targetTileInfo.y}): Tile became unsuitable (Terrain: ${tile?.terrainType}, Resource: ${tile?.resource}, Occupied by other: ${serf.game.serfManager.isTileOccupiedForPlanting(targetTileInfo.x, targetTileInfo.y, serf.id)}).`);
             serf.currentTask.handleOutcome(serf, 'tile_became_unplantable');
-            return;
+
         }
 
         // console.log(`Serf ${serf.id} starting to plant sapling at (${targetTileInfo.x}, ${targetTileInfo.y}).`);

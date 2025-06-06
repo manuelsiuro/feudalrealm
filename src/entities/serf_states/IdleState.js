@@ -80,7 +80,7 @@ class IdleState extends SerfState {
 
         if (serf.task === 'mine' && serf.taskDetails && serf.taskDetails.resourceType) {
             serf.changeState(SERF_ACTION_STATES.SEARCHING_FOR_RESOURCE_ON_MAP);
-            return;
+
         }
     }
 

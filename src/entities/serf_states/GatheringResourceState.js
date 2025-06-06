@@ -34,7 +34,7 @@ class GatheringResourceState extends SerfState {
             console.log(`Serf ${serf.id} inventory is full before starting to gather. Max: ${serf.maxInventoryCapacity}`);
             serf.currentTask.handleOutcome(serf, 'inventory_full_on_arrival');
             // serf.changeState(SERF_ACTION_STATES.IDLE);
-            return;
+
         }
 
         // console.log(`Serf ${serf.id} starting to gather ${serf.currentTask.resourceType} from node at (${targetNode.x}, ${targetNode.y}). Node amount: ${targetNode.resource.amount}`);
@@ -96,7 +96,7 @@ class GatheringResourceState extends SerfState {
                 }
                 serf.currentTask.handleOutcome(serf, 'node_depleted');
                 // serf.changeState(SERF_ACTION_STATES.IDLE);
-                return;
+
             }
         }
     }
