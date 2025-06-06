@@ -189,7 +189,46 @@ class SerfManager {
         */
     }
 
+    requestSerfSpawnForNewBuilding(completedBuilding) {
+        if (!this.constructionManager || !this.constructionManager.castleLocation) {
+            console.error(
+                'SerfManager: ConstructionManager or castleLocation not available to spawn serf at castle.'
+            );
+            return;
+        }
+
+        if (BUILDING_DATA.CASTLE.population < BUILDING_DATA.CASTLE.maxPopulation) {
+            const castleLoc = this.constructionManager.castleLocation;
+            const newSerf = this.createSerf(
+                SERF_PROFESSIONS.TRANSPORTER, // Default profession for new serfs
+                castleLoc.x,
+                castleLoc.z
+            );
+            if (newSerf) {
+                console.log(
+                    `SerfManager: Spawned new Transporter serf ${newSerf.id} at Castle (${castleLoc.x}, ${castleLoc.z}) due to completion of ${completedBuilding.name}. Population: ${BUILDING_DATA.CASTLE.population}/${BUILDING_DATA.CASTLE.maxPopulation}`
+                );
+            } else {
+                console.log(
+                    `SerfManager: Failed to spawn new serf for ${completedBuilding.name}, despite population cap not being reached. CreateSerf might have other restrictions.`
+                );
+            }
+        } else {
+            console.log(
+                `SerfManager: Max population (${BUILDING_DATA.CASTLE.population}/${BUILDING_DATA.CASTLE.maxPopulation}) reached. No new serf spawned for ${completedBuilding.name}.`
+            );
+        }
+    }
+
     createSerf(type, gridX, gridY) {
+        // Check population limit before creating a new serf
+        if (BUILDING_DATA.CASTLE.population >= BUILDING_DATA.CASTLE.maxPopulation) {
+            console.log(
+                `SerfManager: Max population reached (${BUILDING_DATA.CASTLE.population}/${BUILDING_DATA.CASTLE.maxPopulation}). Cannot create new serf.`
+            );
+            return null;
+        }
+
         if (this.serfs.length >= this.maxSerfs) {
             console.log('Max serf limit reached.');
             return null;
@@ -215,6 +254,12 @@ class SerfManager {
             this.serfs.push(newSerf);
             console.log(
                 `${type} serf ${serfId} created at grid (${gridX}, ${gridY}). Model: ${newSerf.model.name}`
+            );
+
+            // Increment population count in BUILDING_DATA.CASTLE
+            BUILDING_DATA.CASTLE.population++;
+            console.log(
+                `SerfManager: Population increased to ${BUILDING_DATA.CASTLE.population}/${BUILDING_DATA.CASTLE.maxPopulation}`
             );
 
             const dropOffGridX = Math.floor(this.gameMap.width / 2);

@@ -440,13 +440,34 @@ class ConstructionManager {
             console.log(
                 '[ConstructionManager] No Castle found, placing one initially.'
             );
-            this.placeAndConstructInitialBuilding(
+            // Store the instance returned by placeAndConstructInitialBuilding
+            castleInstance = this.placeAndConstructInitialBuilding(
                 BUILDING_DATA.CASTLE.key,
                 mapCenterX,
                 mapCenterZ
             );
         } else {
             console.log('[ConstructionManager] Castle already exists.');
+        }
+
+        // Store castle location and instance
+        if (castleInstance) {
+            this.castleLocation = { x: mapCenterX, z: mapCenterZ };
+            this.castleBuildingInstance = castleInstance; // Store the instance
+            console.log(
+                `[CM] Castle instance stored. Location: X=${mapCenterX}, Z=${mapCenterZ}`
+            );
+            // Initialize population in BUILDING_DATA if not already (though it should be)
+            if (BUILDING_DATA.CASTLE.population === undefined) {
+                 BUILDING_DATA.CASTLE.population = 0;
+            }
+            if (BUILDING_DATA.CASTLE.maxPopulation === undefined) {
+                BUILDING_DATA.CASTLE.maxPopulation = 100; // Default if not set
+            }
+        } else {
+            console.error(
+                '[CM] Failed to place or find initial Castle, cannot set castleLocation or instance.'
+            );
         }
 
         // Place a Builder Hut nearby to test construction cycle
@@ -458,12 +479,13 @@ class ConstructionManager {
         );
 
         // Place a Transporter Hut to test priority queue
+        /*
         const transporterHutGridX = mapCenterX + 3;
         this.placeAndConstructInitialBuilding(
             BUILDING_DATA.TRANSPORTER_HUT.key,
             transporterHutGridX,
             mapCenterZ
-        );
+        );*/
 
         console.log('[ConstructionManager] Initial structures setup complete.');
     }
@@ -601,6 +623,14 @@ class ConstructionManager {
                             console.log(
                                 `[CM Update] Registered ${building.name} (ID: ${building.id}) with ProductionChainManager`
                             );
+                        }
+
+                        // Request a new serf spawn if a building (not Castle) is completed
+                        if (
+                            building.type !== BUILDING_DATA.CASTLE.key &&
+                            this.serfManager
+                        ) {
+                            this.serfManager.requestSerfSpawnForNewBuilding(building);
                         }
 
                         // The builder's task will automatically complete and they will return to their hut

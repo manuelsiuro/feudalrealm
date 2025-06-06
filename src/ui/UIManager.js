@@ -1,6 +1,7 @@
 import { RESOURCE_TYPES } from '../config/resourceTypes.js'; // May be needed for UI updates
 import ProductionChainUI from './ProductionChainUI.js';
 import FlowControlPanel from './FlowControlPanel.js';
+import { BUILDING_DATA } from '../config/buildingData.js';
 
 class UIManager {
     constructor(uiContainer, resourceManager, constructionManager, serfManager, selectionManager, productionChainManager, resourceFlowManager = null) {
@@ -1192,6 +1193,8 @@ class UIManager {
             return;
         }
 
+        console.log(building);
+
         // Clear and set up the panel with relative positioning for the close button
         this.selectionInfo.innerHTML = '';
         this.selectionInfo.style.position = 'relative';
@@ -1261,14 +1264,53 @@ class UIManager {
             }
         }
 
-        // Basic building info with modern styling
-        const basicInfo = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-                <div><strong>⚙️ Status:</strong> ${buildingStatus}</div>
-                ${building.model ? `<div><strong>🌍 World:</strong> (${building.model.position.x.toFixed(1)}, ${building.model.position.z.toFixed(1)})</div>` : ''}
-            </div>
-        `;
-        details.innerHTML = basicInfo;
+        const statusSection = document.createElement('div');
+        statusSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+        statusSection.innerHTML = `<strong>⚙️ Status:</strong> ${buildingStatus}`;
+        details.appendChild(statusSection);
+
+        const positionSection = document.createElement('div');
+        positionSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+        positionSection.innerHTML = `<strong>🌍 World:</strong> (${building.model.position.x.toFixed(1)}, ${building.model.position.z.toFixed(1)})`;
+        details.appendChild(positionSection);
+
+        if (building.info && building.info.description) {
+            const descriptionSection = document.createElement('div');
+            descriptionSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+            descriptionSection.innerHTML = `<strong>📜 Description:</strong> ${building.info.description}`;
+            details.appendChild(descriptionSection);
+        }
+
+        // Additional building-specific features for castle population
+        if (building.info && building.info.key === BUILDING_DATA.CASTLE.key) {
+            const populationSection = document.createElement('div');
+            populationSection.style.cssText = `
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                padding: 12px;
+                margin: 8px 0;
+            `;
+            populationSection.innerHTML = `
+                <strong>👥 Population:</strong> ${building.info.population || 'N/A'} / ${building.info.maxPopulation || 'N/A'}
+            `;
+            //castleDetails.appendChild(populationSection);
+            details.appendChild(populationSection);
+        }
 
         // Display health information with visual indicators
         if (building.health !== undefined && building.maxHealth !== undefined) {
@@ -1316,9 +1358,11 @@ class UIManager {
             details.appendChild(workerSection);
         }
 
+
         // Clear and populate selection info panel
         this.selectionInfo.appendChild(header);
         this.selectionInfo.appendChild(details);
+
         this.selectionInfo.style.display = 'block';
     }
 
